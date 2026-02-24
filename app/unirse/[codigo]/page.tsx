@@ -15,7 +15,7 @@ interface Invitacion {
 export default function UnirseEmpresa() {
     const router = useRouter()
     const params = useParams()
-    const codigo = params.codigo as string
+    const codigo = params?.codigo ? params.codigo as string : ""
 
     const [invitacion, setInvitacion] = useState<Invitacion | null>(null)
     const [loading, setLoading] = useState(true)
