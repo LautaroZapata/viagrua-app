@@ -6,7 +6,10 @@ const mp = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Permitir POST y GET para debug
+  // Permitir POST, GET y OPTIONS para debug y CORS
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
   if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).end();
 
   // Log de método y body para debug
