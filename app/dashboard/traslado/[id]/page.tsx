@@ -54,22 +54,23 @@ export default function DetalleTrasladoAdmin() {
         };
     }, [id]);
 
+    // Bloqueo de cambio de estado si está completado
+    const estadoBloqueado = traslado?.estado === 'completado';
+    const pagoBloqueado = traslado?.estado_pago !== 'pendiente';
+
     const cargarTraslado = async () => {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { router.push('/login'); return }
 
-        // Verificar que es admin/dueño
+        // Obtener perfil
         const { data: perfil } = await supabase
             .from('perfiles')
             .select('empresa_id, rol')
             .eq('id', user.id)
             .single()
+        if (!perfil) { router.push('/login'); return }
 
-        if (!perfil || perfil.rol === 'chofer') {
-            router.push('/chofer')
-            return
-        }
-
+        // Permitir acceso tanto a admin como chofer
         const { data, error } = await supabase
             .from('traslados')
             .select('*, perfiles(nombre_completo)')
@@ -305,39 +306,44 @@ export default function DetalleTrasladoAdmin() {
                 )}
 
                 {/* Acciones */}
-                <div className="card p-4 sm:p-6 mb-4">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Cambiar Estado</h3>
-                    <div className="grid grid-cols-3 gap-2">
+                                <div className="card p-4 sm:p-6 mb-4">
+                                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Cambiar Estado</h3>
+                                        {estadoBloqueado && (
+                                            <div className="mb-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+                                                El traslado está <b>completado</b> y no puede ser modificado.
+                                            </div>
+                                        )}
+                                        <div className="grid grid-cols-3 gap-2">
                         <button
                             onClick={() => cambiarEstado('pendiente')}
-                            disabled={actualizando}
+                            disabled={actualizando || estadoBloqueado}
                             className={`py-2.5 px-3 rounded-lg font-medium text-xs transition ${
                                 traslado.estado === 'pendiente'
                                     ? 'bg-yellow-500 text-white'
                                     : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                            }`}
+                            } ${estadoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             Pendiente
                         </button>
                         <button
                             onClick={() => cambiarEstado('en_curso')}
-                            disabled={actualizando}
+                            disabled={actualizando || estadoBloqueado}
                             className={`py-2.5 px-3 rounded-lg font-medium text-xs transition ${
                                 traslado.estado === 'en_curso'
                                     ? 'bg-blue-500 text-white'
                                     : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                            }`}
+                            } ${estadoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             En Curso
                         </button>
                         <button
                             onClick={() => cambiarEstado('completado')}
-                            disabled={actualizando}
+                            disabled={actualizando || estadoBloqueado}
                             className={`py-2.5 px-3 rounded-lg font-medium text-xs transition ${
                                 traslado.estado === 'completado'
                                     ? 'bg-green-500 text-white'
                                     : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                            }`}
+                            } ${estadoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             Completado
                         </button>
@@ -345,40 +351,45 @@ export default function DetalleTrasladoAdmin() {
                 </div>
 
                 {/* Estado de Pago */}
-                {traslado.importe_total && (
-                    <div className="card p-4 sm:p-6">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Estado de Pago</h3>
-                        <div className="grid grid-cols-3 gap-2">
+                                {traslado.importe_total && (
+                                        <div className="card p-4 sm:p-6">
+                                                <h3 className="text-sm font-semibold text-gray-900 mb-3">Estado de Pago</h3>
+                                                {pagoBloqueado && (
+                                                    <div className="mb-3 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-3 py-2">
+                                                        El estado de pago ya fue definido y no puede ser modificado.
+                                                    </div>
+                                                )}
+                                                <div className="grid grid-cols-3 gap-2">
                             <button
                                 onClick={() => cambiarEstadoPago('pendiente')}
-                                disabled={actualizando}
+                                disabled={actualizando || pagoBloqueado}
                                 className={`py-2.5 px-3 rounded-lg font-medium text-xs transition ${
                                     traslado.estado_pago === 'pendiente'
                                         ? 'bg-yellow-500 text-white'
                                         : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                                }`}
+                                } ${pagoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 Pendiente
                             </button>
                             <button
                                 onClick={() => cambiarEstadoPago('efectivo')}
-                                disabled={actualizando}
+                                disabled={actualizando || pagoBloqueado}
                                 className={`py-2.5 px-3 rounded-lg font-medium text-xs transition ${
                                     traslado.estado_pago === 'efectivo'
                                         ? 'bg-green-500 text-white'
                                         : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                                }`}
+                                } ${pagoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 Efectivo
                             </button>
                             <button
                                 onClick={() => cambiarEstadoPago('transferencia')}
-                                disabled={actualizando}
+                                disabled={actualizando || pagoBloqueado}
                                 className={`py-2.5 px-3 rounded-lg font-medium text-xs transition ${
                                     traslado.estado_pago === 'transferencia'
                                         ? 'bg-blue-500 text-white'
                                         : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                                }`}
+                                } ${pagoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 Transferencia
                             </button>

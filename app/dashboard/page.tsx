@@ -520,13 +520,14 @@ export default function Dashboard() {
                                                 <select
                                                     value={traslado.estado}
                                                     onChange={(e) => cambiarEstadoTraslado(traslado.id, e.target.value)}
+                                                    disabled={traslado.estado === 'completado'}
                                                     className={`text-xs sm:text-sm font-medium px-3 py-2 rounded-lg border cursor-pointer transition ${
                                                         traslado.estado === 'pendiente'
                                                             ? 'bg-yellow-50 border-yellow-200 text-yellow-700'
                                                             : traslado.estado === 'en_curso'
                                                             ? 'bg-blue-50 border-blue-200 text-blue-700'
                                                             : 'bg-green-50 border-green-200 text-green-700'
-                                                    }`}
+                                                    } ${traslado.estado === 'completado' ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                 >
                                                     <option value="pendiente">Pendiente</option>
                                                     <option value="en_curso">En Curso</option>
