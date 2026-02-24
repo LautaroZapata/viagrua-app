@@ -5,7 +5,7 @@ const PLANES = [
   {
     id: "mensual",
     nombre: "Plan Mensual",
-    precio: 5000,
+    precio: 10,
     descripcion: "Acceso completo por 1 mes",
     beneficios: [
       "Gestión de traslados ilimitada",
@@ -16,7 +16,7 @@ const PLANES = [
   {
     id: "anual",
     nombre: "Plan Anual",
-    precio: 50000,
+    precio: 20,
     descripcion: "Acceso completo por 1 año (2 meses bonificados)",
     beneficios: [
       "Gestión de traslados ilimitada",
