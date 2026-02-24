@@ -4,15 +4,21 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 const mp = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') return res.status(405).end();
+  // Permitir POST y GET para debug
+  if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).end();
 
-  const body = req.body;
-  console.log('Webhook MercadoPago:', JSON.stringify(body));
+  // Log de método y body para debug
+  console.log('Webhook MercadoPago:', req.method, JSON.stringify(req.body));
 
-  // MercadoPago envía topic y payment_id en la notificación
+
+  // Permitir GET para debug rápido
+  const body = req.body || {};
   const paymentId = body.data && (body.data.id || body.data.payment_id);
-  if (!paymentId) return res.status(200).json({ ok: true, msg: 'No payment_id' });
+  if (!paymentId) {
+    return res.status(200).json({ ok: true, msg: 'No payment_id', method: req.method });
+  }
 
   try {
     // Consultar el pago a MercadoPago
