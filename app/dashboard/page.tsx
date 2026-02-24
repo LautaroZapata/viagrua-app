@@ -21,8 +21,9 @@ interface Traslado {
 }
 
 export default function Dashboard() {
+    const [drawerOpen, setDrawerOpen] = useState(false)
     const router = useRouter()
-    const [perfil, setPerfil] = useState<Perfil | null>(null)
+    const [perfil, setPerfil] = useState<any | null>(null)
     const [empresa, setEmpresa] = useState<Empresa | null>(null)
     const [choferes, setChoferes] = useState<Chofer[]>([])
     const [traslados, setTraslados] = useState<Traslado[]>([])
@@ -249,23 +250,29 @@ export default function Dashboard() {
     return (
         <div className="page-bg min-h-screen pb-12">
             {/* Navbar - Responsive */}
+            {/* Navbar con menú hamburger en mobile */}
             <nav className="navbar sticky top-0 z-50">
                 <div className="flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
                     <div className="flex items-center gap-3">
+                        {/* Hamburger solo en mobile */}
+                        <button className="md:hidden mr-2 p-2 rounded-lg hover:bg-white/10 focus:outline-none" onClick={() => setDrawerOpen(true)} aria-label="Abrir menú">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
                         <div className="w-8 h-8 sm:w-9 sm:h-9 bg-white/20 rounded-lg flex items-center justify-center">
                             <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
                             </svg>
                         </div>
                         <h1 className="text-white font-bold text-lg sm:text-xl tracking-tight">ViaGrua</h1>
-                                                {perfil?.nombre_completo && (
-                                                    <span className="ml-2 text-xs text-white/80 font-semibold bg-white/10 px-2 py-0.5 rounded-lg max-w-[120px] truncate" title={perfil.nombre_completo}>
-                                                        {perfil.nombre_completo}
-                                                    </span>
-                                                )}
-                                        </div>
-                    
-                                        {/* Tabs - Ocultos en mobile */}
+                        {perfil?.nombre_completo && (
+                            <span className="ml-2 text-xs text-white/80 font-semibold bg-white/10 px-2 py-0.5 rounded-lg max-w-[120px] truncate" title={perfil.nombre_completo}>
+                                {perfil.nombre_completo}
+                            </span>
+                        )}
+                    </div>
+                    {/* Tabs principales: solo visibles en md+ (ocultos en mobile) */}
                     <div className="hidden md:flex gap-1.5">
                         {['Inicio', 'Traslados', 'Choferes'].map((tab) => (
                             <button key={tab} onClick={() => setActiveTab(tab.toLowerCase())}
@@ -278,10 +285,9 @@ export default function Dashboard() {
                             </button>
                         ))}
                     </div>
-
-                    <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="hidden md:flex items-center gap-1.5 sm:gap-2">
                         <button onClick={() => router.push('/dashboard/gastos')} 
-                            className="text-white/90 hover:text-white text-sm font-medium px-3 py-2 hover:bg-white/10 rounded-lg transition hidden sm:flex items-center gap-1.5"
+                            className="text-white/90 hover:text-white text-sm font-medium px-3 py-2 hover:bg-white/10 rounded-lg transition flex items-center gap-1.5"
                             title="Gastos de la empresa">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -289,7 +295,7 @@ export default function Dashboard() {
                             Gastos
                         </button>
                         <button onClick={() => router.push('/chofer')} 
-                            className="text-white/90 hover:text-white text-sm font-medium px-3 py-2 hover:bg-white/10 rounded-lg transition hidden sm:flex items-center gap-1.5"
+                            className="text-white/90 hover:text-white text-sm font-medium px-3 py-2 hover:bg-white/10 rounded-lg transition flex items-center gap-1.5"
                             title="Ver mis traslados como chofer">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -304,29 +310,50 @@ export default function Dashboard() {
                 </div>
             </nav>
 
-            {/* Tabs Mobile */}
-            <div className="md:hidden bg-white border-b border-gray-100 sticky top-[52px] z-40 shadow-sm">
-                <div className="flex justify-around px-2 py-1.5">
-                    {[
-                        { id: 'inicio', label: 'Inicio', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> },
-                        { id: 'traslados', label: 'Traslados', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg> },
-                        { id: 'choferes', label: 'Choferes', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg> }
-                    ].map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex flex-col items-center px-4 py-2 rounded-lg transition ${
-                                activeTab === tab.id
-                                    ? 'bg-orange-50 text-orange-600'
-                                    : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
-                            }`}
-                        >
-                            {tab.icon}
-                            <span className="text-[10px] font-medium mt-1">{tab.label}</span>
-                        </button>
-                    ))}
+            {/* Drawer lateral para mobile */}
+            {/* Drawer solo visible en mobile (md:hidden) */}
+            {drawerOpen && (
+                <div className="fixed inset-0 z-[100] flex md:hidden">
+                    {/* Fondo oscuro */}
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
+                    {/* Drawer */}
+                    <div className="relative bg-white w-64 max-w-[80vw] h-full shadow-xl animate-slideInLeft p-6 flex flex-col">
+                        <div className="flex items-center mb-8">
+                            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-2">
+                                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+                                </svg>
+                            </div>
+                            <span className="font-bold text-lg text-orange-600">ViaGrua</span>
+                        </div>
+                        <nav className="flex flex-col gap-2">
+                            {/* Si es admin, muestra todas las opciones; si es chofer solo Gastos y Modo Chofer */}
+                            {perfil?.rol === 'admin' ? (
+                                <>
+                                    <button onClick={() => { setActiveTab('inicio'); setDrawerOpen(false); }} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${activeTab==='inicio'?'bg-orange-50 text-orange-600':'text-gray-700 hover:bg-gray-50'}`}>🏠 Inicio</button>
+                                    <button onClick={() => { setActiveTab('traslados'); setDrawerOpen(false); }} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${activeTab==='traslados'?'bg-orange-50 text-orange-600':'text-gray-700 hover:bg-gray-50'}`}>🚗 Traslados</button>
+                                    <button onClick={() => { setActiveTab('choferes'); setDrawerOpen(false); }} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${activeTab==='choferes'?'bg-orange-50 text-orange-600':'text-gray-700 hover:bg-gray-50'}`}>👥 Choferes</button>
+                                    <button onClick={() => { router.push('/dashboard/gastos'); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">💸 Gastos</button>
+                                    <button onClick={() => { router.push('/chofer'); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">🧑‍✈️ Modo Chofer</button>
+                                </>
+                            ) : (
+                                <>
+                                    <button onClick={() => { router.push('/dashboard/gastos'); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">💸 Gastos</button>
+                                    <button onClick={() => { router.push('/chofer'); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">🧑‍✈️ Modo Chofer</button>
+                                </>
+                            )}
+                            <button onClick={() => { handleCerrarSesion(); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-red-600 hover:bg-red-50">🚪 Salir</button>
+                        </nav>
+                        {perfil?.nombre_completo && (
+                            <div className="mt-8 text-xs text-gray-400">
+                                <span className="font-semibold">{perfil.nombre_completo}</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
+
+            {/* Tabs Mobile eliminados: navegación solo por drawer en mobile */}
 
             {/* Content - Responsive */}
             <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-7xl mx-auto">
@@ -336,6 +363,18 @@ export default function Dashboard() {
                         Hola, {perfil?.nombre_completo?.split(' ')[0] || 'Admin'}
                     </h1>
                     <p className="text-sm sm:text-base text-gray-500">{empresa?.nombre}</p>
+                    {perfil?.plan && (
+                        <div className="mt-2 flex items-center gap-2">
+                            <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded font-semibold">
+                                Plan: {perfil.plan === 'anual' ? 'Anual' : 'Mensual'}
+                            </span>
+                            {perfil.plan_renovacion && (
+                                <span className="inline-block bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded font-medium">
+                                    Renovación: {new Date(perfil.plan_renovacion).toLocaleDateString()}
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Stats Grid - Dinámico */}

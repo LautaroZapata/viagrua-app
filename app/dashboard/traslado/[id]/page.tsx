@@ -26,7 +26,7 @@ interface Traslado {
 export default function DetalleTrasladoAdmin() {
     const router = useRouter()
     const params = useParams()
-    const id = params.id as string
+    const id = params?.id as string
 
     const [traslado, setTraslado] = useState<Traslado | null>(null)
     const [loading, setLoading] = useState(true)

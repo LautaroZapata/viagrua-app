@@ -32,6 +32,7 @@ interface Perfil {
 }
 
 export default function PanelChofer() {
+    const [drawerOpen, setDrawerOpen] = useState(false)
     const router = useRouter()
     const [perfil, setPerfil] = useState<Perfil | null>(null)
     const [traslados, setTraslados] = useState<Traslado[]>([])
@@ -271,20 +272,26 @@ export default function PanelChofer() {
             <nav className="navbar sticky top-0 z-50">
                 <div className="flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3">
                     <div className="flex items-center gap-2">
+                        {/* Hamburger solo en mobile */}
+                        <button className="md:hidden mr-2 p-2 rounded-lg hover:bg-white/10 focus:outline-none" onClick={() => setDrawerOpen(true)} aria-label="Abrir menú">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
                         <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
                             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                         </div>
-                                                <h1 className="text-sm sm:text-base font-semibold text-white">ViaGrua</h1>
-                                                <span className="text-white/60 text-xs hidden sm:inline">Chofer</span>
-                                                {perfil?.nombre_completo && (
-                                                    <span className="ml-2 text-xs text-white/80 font-semibold bg-white/10 px-2 py-0.5 rounded-lg max-w-[120px] truncate" title={perfil.nombre_completo}>
-                                                        {perfil.nombre_completo}
-                                                    </span>
-                                                )}
+                        <h1 className="text-sm sm:text-base font-semibold text-white">ViaGrua</h1>
+                        <span className="text-white/60 text-xs hidden sm:inline">Chofer</span>
+                        {perfil?.nombre_completo && (
+                            <span className="ml-2 text-xs text-white/80 font-semibold bg-white/10 px-2 py-0.5 rounded-lg max-w-[120px] truncate" title={perfil.nombre_completo}>
+                                {perfil.nombre_completo}
+                            </span>
+                        )}
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="hidden md:flex items-center gap-1.5">
                         <button 
                             onClick={() => router.push('/dashboard/gastos')} 
                             className="text-white/90 hover:text-white text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1.5 hover:bg-white/10 rounded-lg transition flex items-center gap-1.5"
@@ -311,6 +318,46 @@ export default function PanelChofer() {
                     </div>
                 </div>
             </nav>
+
+            {/* Drawer lateral para mobile (md:hidden) */}
+            {drawerOpen && (
+                <div className="fixed inset-0 z-[100] flex md:hidden">
+                    {/* Fondo oscuro */}
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
+                    {/* Drawer */}
+                    <div className="relative bg-white w-64 max-w-[80vw] h-full shadow-xl animate-slideInLeft p-6 flex flex-col">
+                        <div className="flex items-center mb-8">
+                            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-2">
+                                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+                                </svg>
+                            </div>
+                            <span className="font-bold text-lg text-orange-600">ViaGrua</span>
+                        </div>
+                        <nav className="flex flex-col gap-2">
+                            {/* Si es admin, muestra todas las opciones; si es chofer solo Gastos y Modo Chofer */}
+                            {perfil?.rol === 'admin' ? (
+                                <>
+                                    <button onClick={() => { router.push('/dashboard'); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">🏠 Admin</button>
+                                    <button onClick={() => { router.push('/dashboard/gastos'); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">💸 Gastos</button>
+                                    {/* No mostrar 'Modo Chofer' si ya está en modo chofer */}
+                                </>
+                            ) : (
+                                <>
+                                    <button onClick={() => { router.push('/dashboard/gastos'); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">💸 Gastos</button>
+                                    {/* No mostrar 'Modo Chofer' si ya está en modo chofer */}
+                                </>
+                            )}
+                            <button onClick={() => { handleCerrarSesion(); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-red-600 hover:bg-red-50">🚪 Salir</button>
+                        </nav>
+                        {perfil?.nombre_completo && (
+                            <div className="mt-8 text-xs text-gray-400">
+                                <span className="font-semibold">{perfil.nombre_completo}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-3xl mx-auto">
                 {/* Mensaje de éxito */}
