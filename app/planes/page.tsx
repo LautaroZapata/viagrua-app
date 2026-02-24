@@ -31,8 +31,8 @@ export default function SeleccionaPlan() {
   const [plan, setPlan] = useState("mensual");
 
   const handlePagar = async () => {
-    // Redirige a la página de pago-test con el plan seleccionado
-    window.location.href = `/pago-test?plan=${plan}`;
+    // Aquí deberías implementar la lógica real de pago o mostrar un mensaje
+    alert('Funcionalidad de pago implementada en el flujo real.');
   };
 
   return (
