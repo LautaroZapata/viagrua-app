@@ -1,59 +1,41 @@
-﻿'use client'
+'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-export default function RegistroEmpresa() {
+export default function Login() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [formData, setFormData] = useState({
-        nombreEmpresa: '',
-        nombreDuenio: '',
         email: '',
         password: ''
     })
 
-    const handleRegistro = async (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
 
-        const { data: empresa, error: errorEmpresa } = await supabase
-            .from('empresas')
-            .insert([{ nombre: formData.nombreEmpresa }])
-            .select()
-            .single()
-
-        if (errorEmpresa || !empresa) {
-            alert('Error al crear empresa: ' + errorEmpresa?.message)
-            setLoading(false)
-            return
-        }
-
-        const { error: errorAuth } = await supabase.auth.signUp({
-            email: formData.email,
-            password: formData.password,
-            options: {
-                data: {
-                    nombre_completo: formData.nombreDuenio,
-                    empresa_id: empresa.id
-                }
-            }
-        })
-
-        if (errorAuth) {
-            await supabase.from('empresas').delete().eq('id', empresa.id)
-            alert('Error en el registro: ' + errorAuth.message)
-            setLoading(false)
-            return
-        }
-
-        const { error: errorLogin } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
             email: formData.email,
             password: formData.password
         })
 
-        if (errorLogin) { router.push('/login'); return }
-        router.push('/dashboard')
+        if (error) {
+            alert('Error: ' + error.message)
+            setLoading(false)
+            return
+        }
+
+        const { data: perfil } = await supabase
+            .from('perfiles').select('rol').eq('id', data.user.id).single()
+
+        if (perfil?.rol === 'admin') {
+            router.push('/dashboard')
+        } else {
+            router.push('/chofer')
+        }
+
+        setLoading(false)
     }
 
     return (
@@ -73,40 +55,16 @@ export default function RegistroEmpresa() {
 
                     {/* Form Section */}
                     <div className="mb-8">
-                        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">Registra tu empresa</h2>
-                        <p className="text-gray-500 text-sm mb-6">Crea tu cuenta y accede al panel de control</p>
+                        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">Inicia sesión</h2>
+                        <p className="text-gray-500 text-sm mb-6">Accede a tu cuenta</p>
 
-                        <form onSubmit={handleRegistro} className="space-y-4 sm:space-y-5">
-                            <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wider">Nombre Empresa</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="Ej: Transportes ABC"
-                                    className="input-field"
-                                    value={formData.nombreEmpresa}
-                                    onChange={(e) => setFormData({ ...formData, nombreEmpresa: e.target.value })}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wider">Tu Nombre</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="Ej: Juan Pérez"
-                                    className="input-field"
-                                    value={formData.nombreDuenio}
-                                    onChange={(e) => setFormData({ ...formData, nombreDuenio: e.target.value })}
-                                />
-                            </div>
-
+                        <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
                             <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wider">Email</label>
                                 <input
                                     type="email"
                                     required
-                                    placeholder="Ej: juan@empresa.com"
+                                    placeholder="tu@empresa.com"
                                     className="input-field"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -118,8 +76,7 @@ export default function RegistroEmpresa() {
                                 <input
                                     type="password"
                                     required
-                                    minLength={6}
-                                    placeholder="Mínimo 6 caracteres"
+                                    placeholder="Tu contraseña"
                                     className="input-field"
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -127,7 +84,7 @@ export default function RegistroEmpresa() {
                             </div>
 
                             <button type="submit" disabled={loading} className="btn-primary w-full mt-4 sm:mt-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold">
-                                {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
+                                {loading ? 'Iniciando...' : 'Iniciar Sesión'}
                             </button>
                         </form>
                     </div>
@@ -135,9 +92,9 @@ export default function RegistroEmpresa() {
                     {/* Footer */}
                     <div className="text-center border-t border-gray-100 pt-6">
                         <p className="text-gray-500 text-sm">
-                            ¿Ya tienes cuenta?{' '}
-                            <a href="/login" className="text-orange-600 font-medium hover:text-orange-700 transition-colors">
-                                Iniciar sesión
+                            ¿No tienes cuenta?{' '}
+                            <a href="/" className="text-orange-600 font-medium hover:text-orange-700 transition-colors">
+                                Crear cuenta
                             </a>
                         </p>
                     </div>
