@@ -7,6 +7,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') return res.status(405).end();
 
   const { plan, email } = req.body;
+  // Validar email simple
+  const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  if (!email || typeof email !== 'string' || !emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Email inválido o faltante' });
+  }
 
   const precios: Record<string, number> = {
     mensual: 10,
@@ -29,9 +34,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ],
         payer: { email },
         back_urls: {
-          success: 'https://tu-app.com/pago-exitoso',
-          failure: 'https://tu-app.com/pago-fallido',
-          pending: 'https://tu-app.com/pago-pendiente',
+          success: 'https://via-grua.vercel.app/dashboard',
+          failure: 'https://via-grua.vercel.app/planes',
+          pending: 'https://via-grua.vercel.app/planes',
         },
         auto_return: 'approved',
       },

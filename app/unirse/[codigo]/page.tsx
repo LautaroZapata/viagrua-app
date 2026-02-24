@@ -111,7 +111,10 @@ export default function UnirseEmpresa() {
             email: formData.email,
             password: formData.password
         })
-
+        // Guardar email en localStorage
+        if (formData.email) {
+            window.localStorage.setItem('email', formData.email);
+        }
         router.push('/chofer')
     }
 

@@ -29,12 +29,15 @@ export default function Login() {
         const { data: perfil } = await supabase
             .from('perfiles').select('rol').eq('id', data.user.id).single()
 
+        // Guardar email en localStorage
+        if (formData.email) {
+            window.localStorage.setItem('email', formData.email);
+        }
         if (perfil?.rol === 'admin') {
             router.push('/dashboard')
         } else {
             router.push('/chofer')
         }
-
         setLoading(false)
     }
 
