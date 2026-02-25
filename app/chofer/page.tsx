@@ -36,6 +36,8 @@ export default function PanelChofer() {
     const router = useRouter()
     const [perfil, setPerfil] = useState<Perfil | null>(null)
     const [traslados, setTraslados] = useState<Traslado[]>([])
+    const [trasladosPage, setTrasladosPage] = useState(1)
+    const [trasladosTotal, setTrasladosTotal] = useState(0)
     const [loading, setLoading] = useState(true)
     const [nombreEmpresa, setNombreEmpresa] = useState<string | null>(null)
     
@@ -49,6 +51,13 @@ export default function PanelChofer() {
 
 
     useEffect(() => { cargarDatos() }, [])
+
+    // Recargar traslados cuando cambie la página
+    useEffect(() => {
+        if (perfil?.id) {
+            cargarTraslados(perfil.id, trasladosPage)
+        }
+    }, [trasladosPage, perfil?.id])
 
     // Suscripción realtime para inserts y updates de traslados asignados al chofer
     useEffect(() => {
@@ -132,24 +141,40 @@ export default function PanelChofer() {
                 setNombreEmpresa(null)
             }
 
-            // Traer traslados con nombre de empresa (historial permanente)
-            const { data: trasladosData } = await supabase
-                .from('traslados')
-                .select('id, marca_modelo, matricula, es_0km, estado, estado_pago, importe_total, observaciones, foto_frontal, foto_lateral, foto_trasera, foto_interior, created_at, departamento, direccion, empresas(nombre), desde, hasta')
-                .eq('chofer_id', user.id)
-                .order('created_at', { ascending: false })
-                .limit(20)
-            // Normalizar empresas: tomar el primer elemento si es array
-            const trasladosNorm = (trasladosData || []).map((t: any) => ({
-                ...t,
-                empresas: t.empresas && Array.isArray(t.empresas) ? t.empresas[0] : t.empresas
-            })) as Traslado[];
-            setTraslados(trasladosNorm)
+            await cargarTraslados(user.id, 1)
             setLoading(false)
         } catch (err) {
             console.error('Error cargando datos:', err)
             setLoading(false)
         }
+    }
+
+    const ITEMS_PER_PAGE = 10
+
+    const cargarTraslados = async (choferId: string, page: number = 1) => {
+        const from = (page - 1) * ITEMS_PER_PAGE
+        const to = page * ITEMS_PER_PAGE - 1
+
+        const { data, count, error } = await supabase
+            .from('traslados')
+            .select('id, marca_modelo, matricula, es_0km, estado, estado_pago, importe_total, observaciones, foto_frontal, foto_lateral, foto_trasera, foto_interior, created_at, departamento, direccion, empresas(nombre), desde, hasta', { count: 'exact' })
+            .eq('chofer_id', choferId)
+            .order('created_at', { ascending: false })
+            .range(from, to)
+
+        if (error) {
+            console.error('Error cargando traslados chofer:', error)
+            setTraslados([])
+            setTrasladosTotal(0)
+            return
+        }
+
+        const trasladosNorm = (data || []).map((t: any) => ({
+            ...t,
+            empresas: t.empresas && Array.isArray(t.empresas) ? t.empresas[0] : t.empresas
+        })) as Traslado[];
+        setTraslados(trasladosNorm)
+        setTrasladosTotal(count || 0)
     }
 
     const handleCerrarSesion = async () => {
@@ -407,6 +432,8 @@ export default function PanelChofer() {
                     </div>
                 )}
 
+                {/* Lista de traslados (mantenemos la versión responsive más abajo) */}
+
                 {/* Banner si NO tiene empresa */}
                 {!perfil?.empresa_id && (
                     <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-5">
@@ -607,6 +634,27 @@ export default function PanelChofer() {
                         ))}
                     </div>
                 )}
+
+                {/* Paginación simple */}
+                <div className="mt-3 pagination-flex">
+                    <div className="text-sm text-gray-500">
+                        Mostrando {traslados.length > 0 ? ((trasladosPage - 1) * ITEMS_PER_PAGE) + 1 : 0} - {Math.min(trasladosPage * ITEMS_PER_PAGE, trasladosTotal)} de {trasladosTotal}
+                    </div>
+                    <div className="pagination-controls flex items-center gap-2">
+                        <button
+                            onClick={() => setTrasladosPage(p => Math.max(1, p - 1))}
+                            disabled={trasladosPage <= 1}
+                            className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50 btn-sm"
+                        >Anterior</button>
+                        <span className="text-sm text-gray-600">Página {trasladosPage} / {Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}</span>
+                        <button
+                            onClick={() => setTrasladosPage(p => Math.min(Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE)), p + 1))}
+                            disabled={trasladosPage >= Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}
+                            className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50 btn-sm"
+                        >Siguiente</button>
+                    </div>
+                </div>
+
             </div>
         </div>
     )

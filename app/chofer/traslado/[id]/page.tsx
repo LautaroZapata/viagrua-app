@@ -85,8 +85,25 @@ export default function DetalleTraslado() {
         setLoading(false)
     }
 
+    // Bloqueo de cambio de estado si está completado
+    const estadoBloqueado = traslado?.estado === 'completado'
+    const pagoBloqueado = traslado?.estado_pago !== 'pendiente'
+
     const cambiarEstado = async (nuevoEstado: string) => {
         if (!traslado) return
+        if (nuevoEstado === 'completado') {
+            // @ts-ignore
+            const Swal = require('sweetalert2')
+            const res = await Swal.fire({
+                title: 'Confirmar',
+                text: '¿Confirmar marcar como completado? Esta acción bloqueará el traslado.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, completar',
+                cancelButtonText: 'Cancelar'
+            })
+            if (!res.isConfirmed) return
+        }
         
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
@@ -111,6 +128,18 @@ export default function DetalleTraslado() {
 
     const cambiarEstadoPago = async (nuevoEstadoPago: string) => {
         if (!traslado) return
+
+        // Confirm payment change with SweetAlert2
+        const Swal = (await import('sweetalert2')).default
+        const resPago = await Swal.fire({
+            title: 'Confirmar método de pago',
+            text: `¿Confirmar cambio de método de pago a "${nuevoEstadoPago}"? Asegúrate de elegir el método correcto.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, confirmar',
+            cancelButtonText: 'Cancelar'
+        })
+        if (!resPago.isConfirmed) return
         
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
@@ -289,10 +318,15 @@ export default function DetalleTraslado() {
                 {/* Acciones */}
                 <div className="card">
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Cambiar Estado</h3>
-                    <div className="grid grid-cols-3 gap-2">
+                    {estadoBloqueado && (
+                        <div className="mb-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+                            El traslado está <b>completado</b> y no puede ser modificado.
+                        </div>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <button
                             onClick={() => cambiarEstado('pendiente')}
-                            disabled={actualizando}
+                            disabled={actualizando || estadoBloqueado}
                             className={`py-2 px-3 rounded-lg font-medium text-xs transition ${
                                 traslado.estado === 'pendiente'
                                     ? 'bg-yellow-500 text-white'
@@ -303,7 +337,7 @@ export default function DetalleTraslado() {
                         </button>
                         <button
                             onClick={() => cambiarEstado('en_curso')}
-                            disabled={actualizando}
+                            disabled={actualizando || estadoBloqueado}
                             className={`py-2 px-3 rounded-lg font-medium text-xs transition ${
                                 traslado.estado === 'en_curso'
                                     ? 'bg-blue-500 text-white'
@@ -314,7 +348,7 @@ export default function DetalleTraslado() {
                         </button>
                         <button
                             onClick={() => cambiarEstado('completado')}
-                            disabled={actualizando}
+                            disabled={actualizando || estadoBloqueado}
                             className={`py-2 px-3 rounded-lg font-medium text-xs transition ${
                                 traslado.estado === 'completado'
                                     ? 'bg-green-500 text-white'
@@ -330,10 +364,15 @@ export default function DetalleTraslado() {
                 {traslado.importe_total && (
                     <div className="card">
                         <h3 className="text-sm font-semibold text-gray-900 mb-3">Estado de Pago</h3>
-                        <div className="grid grid-cols-3 gap-2">
+                        {pagoBloqueado && (
+                            <div className="mb-3 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-3 py-2">
+                                El estado de pago ya fue definido y no puede ser modificado.
+                            </div>
+                        )}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <button
                                 onClick={() => cambiarEstadoPago('pendiente')}
-                                disabled={actualizando}
+                                disabled={actualizando || pagoBloqueado}
                                 className={`py-2 px-3 rounded-lg font-medium text-xs transition ${
                                     traslado.estado_pago === 'pendiente'
                                         ? 'bg-yellow-500 text-white'
@@ -344,7 +383,7 @@ export default function DetalleTraslado() {
                             </button>
                             <button
                                 onClick={() => cambiarEstadoPago('efectivo')}
-                                disabled={actualizando}
+                                disabled={actualizando || pagoBloqueado}
                                 className={`py-2 px-3 rounded-lg font-medium text-xs transition ${
                                     traslado.estado_pago === 'efectivo'
                                         ? 'bg-green-500 text-white'
@@ -355,7 +394,7 @@ export default function DetalleTraslado() {
                             </button>
                             <button
                                 onClick={() => cambiarEstadoPago('transferencia')}
-                                disabled={actualizando}
+                                disabled={actualizando || pagoBloqueado}
                                 className={`py-2 px-3 rounded-lg font-medium text-xs transition ${
                                     traslado.estado_pago === 'transferencia'
                                         ? 'bg-blue-500 text-white'

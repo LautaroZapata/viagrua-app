@@ -89,6 +89,18 @@ export default function DetalleTrasladoAdmin() {
 
     const cambiarEstado = async (nuevoEstado: string) => {
         if (!traslado) return
+        if (nuevoEstado === 'completado') {
+            const Swal = (await import('sweetalert2').catch(() => ({ default: require('sweetalert2') }))).default;
+            const res = await Swal.fire({
+                title: 'Confirmar',
+                text: '¿Confirmar marcar como completado? Esta acción bloqueará el traslado.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, completar',
+                cancelButtonText: 'Cancelar'
+            });
+            if (!res.isConfirmed) return;
+        }
         
         // Actualización optimista - cambiar UI inmediatamente
         const estadoAnterior = traslado.estado
@@ -108,7 +120,19 @@ export default function DetalleTrasladoAdmin() {
 
     const cambiarEstadoPago = async (nuevoEstadoPago: string) => {
         if (!traslado) return
-        
+
+        // Confirm payment change with SweetAlert2
+        const Swal = (await import('sweetalert2')).default
+        const resPago = await Swal.fire({
+            title: 'Confirmar método de pago',
+            text: `¿Confirmar cambio de método de pago a "${nuevoEstadoPago}"? Asegúrate de elegir el método correcto.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, confirmar',
+            cancelButtonText: 'Cancelar'
+        })
+        if (!resPago.isConfirmed) return
+
         const estadoPagoAnterior = traslado.estado_pago
         setTraslado({ ...traslado, estado_pago: nuevoEstadoPago })
 
@@ -313,7 +337,7 @@ export default function DetalleTrasladoAdmin() {
                                                 El traslado está <b>completado</b> y no puede ser modificado.
                                             </div>
                                         )}
-                                        <div className="grid grid-cols-3 gap-2">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <button
                             onClick={() => cambiarEstado('pendiente')}
                             disabled={actualizando || estadoBloqueado}
@@ -359,7 +383,7 @@ export default function DetalleTrasladoAdmin() {
                                                         El estado de pago ya fue definido y no puede ser modificado.
                                                     </div>
                                                 )}
-                                                <div className="grid grid-cols-3 gap-2">
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <button
                                 onClick={() => cambiarEstadoPago('pendiente')}
                                 disabled={actualizando || pagoBloqueado}

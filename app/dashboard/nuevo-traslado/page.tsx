@@ -16,12 +16,28 @@ interface FotoPreview {
     compressedSize?: number
 }
 
+const PLANES: Record<string, { nombre: string; traslados_max: number | null; } > = {
+    free: {
+        nombre: 'Free',
+        traslados_max: 30,
+    },
+    mensual: {
+        nombre: 'Pago Mensual',
+        traslados_max: null,
+    },
+    anual: {
+        nombre: 'Pago Anual',
+        traslados_max: null,
+    },
+};
+
 export default function NuevoTraslado() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [choferes, setChoferes] = useState<Chofer[]>([])
     const [empresaId, setEmpresaId] = useState<string>('')
     const [userId, setUserId] = useState<string>('')
+    const [perfil, setPerfil] = useState<any | null>(null)
     const [formData, setFormData] = useState({
         marca_modelo: '',
         matricula: '',
@@ -66,16 +82,19 @@ export default function NuevoTraslado() {
 
         setUserId(user.id)
 
-        const { data: perfil } = await supabase
-            .from('perfiles').select('empresa_id').eq('id', user.id).single()
-        if (!perfil) return
-
-        setEmpresaId(perfil.empresa_id)
+        // Traer perfil completo para saber plan y traslados
+        const { data: perfilData } = await supabase
+            .from('perfiles')
+            .select('*, plan, plan_renovacion, traslados_mes_actual')
+            .eq('id', user.id).single()
+        if (!perfilData) return
+        setPerfil(perfilData)
+        setEmpresaId(perfilData.empresa_id)
 
         // Traer choferes Y al admin (para que pueda asignarse a sí mismo)
         const { data } = await supabase
             .from('perfiles').select('id, nombre_completo, rol')
-            .eq('empresa_id', perfil.empresa_id)
+            .eq('empresa_id', perfilData.empresa_id)
             .in('rol', ['chofer', 'admin'])
         setChoferes(data || [])
     }
@@ -152,28 +171,59 @@ export default function NuevoTraslado() {
         e.preventDefault()
         setLoading(true)
 
-        // 1. Crear el traslado primero
-        const { data: traslado, error } = await supabase.from('traslados').insert([{
-            empresa_id: empresaId,
-            chofer_id: formData.chofer_id,
-            marca_modelo: formData.marca_modelo,
-            matricula: formData.es_0km ? null : formData.matricula,
-            es_0km: formData.es_0km,
-            importe_total: formData.importe_total ? parseFloat(formData.importe_total) : null,
-            observaciones: formData.observaciones || null,
-            desde: formData.desde || null,
-            hasta: formData.hasta || null,
-            estado: 'pendiente',
-            estado_pago: 'pendiente'
-        }]).select().single()
+        // 1. Llamar al endpoint server-side que reserva el cupo y crea el traslado
+        const resp = await fetch('/api/create-traslado-safe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                empresa_id: empresaId,
+                chofer_id: formData.chofer_id,
+                marca_modelo: formData.marca_modelo,
+                matricula: formData.es_0km ? null : formData.matricula,
+                es_0km: formData.es_0km,
+                importe_total: formData.importe_total,
+                observaciones: formData.observaciones,
+                desde: formData.desde,
+                hasta: formData.hasta
+            })
+        })
 
-        if (error || !traslado) {
-            alert("Error: " + error?.message)
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}))
+            alert('No se pudo crear el traslado: ' + (err.error || resp.statusText))
             setLoading(false)
             return
         }
 
-        // 2. Subir fotos si hay alguna
+        const { traslado } = await resp.json()
+
+        // 2. Incrementar contador de traslados en el perfil (si aplica)
+        if (planKey === 'free') {
+            try {
+                const nuevoContador = (perfil?.traslados_mes_actual || 0) + 1
+                const { error: perfilError } = await supabase.from('perfiles')
+                    .update({ traslados_mes_actual: nuevoContador })
+                    .eq('id', userId)
+
+                if (perfilError) {
+                    // Revertir: eliminar el traslado creado
+                    await supabase.from('traslados').delete().eq('id', traslado.id)
+                    alert('No se pudo actualizar el contador de traslados: ' + perfilError.message)
+                    setLoading(false)
+                    return
+                }
+            } catch (err) {
+                // Revertir si algo inesperado falla
+                await supabase.from('traslados').delete().eq('id', traslado.id)
+                console.error('Error actualizando contador de traslados:', err)
+                alert('Error al actualizar contador de traslados')
+                setLoading(false)
+                return
+            }
+        }
+
+        // 3. Subir fotos si hay alguna
         const hayFotos = Object.values(fotos).some(f => f !== null)
         if (hayFotos) {
             console.log('Subiendo fotos...')
@@ -185,7 +235,7 @@ export default function NuevoTraslado() {
                 const { error: updateError } = await supabase.from('traslados')
                     .update(fotoUrls)
                     .eq('id', traslado.id)
-                
+
                 if (updateError) {
                     console.error('Error guardando URLs:', updateError)
                     alert('Error al guardar URLs de fotos: ' + updateError.message)
@@ -197,6 +247,14 @@ export default function NuevoTraslado() {
 
         router.push('/dashboard')
     }
+
+    // --- Lógica de restricción de traslados ---
+    const planKey = perfil?.plan || 'free';
+    const planInfo = PLANES[planKey];
+    const trasladosMax = planInfo.traslados_max;
+    const trasladosUsados = perfil?.traslados_mes_actual || 0;
+    const trasladosRestantes = trasladosMax !== null ? Math.max(trasladosMax - trasladosUsados, 0) : null;
+    const bloqueoTraslados = planKey === 'free' && trasladosRestantes === 0;
 
     return (
         <div className="page-bg min-h-screen pb-8">
@@ -220,6 +278,14 @@ export default function NuevoTraslado() {
                         <h2 className="text-lg font-semibold text-gray-900 mb-4">Detalles del Traslado</h2>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
+                            {planKey === 'free' && (
+                                <div className="mb-2 p-2 rounded bg-yellow-50 text-yellow-800 text-xs">
+                                    Traslados usados este mes: <b>{trasladosUsados}</b> / {trasladosMax}
+                                    {bloqueoTraslados && (
+                                        <span className="block text-red-600 font-bold mt-1">¡Has alcanzado el límite de traslados este mes! Actualiza tu plan para más beneficios.</span>
+                                    )}
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1.5">Marca y Modelo</label>
                                 <input
@@ -278,15 +344,17 @@ export default function NuevoTraslado() {
 
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1.5">Importe Total</label>
-                                <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-base select-none">$</span>
+                                <div className="currency-input">
+                                    <span className="currency-symbol">$</span>
                                     <input
                                         type="number"
                                         step="0.01"
-                                        placeholder="0.00"
-                                        className="input-field pl-10 py-3"
+                                        min="0"
+                                        name="importe"
                                         value={formData.importe_total}
                                         onChange={(e) => setFormData({ ...formData, importe_total: e.target.value })}
+                                        className="w-full border rounded px-3 py-2 input-field"
+                                        required
                                     />
                                 </div>
                             </div>
@@ -318,7 +386,8 @@ export default function NuevoTraslado() {
                                 <button type="button" onClick={() => router.push('/dashboard')} className="btn-secondary flex-1 py-2.5 text-sm">
                                     Cancelar
                                 </button>
-                                <button type="submit" disabled={loading} className="btn-primary flex-1 py-2.5 text-sm">
+                                <button type="submit" disabled={loading || bloqueoTraslados} className={`btn-primary flex-1 py-2.5 text-sm ${bloqueoTraslados ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                    title={bloqueoTraslados ? 'Límite de traslados alcanzado este mes' : ''}>
                                     {loading ? 'Creando...' : 'Crear Traslado'}
                                 </button>
                             </div>

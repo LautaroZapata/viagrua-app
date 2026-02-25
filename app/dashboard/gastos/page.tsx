@@ -418,16 +418,17 @@ export default function GastosPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wide">Importe</label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">$</span>
+                                <div className="currency-input">
+                                    <span className="currency-symbol">$</span>
                                     <input
                                         type="number"
-                                        required
                                         step="0.01"
-                                        placeholder="0.00"
-                                        className="input-field pl-8"
+                                        min="0"
+                                        name="importe"
                                         value={formData.importe}
                                         onChange={(e) => setFormData({ ...formData, importe: e.target.value })}
+                                        className="w-full border rounded px-3 py-2 input-field"
+                                        required
                                     />
                                 </div>
                             </div>

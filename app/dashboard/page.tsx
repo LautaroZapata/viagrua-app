@@ -3,46 +3,72 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-interface Perfil { id: string; nombre_completo: string; rol: string; empresa_id: string }
+interface Perfil {
+    id: string;
+    nombre_completo: string;
+    rol: string;
+    empresa_id: string;
+    plan?: string;
+    plan_renovacion?: string;
+    traslados_mes_actual?: number;
+}
 interface Chofer { id: string; nombre_completo: string; email: string }
 interface Empresa { id: string; nombre: string }
-interface Traslado {
-    id: string
-    marca_modelo: string
-    matricula: string | null
-    es_0km: boolean
-    estado: string
-    estado_pago: string
-    importe_total: number | null
-    observaciones: string | null
-    created_at: string
-    chofer_id: string
-    perfiles?: { nombre_completo: string }
-}
 
 export default function Dashboard() {
-    const [drawerOpen, setDrawerOpen] = useState(false)
-    const router = useRouter()
-    const [perfil, setPerfil] = useState<any | null>(null)
-    const [empresa, setEmpresa] = useState<Empresa | null>(null)
-    const [choferes, setChoferes] = useState<Chofer[]>([])
-    const [traslados, setTraslados] = useState<Traslado[]>([])
-    const [loading, setLoading] = useState(true)
-    const [modalAbierto, setModalAbierto] = useState(false)
-    const [activeTab, setActiveTab] = useState('inicio')
-    
-    // Estado para invitación
-    const [codigoInvitacion, setCodigoInvitacion] = useState('')
-    const [generandoCodigo, setGenerandoCodigo] = useState(false)
-    const [linkCopiado, setLinkCopiado] = useState(false)
+    const [perfil, setPerfil] = useState<Perfil | null>(null);
+    const [empresa, setEmpresa] = useState<Empresa | null>(null);
+    const [choferes, setChoferes] = useState<Chofer[]>([]);
+    const [traslados, setTraslados] = useState<any[]>([]);
+    const [trasladosPage, setTrasladosPage] = useState(1);
+    const [trasladosTotal, setTrasladosTotal] = useState(0);
+    const [trasladosPendientesTotal, setTrasladosPendientesTotal] = useState(0);
+    const [trasladosEnCursoTotal, setTrasladosEnCursoTotal] = useState(0);
+    const [trasladosCompletadosTotal, setTrasladosCompletadosTotal] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [modalAbierto, setModalAbierto] = useState(false);
+    const [activeTab, setActiveTab] = useState('inicio');
+    const [codigoInvitacion, setCodigoInvitacion] = useState('');
+    const [generandoCodigo, setGenerandoCodigo] = useState(false);
+    const [linkCopiado, setLinkCopiado] = useState(false);
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const router = useRouter();
+    // --- PLANES Y RESTRICCIONES ---
+    const PLANES: Record<string, { nombre: string; traslados_max: number | null; puede_agregar_personas: boolean; puede_exportar: boolean; } > = {
+      free: {
+        nombre: 'Free',
+        traslados_max: 30,
+        puede_agregar_personas: false,
+        puede_exportar: false,
+      },
+      mensual: {
+        nombre: 'Pago Mensual',
+        traslados_max: null,
+        puede_agregar_personas: true,
+        puede_exportar: true,
+      },
+      anual: {
+        nombre: 'Pago Anual',
+        traslados_max: null,
+        puede_agregar_personas: true,
+        puede_exportar: true,
+      },
+    };
+    const planKey = perfil?.plan || 'free';
+    const planInfo = PLANES[planKey];
+    const trasladosMax = planInfo.traslados_max;
+    const trasladosUsados = perfil?.traslados_mes_actual || 0;
+    const trasladosRestantes = trasladosMax !== null ? Math.max(trasladosMax - trasladosUsados, 0) : null;
+    const planVencimiento = perfil?.plan_renovacion ? new Date(perfil.plan_renovacion).toLocaleDateString() : 'Sin vencimiento';
+    const bloqueoTraslados = planKey === 'free' && trasladosRestantes === 0;
 
     useEffect(() => { cargarDatos() }, [])
 
     // Suscripción en tiempo real para nuevos choferes
     useEffect(() => {
-        if (!perfil?.empresa_id) return
+        if (!perfil?.empresa_id) return;
 
-        console.log('🔌 Conectando Realtime para empresa:', perfil.empresa_id)
+        console.log('🔌 Conectando Realtime para empresa:', perfil.empresa_id);
 
         const subscription = supabase
             .channel('choferes-changes')
@@ -54,27 +80,34 @@ export default function Dashboard() {
                     table: 'perfiles'
                 },
                 (payload) => {
-                    console.log('📡 Evento Realtime recibido:', payload)
-                    
+                    console.log('📡 Evento Realtime recibido:', payload);
                     // Recargar cuando alguien se une o sale de nuestra empresa
-                    const newRecord = payload.new as { empresa_id?: string }
-                    const oldRecord = payload.old as { empresa_id?: string }
-                    
-                    if (newRecord?.empresa_id === perfil.empresa_id || 
-                        oldRecord?.empresa_id === perfil.empresa_id) {
-                        console.log('✅ Recargando lista de choferes...')
-                        cargarChoferes(perfil.empresa_id)
+                    const newRecord = payload.new as { empresa_id?: string };
+                    const oldRecord = payload.old as { empresa_id?: string };
+                    if (newRecord?.empresa_id === perfil?.empresa_id || 
+                        oldRecord?.empresa_id === perfil?.empresa_id) {
+                        console.log('✅ Recargando lista de choferes...');
+                        if (perfil?.empresa_id) cargarChoferes(perfil.empresa_id);
                     }
                 }
             )
             .subscribe((status) => {
-                console.log('📶 Estado suscripción:', status)
-            })
+                console.log('📶 Estado suscripción:', status);
+            });
 
         return () => {
-            supabase.removeChannel(subscription)
+            supabase.removeChannel(subscription);
+        };
+    }, [perfil?.empresa_id]);
+
+    // Cuando se navega a la pestaña 'traslados' o cambia la página, recargar lista
+    useEffect(() => {
+        if (activeTab === 'traslados' && perfil?.empresa_id) {
+            cargarTraslados(perfil.empresa_id, trasladosPage)
         }
-    }, [perfil?.empresa_id])
+    }, [activeTab, trasladosPage, perfil?.empresa_id])
+
+    // Hooks y funciones definidos más abajo — el render principal está al final del archivo
 
     const cargarDatos = async () => {
         const { data: { user } } = await supabase.auth.getUser()
@@ -90,7 +123,7 @@ export default function Dashboard() {
         setEmpresa(empresaData)
 
         await cargarChoferes(perfilData.empresa_id)
-        await cargarTraslados(perfilData.empresa_id)
+        await cargarTraslados(perfilData.empresa_id, 1)
         setLoading(false)
     }
 
@@ -119,16 +152,56 @@ export default function Dashboard() {
         }
     }
 
-    const cargarTraslados = async (empresaId: string) => {
-        const { data } = await supabase
+    const ITEMS_PER_PAGE = 10
+
+    const cargarTraslados = async (empresaId: string, page: number = 1) => {
+        const from = (page - 1) * ITEMS_PER_PAGE
+        const to = page * ITEMS_PER_PAGE - 1
+
+        const { data, count, error } = await supabase
             .from('traslados')
-            .select('*, perfiles(nombre_completo)')
+            .select('*, perfiles(nombre_completo)', { count: 'exact' })
             .eq('empresa_id', empresaId)
             .order('created_at', { ascending: false })
+            .range(from, to)
+
+        if (error) {
+            console.error('Error cargando traslados:', error)
+            setTraslados([])
+            setTrasladosTotal(0)
+            return
+        }
+
         setTraslados(data || [])
+        setTrasladosTotal(count || 0)
+        // Cargar contadores por estado para mostrar totales en las cards
+        await cargarContadoresTraslados(empresaId)
+    }
+
+    const cargarContadoresTraslados = async (empresaId: string) => {
+        try {
+            const [pend, enCurso, comp] = await Promise.all([
+                supabase.from('traslados').select('id', { count: 'exact' }).eq('empresa_id', empresaId).eq('estado', 'pendiente'),
+                supabase.from('traslados').select('id', { count: 'exact' }).eq('empresa_id', empresaId).eq('estado', 'en_curso'),
+                supabase.from('traslados').select('id', { count: 'exact' }).eq('empresa_id', empresaId).eq('estado', 'completado'),
+            ])
+
+            setTrasladosPendientesTotal(pend.count || 0)
+            setTrasladosEnCursoTotal(enCurso.count || 0)
+            setTrasladosCompletadosTotal(comp.count || 0)
+        } catch (e) {
+            console.error('Error cargando contadores de traslados', e)
+            setTrasladosPendientesTotal(0)
+            setTrasladosEnCursoTotal(0)
+            setTrasladosCompletadosTotal(0)
+        }
     }
 
     const cambiarEstadoTraslado = async (trasladoId: string, nuevoEstado: string) => {
+        if (nuevoEstado === 'completado') {
+            const confirmed = window.confirm('¿Confirmar marcar como completado? Esta acción bloqueará el traslado.');
+            if (!confirmed) return;
+        }
         // Actualización optimista - cambiar UI inmediatamente
         setTraslados(prev => prev.map(t => 
             t.id === trasladoId ? { ...t, estado: nuevoEstado } : t
@@ -141,9 +214,12 @@ export default function Dashboard() {
             .eq('id', trasladoId)
 
         // Si hay error, revertir
-        if (error) {
+            if (error) {
             alert('Error al actualizar: ' + error.message)
-            if (perfil) await cargarTraslados(perfil.empresa_id)
+            if (perfil) await cargarTraslados(perfil.empresa_id, trasladosPage)
+        }
+        else {
+            if (perfil) await cargarContadoresTraslados(perfil.empresa_id)
         }
     }
 
@@ -170,7 +246,11 @@ export default function Dashboard() {
         if (error) {
             alert('Error al eliminar: ' + error.message)
             // Recargar si hubo error (para revertir)
-            if (perfil) await cargarTraslados(perfil.empresa_id)
+            if (perfil) await cargarTraslados(perfil.empresa_id, trasladosPage)
+        }
+        else {
+            // Actualizar contadores después de borrar
+            if (perfil) await cargarContadoresTraslados(perfil.empresa_id)
         }
         // Si no hay error, ya lo quitamos optimistamente - no hace falta recargar
     }
@@ -248,7 +328,8 @@ export default function Dashboard() {
     }
 
     return (
-        <div className="page-bg min-h-screen pb-12">
+        <div className="min-h-screen bg-gray-50">
+        {/* ...resto del dashboard... */}
             {/* Navbar - Responsive */}
             {/* Navbar con menú hamburger en mobile */}
             <nav className="navbar sticky top-0 z-50">
@@ -349,6 +430,10 @@ export default function Dashboard() {
                                 <span className="font-semibold">{perfil.nombre_completo}</span>
                             </div>
                         )}
+
+                        
+
+                        
                     </div>
                 </div>
             )}
@@ -363,16 +448,32 @@ export default function Dashboard() {
                         Hola, {perfil?.nombre_completo?.split(' ')[0] || 'Admin'}
                     </h1>
                     <p className="text-sm sm:text-base text-gray-500">{empresa?.nombre}</p>
-                    {perfil?.plan && (
-                        <div className="mt-2 flex items-center gap-2">
-                            <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded font-semibold">
-                                Plan: {perfil.plan === 'anual' ? 'Anual' : 'Mensual'}
-                            </span>
-                            {perfil.plan_renovacion && (
-                                <span className="inline-block bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded font-medium">
-                                    Renovación: {new Date(perfil.plan_renovacion).toLocaleDateString()}
-                                </span>
-                            )}
+                    {perfil && (
+                        <div className="mt-4 flex flex-col md:flex-row md:items-center gap-4">
+                            <div className="max-w-md p-4 rounded-lg shadow bg-white border flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-sm text-gray-500">Plan actual</div>
+                                        <div className="font-semibold text-lg text-blue-700">{planInfo.nombre}</div>
+                                    </div>
+                                    <div className="text-sm text-gray-500">{planVencimiento}</div>
+                                </div>
+                                <div className="text-sm text-gray-700">
+                                    Traslados usados este mes: <span className="font-bold">{trasladosUsados}</span>{trasladosMax !== null ? ` / ${trasladosMax}` : ''}
+                                    <br />
+                                    {planKey === 'free' ? (
+                                        bloqueoTraslados ? (
+                                            <span className="text-red-600 font-bold">¡Has alcanzado el límite de traslados este mes! Actualiza tu plan.</span>
+                                        ) : (
+                                            <span className="text-green-700">Te quedan <b>{trasladosRestantes}</b> traslados este mes.</span>
+                                        )
+                                    ) : (
+                                        <span className="text-sm text-green-700">Traslados ilimitados. Acceso a exportar datos y agregar personas.</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Los botones de acción están en la sección principal más abajo; se mantienen allí */}
                         </div>
                     )}
                 </div>
@@ -387,7 +488,7 @@ export default function Dashboard() {
                             </svg>
                         </div>
                         <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wide">Total Traslados</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mt-1">{traslados.length}</p>
+                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mt-1">{trasladosTotal}</p>
                     </div>
                     <div className="card p-4 sm:p-5 lg:p-6">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-yellow-100 flex items-center justify-center mb-3">
@@ -397,7 +498,7 @@ export default function Dashboard() {
                         </div>
                         <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wide">Pendientes</p>
                         <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-yellow-600 mt-1">
-                            {traslados.filter(t => t.estado === 'pendiente').length}
+                            {trasladosPendientesTotal}
                         </p>
                     </div>
                     <div className="card p-4 sm:p-5 lg:p-6">
@@ -408,7 +509,7 @@ export default function Dashboard() {
                         </div>
                         <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wide">En Curso</p>
                         <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 mt-1">
-                            {traslados.filter(t => t.estado === 'en_curso').length}
+                            {trasladosEnCursoTotal}
                         </p>
                     </div>
                     <div className="card p-4 sm:p-5 lg:p-6">
@@ -419,7 +520,7 @@ export default function Dashboard() {
                         </div>
                         <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wide">Completados</p>
                         <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 mt-1">
-                            {traslados.filter(t => t.estado === 'completado').length}
+                            {trasladosCompletadosTotal}
                         </p>
                     </div>
                 </div>
@@ -427,8 +528,8 @@ export default function Dashboard() {
                 {/* Botones Acción - Solo en Inicio */}
                 {activeTab === 'inicio' && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-10">
-                        <button onClick={() => router.push('/dashboard/nuevo-traslado')}
-                            className="card p-5 sm:p-6 lg:p-8 text-left hover:shadow-lg active:shadow-md transition-all cursor-pointer group">
+                        <button onClick={() => { if (!bloqueoTraslados) router.push('/dashboard/nuevo-traslado') }}
+                            className={`card p-5 sm:p-6 lg:p-8 text-left transition-all group ${bloqueoTraslados ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-lg active:shadow-md cursor-pointer'}`}>
                             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-orange-100 group-hover:bg-orange-200 flex items-center justify-center mb-4 transition">
                                 <svg className="w-6 h-6 sm:w-7 sm:h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -438,14 +539,16 @@ export default function Dashboard() {
                             <p className="text-sm text-gray-500 mt-1">Crear y asignar un nuevo servicio</p>
                         </button>
                         
-                        <button onClick={abrirModalInvitacion}
-                            className="card p-5 sm:p-6 lg:p-8 text-left hover:shadow-lg active:shadow-md transition-all cursor-pointer group">
+                        <button onClick={() => { if (planInfo.puede_agregar_personas) abrirModalInvitacion() }}
+                            className={`card p-5 sm:p-6 lg:p-8 text-left transition-all group ${!planInfo.puede_agregar_personas ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-lg active:shadow-md cursor-pointer'}`}
+                            disabled={!planInfo.puede_agregar_personas}
+                            title={!planInfo.puede_agregar_personas ? 'Disponible solo en planes pagos' : ''}>
                             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center mb-4 transition">
                                 <svg className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                 </svg>
                             </div>
-                            <p className="font-semibold text-base sm:text-lg text-gray-900 group-hover:text-blue-600 transition">Invitar Chofer</p>
+                            <p className="font-semibold text-base sm:text-lg text-gray-900 transition">Invitar Chofer</p>
                             <p className="text-sm text-gray-500 mt-1">Generar link de invitación</p>
                         </button>
                     </div>
@@ -457,8 +560,9 @@ export default function Dashboard() {
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                             <h3 className="font-semibold text-lg sm:text-xl text-gray-900">Lista de Traslados</h3>
                             <button 
-                                onClick={() => router.push('/dashboard/nuevo-traslado')}
-                                className="btn-primary px-5 py-2.5 text-sm"
+                                onClick={() => { if (!bloqueoTraslados) router.push('/dashboard/nuevo-traslado') }}
+                                className={`btn-primary px-5 py-2.5 text-sm ${bloqueoTraslados ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                title={bloqueoTraslados ? 'Límite de traslados alcanzado' : ''}
                             >
                                 + Nuevo Traslado
                             </button>
@@ -548,6 +652,39 @@ export default function Dashboard() {
                                 ))}
                             </div>
                         )}
+
+                        {/* Paginación */}
+                        <div className="mt-4 pagination-flex">
+                            <div className="text-sm text-gray-500">
+                                Mostrando {traslados.length > 0 ? ((trasladosPage - 1) * ITEMS_PER_PAGE) + 1 : 0} - {Math.min(trasladosPage * ITEMS_PER_PAGE, trasladosTotal)} de {trasladosTotal}
+                            </div>
+                            <div className="pagination-controls flex items-center gap-2">
+                                <button
+                                    onClick={async () => {
+                                        const newPage = Math.max(1, trasladosPage - 1)
+                                        setTrasladosPage(newPage)
+                                        if (perfil) await cargarTraslados(perfil.empresa_id, newPage)
+                                    }}
+                                    disabled={trasladosPage <= 1}
+                                    className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50 btn-sm"
+                                >
+                                    Anterior
+                                </button>
+                                <span className="text-sm text-gray-600">Página {trasladosPage} / {Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}</span>
+                                <button
+                                    onClick={async () => {
+                                        const maxPage = Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))
+                                        const newPage = Math.min(maxPage, trasladosPage + 1)
+                                        setTrasladosPage(newPage)
+                                        if (perfil) await cargarTraslados(perfil.empresa_id, newPage)
+                                    }}
+                                    disabled={trasladosPage >= Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}
+                                    className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50 btn-sm"
+                                >
+                                    Siguiente
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -556,7 +693,10 @@ export default function Dashboard() {
                     <div className="card p-4 sm:p-6 lg:p-8">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                             <h3 className="font-semibold text-lg sm:text-xl text-gray-900">Equipo de Choferes</h3>
-                            <button onClick={abrirModalInvitacion} className="btn-secondary px-5 py-2.5 text-sm">
+                            <button onClick={() => { if (planInfo.puede_agregar_personas) abrirModalInvitacion() }}
+                                className={`btn-secondary px-5 py-2.5 text-sm ${!planInfo.puede_agregar_personas ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                disabled={!planInfo.puede_agregar_personas}
+                                title={!planInfo.puede_agregar_personas ? 'Disponible solo en planes pagos' : ''}>
                                 + Invitar Chofer
                             </button>
                         </div>
