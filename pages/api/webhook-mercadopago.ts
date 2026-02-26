@@ -29,23 +29,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Solo actualizar si el pago está aprobado
     if (payment.status !== 'approved') return res.status(200).json({ ok: true, message: 'Payment not approved' });
 
-    // Recuperar email y plan desde la preferencia
-    const payerEmail = payment.payer?.email;
+    // Recuperar user_id y plan desde la preferencia
+    const userId = payment.metadata?.user_id;
     const plan = payment.additional_info?.items?.[0]?.id;
-    if (!payerEmail || !plan) return res.status(400).json({ ok: false, message: 'Missing payer email or plan' });
+    if (!userId || !plan) return res.status(400).json({ ok: false, message: 'Missing user_id or plan' });
 
-    // Actualizar el plan del usuario en Supabase
+    // Actualizar el plan del usuario en Supabase usando el id
     const { error } = await supabaseAdmin
       .from('perfiles')
       .update({ plan })
-      .eq('email', payerEmail);
+      .eq('id', userId);
 
     if (error) {
       console.error('Error actualizando plan:', error);
       return res.status(500).json({ ok: false, message: 'Error actualizando plan', error });
     }
 
-    return res.status(200).json({ ok: true, message: 'Plan actualizado', payerEmail, plan });
+    return res.status(200).json({ ok: true, message: 'Plan actualizado', userId, plan });
   } catch (err) {
     console.error('Error en webhook MP:', err);
     return res.status(500).json({ ok: false, message: 'Error en webhook', error: err });

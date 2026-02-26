@@ -11,10 +11,10 @@ const client = new MercadoPagoConfig({
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  // Recibe { plan, email } desde el frontend
-  const { plan, email } = req.body;
-  if (!plan || !email) {
-    return res.status(400).json({ ok: false, message: 'Faltan datos requeridos (plan, email)' });
+  // Recibe { plan, email, user_id } desde el frontend
+  const { plan, email, user_id } = req.body;
+  if (!plan || !email || !user_id) {
+    return res.status(400).json({ ok: false, message: 'Faltan datos requeridos (plan, email, user_id)' });
   }
 
   // Define los planes y precios (debería estar sincronizado con el frontend)
@@ -51,6 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
         ],
         payer: { email },
+        metadata: { user_id },
         back_urls: {
           success: process.env.NEXT_PUBLIC_MP_SUCCESS_URL || 'https://viagrua-app.vercel.app/dashboard',
           failure: process.env.NEXT_PUBLIC_MP_FAILURE_URL || 'https://viagrua-app.vercel.app/dashboard',
