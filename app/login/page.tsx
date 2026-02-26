@@ -29,7 +29,9 @@ export default function Login() {
         const { data: perfil } = await supabase
             .from('perfiles').select('rol').eq('id', data.user.id).single()
 
-        // Guardar email en localStorage
+        // Limpiar email y user_id anteriores y guardar el nuevo email
+        window.localStorage.removeItem('email');
+        window.localStorage.removeItem('user_id');
         if (formData.email) {
             window.localStorage.setItem('email', formData.email);
         }

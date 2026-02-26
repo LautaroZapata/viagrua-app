@@ -321,8 +321,11 @@ export default function Dashboard() {
     }
 
     const handleCerrarSesion = async () => {
-        await supabase.auth.signOut()
-        router.push('/login')
+        // Limpiar email y user_id de localStorage al cerrar sesión
+        window.localStorage.removeItem('email');
+        window.localStorage.removeItem('user_id');
+        await supabase.auth.signOut();
+        router.push('/login');
     }
 
     if (error) {
