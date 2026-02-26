@@ -116,7 +116,13 @@ export default function Dashboard() {
         const { data: perfilData } = await supabase
             .from('perfiles').select('*').eq('id', user.id).single()
         if (!perfilData) { router.push('/login'); return }
-        setPerfil(perfilData)
+
+                setPerfil(perfilData)
+                // Guardar email y user_id en localStorage para el flujo de pago
+                if (perfilData?.email && perfilData?.id) {
+                    window.localStorage.setItem('email', perfilData.email);
+                    window.localStorage.setItem('user_id', perfilData.id);
+                }
 
         const { data: empresaData } = await supabase
             .from('empresas').select('*').eq('id', perfilData.empresa_id).single()
