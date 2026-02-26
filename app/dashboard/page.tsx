@@ -32,6 +32,7 @@ export default function Dashboard() {
     const [generandoCodigo, setGenerandoCodigo] = useState(false);
     const [linkCopiado, setLinkCopiado] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const router = useRouter();
     // --- PLANES Y RESTRICCIONES ---
     const PLANES: Record<string, { nombre: string; traslados_max: number | null; puede_agregar_personas: boolean; puede_exportar: boolean; } > = {
@@ -110,27 +111,35 @@ export default function Dashboard() {
     // Hooks y funciones definidos más abajo — el render principal está al final del archivo
 
     const cargarDatos = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) { router.push('/login'); return }
+        try {
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError) throw new Error(userError.message);
+            if (!user) { router.push('/login'); return; }
 
-        const { data: perfilData } = await supabase
-            .from('perfiles').select('id, nombre_completo, rol, empresa_id, plan, plan_renovacion, traslados_mes_actual, email').eq('id', user.id).single()
-        if (!perfilData) { router.push('/login'); return }
+            const { data: perfilData, error: perfilError } = await supabase
+                .from('perfiles').select('id, nombre_completo, rol, empresa_id, plan, plan_renovacion, traslados_mes_actual, email').eq('id', user.id).single();
+            if (perfilError) throw new Error(perfilError.message);
+            if (!perfilData) { router.push('/login'); return; }
 
-                setPerfil(perfilData)
-                // Guardar email y user_id en localStorage para el flujo de pago
-                if (perfilData?.email && perfilData?.id) {
-                    window.localStorage.setItem('email', perfilData.email);
-                    window.localStorage.setItem('user_id', perfilData.id);
-                }
+            setPerfil(perfilData);
+            // Guardar email y user_id en localStorage para el flujo de pago
+            if (perfilData?.email && perfilData?.id) {
+                window.localStorage.setItem('email', perfilData.email);
+                window.localStorage.setItem('user_id', perfilData.id);
+            }
 
-        const { data: empresaData } = await supabase
-            .from('empresas').select('*').eq('id', perfilData.empresa_id).single()
-        setEmpresa(empresaData)
+            const { data: empresaData, error: empresaError } = await supabase
+                .from('empresas').select('*').eq('id', perfilData.empresa_id).single();
+            if (empresaError) throw new Error(empresaError.message);
+            setEmpresa(empresaData);
 
-        await cargarChoferes(perfilData.empresa_id)
-        await cargarTraslados(perfilData.empresa_id, 1)
-        setLoading(false)
+            await cargarChoferes(perfilData.empresa_id);
+            await cargarTraslados(perfilData.empresa_id, 1);
+        } catch (err: any) {
+            setError(err.message || 'Error inesperado al cargar datos');
+        } finally {
+            setLoading(false);
+        }
     }
 
     const cargarChoferes = async (empresaId: string) => {
@@ -316,6 +325,15 @@ export default function Dashboard() {
         router.push('/login')
     }
 
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen">
+                <div className="bg-red-100 text-red-700 px-6 py-4 rounded shadow">
+                    <b>Error:</b> {error}
+                </div>
+            </div>
+        );
+    }
     if (loading) {
         return (
             <div className="page-bg flex items-center justify-center min-h-screen">
