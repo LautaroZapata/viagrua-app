@@ -69,5 +69,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/', '/login', '/dashboard/:path*', '/chofer/:path*']
+    // Aplica el middleware a todas las rutas excepto las de /api
+    matcher: ['/((?!api/).*)'],
 }
