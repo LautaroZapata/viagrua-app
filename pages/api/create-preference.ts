@@ -7,12 +7,33 @@ const client = new MercadoPagoConfig({
 });
 
 
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { description, price, quantity, payer_email } = req.body;
-  if (!description || !price || !quantity) {
-    return res.status(400).json({ ok: false, message: 'Faltan datos requeridos' });
+  // Recibe { plan, email } desde el frontend
+  const { plan, email } = req.body;
+  if (!plan || !email) {
+    return res.status(400).json({ ok: false, message: 'Faltan datos requeridos (plan, email)' });
+  }
+
+  // Define los planes y precios (debería estar sincronizado con el frontend)
+  const PLANES: Record<string, { nombre: string; precio: number; descripcion: string }> = {
+    mensual: {
+      nombre: 'Plan Mensual',
+      precio: 10,
+      descripcion: 'Acceso completo por 1 mes',
+    },
+    anual: {
+      nombre: 'Plan Anual',
+      precio: 20,
+      descripcion: 'Acceso completo por 1 año (2 meses bonificados)',
+    },
+  };
+
+  const planInfo = PLANES[plan];
+  if (!planInfo) {
+    return res.status(400).json({ ok: false, message: 'Plan inválido' });
   }
 
   const preference = new Preference(client);
@@ -22,13 +43,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: {
         items: [
           {
-            id: `${description}`,
-            title: description,
-            unit_price: Number(price),
-            quantity: Number(quantity),
+            id: plan,
+            title: planInfo.nombre,
+            description: planInfo.descripcion,
+            unit_price: planInfo.precio,
+            quantity: 1,
           },
         ],
-        payer: payer_email ? { email: payer_email } : undefined,
+        payer: { email },
         back_urls: {
           success: process.env.NEXT_PUBLIC_MP_SUCCESS_URL || 'https://viagrua-app.vercel.app/dashboard',
           failure: process.env.NEXT_PUBLIC_MP_FAILURE_URL || 'https://viagrua-app.vercel.app/dashboard',
