@@ -473,7 +473,13 @@ export default function Dashboard() {
                                 </div>
                             </div>
 
-                            {/* Los botones de acción están en la sección principal más abajo; se mantienen allí */}
+                            {/* Botón Mejorar plan siempre visible */}
+                            <button
+                                className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
+                                onClick={() => router.push('/planes')}
+                            >
+                                Mejorar plan
+                            </button>
                         </div>
                     )}
                 </div>
