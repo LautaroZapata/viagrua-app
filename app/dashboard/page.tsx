@@ -114,7 +114,7 @@ export default function Dashboard() {
         if (!user) { router.push('/login'); return }
 
         const { data: perfilData } = await supabase
-            .from('perfiles').select('*').eq('id', user.id).single()
+            .from('perfiles').select('id, nombre_completo, rol, empresa_id, plan, plan_renovacion, traslados_mes_actual, email').eq('id', user.id).single()
         if (!perfilData) { router.push('/login'); return }
 
                 setPerfil(perfilData)
