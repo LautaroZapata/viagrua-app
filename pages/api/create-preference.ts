@@ -30,12 +30,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ],
         payer: payer_email ? { email: payer_email } : undefined,
         back_urls: {
-          success: process.env.NEXT_PUBLIC_MP_SUCCESS_URL || 'http://localhost:3000/dashboard',
-          failure: process.env.NEXT_PUBLIC_MP_FAILURE_URL || 'http://localhost:3000/dashboard',
-          pending: process.env.NEXT_PUBLIC_MP_PENDING_URL || 'http://localhost:3000/dashboard',
+          success: process.env.NEXT_PUBLIC_MP_SUCCESS_URL || 'https://viagrua-app.vercel.app/dashboard',
+          failure: process.env.NEXT_PUBLIC_MP_FAILURE_URL || 'https://viagrua-app.vercel.app/dashboard',
+          pending: process.env.NEXT_PUBLIC_MP_PENDING_URL || 'https://viagrua-app.vercel.app/dashboard',
         },
         auto_return: 'approved',
-        notification_url: process.env.NEXT_PUBLIC_MP_WEBHOOK_URL || 'http://localhost:3000/api/webhook-mercadopago',
+        notification_url: process.env.NEXT_PUBLIC_MP_WEBHOOK_URL || 'https://viagrua-app.vercel.app/api/webhook-mercadopago',
       },
     });
     return res.status(200).json({ ok: true, id: result.id, init_point: result.init_point });
