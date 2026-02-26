@@ -41,15 +41,16 @@ export default function SeleccionaPlan() {
     try {
       // Obtener email del usuario (ajustar según tu auth)
       const email = window.localStorage.getItem('email');
-      if (!email) {
-        setError('No se encontró el email del usuario.');
+      const userId = window.localStorage.getItem('user_id');
+      if (!email || !userId) {
+        setError('No se encontró el email o user_id del usuario.');
         setLoading(false);
         return;
       }
       const res = await fetch('/api/create-preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, email })
+        body: JSON.stringify({ plan, email, user_id: userId })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al crear preferencia de pago');
