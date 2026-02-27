@@ -41,9 +41,11 @@ export default function SeleccionaPlan() {
   const handlePagar = async () => {
     setLoading(true);
     setError(null);
+    let recaptchaToken = null;
+    const recaptchaAction = 'checkout';
     if (recaptchaRef.current) {
-      const token = await recaptchaRef.current.executeAsync();
-      if (!token) {
+      recaptchaToken = await recaptchaRef.current.executeAsync({ action: recaptchaAction });
+      if (!recaptchaToken) {
         setError('No se pudo validar el reCAPTCHA.');
         setLoading(false);
         return;
@@ -62,7 +64,7 @@ export default function SeleccionaPlan() {
       const res = await fetch('/api/create-preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, email, user_id: userId })
+        body: JSON.stringify({ plan, email, user_id: userId, recaptchaToken, recaptchaAction })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al crear preferencia de pago');
