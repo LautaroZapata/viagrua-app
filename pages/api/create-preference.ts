@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 const client = new MercadoPagoConfig({
-  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-8078021007464437-022608-fc0716c2c81f42cc621f1fade1d1aa95-3224513426',
+  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-2133117004119187-022411-2357ef24a956676bb585ba3afe94c455-349416165',
 });
 
 
