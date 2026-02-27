@@ -1,6 +1,7 @@
-
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
+// @ts-ignore
+import ReCAPTCHA from "react-google-recaptcha";
 import PlanesNavBar from "./PlanesNavBar";
 
 const PLANES = [
@@ -29,15 +30,26 @@ const PLANES = [
   }
 ];
 
-export default function SeleccionaPlan() {
 
+export default function SeleccionaPlan() {
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
   const [plan, setPlan] = useState("mensual");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaValid, setCaptchaValid] = useState(false);
 
   const handlePagar = async () => {
     setLoading(true);
     setError(null);
+    if (recaptchaRef.current) {
+      const token = await recaptchaRef.current.executeAsync();
+      if (!token) {
+        setError('No se pudo validar el reCAPTCHA.');
+        setLoading(false);
+        return;
+      }
+      setCaptchaValid(true);
+    }
     try {
       // Obtener email del usuario (ajustar según tu auth)
       const email = window.localStorage.getItem('email');
@@ -63,6 +75,7 @@ export default function SeleccionaPlan() {
       setError(err.message || 'Error inesperado');
     } finally {
       setLoading(false);
+      if (recaptchaRef.current) recaptchaRef.current.reset();
     }
   };
 
@@ -86,6 +99,12 @@ export default function SeleccionaPlan() {
             </div>
           ))}
         </div>
+        {/* Reemplaza el sitekey por tu clave real de reCAPTCHA v2 invisible. Puedes usar process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY si lo configuras en Vercel o .env.local */}
+        <ReCAPTCHA
+          sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "TU_SITE_KEY_RECAPTCHA"}
+          size="invisible"
+          ref={recaptchaRef}
+        />
         <button
           className="btn-primary w-full py-3 text-lg disabled:opacity-60"
           onClick={handlePagar}
