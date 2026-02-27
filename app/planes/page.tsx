@@ -1,7 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
-// @ts-ignore
-import ReCAPTCHA from "react-google-recaptcha";
+import { useState, useEffect } from "react";
 import PlanesNavBar from "./PlanesNavBar";
 
 const PLANES = [
@@ -31,8 +29,26 @@ const PLANES = [
 ];
 
 
-export default function SeleccionaPlan() {
-  const recaptchaRef = useRef<ReCAPTCHA>(null);
+// Declare grecaptcha on window for TypeScript
+declare global {
+  interface Window {
+    grecaptcha?: any;
+  }
+}
+
+
+export default function PlanesPage() {
+  useEffect(() => {
+    if (!window.grecaptcha) {
+      const script = document.createElement('script');
+      script.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`;
+      script.async = true;
+      script.onload = () => {
+        // Script cargado
+      };
+      document.body.appendChild(script);
+    }
+  }, []);
   const [plan, setPlan] = useState("mensual");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,44 +56,47 @@ export default function SeleccionaPlan() {
 
   const handlePagar = async () => {
     setLoading(true);
-    setError(null);
-    let recaptchaToken = null;
     const recaptchaAction = 'checkout';
-    if (recaptchaRef.current) {
-      recaptchaToken = await recaptchaRef.current.executeAsync({ action: recaptchaAction });
-      if (!recaptchaToken) {
-        setError('No se pudo validar el reCAPTCHA.');
-        setLoading(false);
-        return;
-      }
-      setCaptchaValid(true);
-    }
     try {
-      // Obtener email del usuario (ajustar según tu auth)
-      const email = window.localStorage.getItem('email');
-      const userId = window.localStorage.getItem('user_id');
-      if (!email || !userId) {
-        setError('No se encontró el email o user_id del usuario.');
+      // Esperar a que grecaptcha esté disponible
+      const waitForGrecaptcha = () => {
+        return new Promise<any>(resolve => {
+          const interval = setInterval(() => {
+            if (window.grecaptcha && window.grecaptcha.ready) {
+              clearInterval(interval);
+              resolve(window.grecaptcha);
+            }
+          }, 100);
+        });
+      };
+      const grecaptcha = await waitForGrecaptcha() as { ready: (cb: () => void) => void; execute: Function };
+      await grecaptcha.ready(async () => {
+        const recaptchaToken = await grecaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, { action: recaptchaAction });
+        // Obtener email del usuario (ajustar según tu auth)
+        const email = window.localStorage.getItem('email');
+        const userId = window.localStorage.getItem('user_id');
+        if (!email || !userId) {
+          setError('No se encontró el email o user_id del usuario.');
+          setLoading(false);
+          return;
+        }
+        const res = await fetch('/api/create-preference', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan, email, user_id: userId, recaptchaToken, recaptchaAction })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al crear preferencia de pago');
+        if (data.init_point) {
+          window.location.href = data.init_point;
+        } else {
+          setError('No se pudo obtener el enlace de pago.');
+        }
         setLoading(false);
-        return;
-      }
-      const res = await fetch('/api/create-preference', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, email, user_id: userId, recaptchaToken, recaptchaAction })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al crear preferencia de pago');
-      if (data.init_point) {
-        window.location.href = data.init_point;
-      } else {
-        setError('No se pudo obtener el enlace de pago.');
-      }
     } catch (err: any) {
       setError(err.message || 'Error inesperado');
-    } finally {
       setLoading(false);
-      if (recaptchaRef.current) recaptchaRef.current.reset();
     }
   };
 
@@ -101,12 +120,7 @@ export default function SeleccionaPlan() {
             </div>
           ))}
         </div>
-        {/* Reemplaza el sitekey por tu clave real de reCAPTCHA v2 invisible. Puedes usar process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY si lo configuras en Vercel o .env.local */}
-        <ReCAPTCHA
-          sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "TU_SITE_KEY_RECAPTCHA"}
-          size="invisible"
-          ref={recaptchaRef}
-        />
+        {/* reCAPTCHA v3 se ejecuta automáticamente en la acción de pago */}
         <button
           className="btn-primary w-full py-3 text-lg disabled:opacity-60"
           onClick={handlePagar}
