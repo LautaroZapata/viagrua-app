@@ -1,9 +1,11 @@
 
+
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 
+
 const client = new MercadoPagoConfig({
-  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-2133117004119187-022411-2357ef24a956676bb585ba3afe94c455-349416165',
+  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN as string,
 });
 
 
@@ -11,31 +13,10 @@ const client = new MercadoPagoConfig({
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  // Recibe { plan, email, user_id, recaptchaToken, recaptchaAction } desde el frontend
-  const { plan, email, user_id, recaptchaToken, recaptchaAction } = req.body;
-  if (!plan || !email || !user_id || !recaptchaToken) {
-    return res.status(400).json({ ok: false, message: 'Faltan datos requeridos (plan, email, user_id, recaptchaToken)' });
-  }
-
-  // Validar reCAPTCHA Enterprise
-  const apiKey = process.env.RECAPTCHA_SECRET_KEY;
-  const projectId = 'viagrua-1772188768715'; // Reemplaza por tu projectId real si es distinto
-  const url = `https://recaptchaenterprise.googleapis.com/v1/projects/${projectId}/assessments?key=${apiKey}`;
-  const recaptchaBody = {
-    event: {
-      token: recaptchaToken,
-      expectedAction: recaptchaAction || 'checkout',
-      siteKey: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY,
-    }
-  };
-  const recaptchaResp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(recaptchaBody)
-  });
-  const recaptchaResult = await recaptchaResp.json();
-  if (!recaptchaResult.tokenProperties || !recaptchaResult.tokenProperties.valid) {
-    return res.status(400).json({ ok: false, message: 'reCAPTCHA inválido o no verificado', recaptchaResult });
+  // Recibe { plan, email, user_id } desde el frontend
+  const { plan, email, user_id } = req.body;
+  if (!plan || !email || !user_id) {
+    return res.status(400).json({ ok: false, message: 'Faltan datos requeridos (plan, email, user_id)' });
   }
 
   // Define los planes y precios (debería estar sincronizado con el frontend)
