@@ -57,3 +57,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ ok: false, message: 'Error en webhook', error: err });
   }
 }
+// Archivo eliminado para nueva integración de Mercado Pago

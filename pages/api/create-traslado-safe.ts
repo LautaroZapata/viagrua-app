@@ -40,14 +40,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!perfil) return res.status(404).json({ error: 'Perfil not found' })
 
-    const PLANES: Record<string, { traslados_max: number | null }> = {
-      free: { traslados_max: 30 },
-      mensual: { traslados_max: null },
-      anual: { traslados_max: null }
+    const PLANES: Record<string, { traslados_max: number | null, puede_chofer: boolean }> = {
+      free: { traslados_max: 30, puede_chofer: false },
+      mensual: { traslados_max: null, puede_chofer: true },
+      anual: { traslados_max: null, puede_chofer: true }
     }
+
 
     const planKey = perfil.plan || 'free'
     const trasladosMax = PLANES[planKey].traslados_max
+    const puedeAgregarChofer = PLANES[planKey].puede_chofer;
 
     // Si es free, verificar y actualizar contador con optimistic locking
     if (planKey === 'free') {
@@ -74,6 +76,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(409).json({ error: 'Conflicto al intentar reservar traslado. Reintentar.' })
       }
     }
+
+    // Si el plan no permite agregar choferes, bloquear lógica aquí si corresponde
+    // (esto se debe validar también en el endpoint de agregar chofer)
 
     // Crear traslado (con rol admin)
     const { data: traslado, error: insertError } = await supabaseAdmin

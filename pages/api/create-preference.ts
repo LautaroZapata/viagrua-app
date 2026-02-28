@@ -69,3 +69,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ ok: false, message: 'Error creando preferencia', error });
   }
 }
+// Archivo eliminado para nueva integración de Mercado Pago

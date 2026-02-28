@@ -46,13 +46,13 @@ export default function PlanesPage() {
         setLoading(false);
         return;
       }
-      const res = await fetch('/api/create-preference', {
+      const res = await fetch('/api/suscripciones/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan, email, user_id: userId })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al crear preferencia de pago');
+      if (!res.ok) throw new Error(data.message || 'Error al crear preferencia de pago');
       if (data.init_point) {
         window.location.href = data.init_point;
       } else {
