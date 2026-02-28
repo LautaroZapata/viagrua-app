@@ -1,13 +1,20 @@
+
 import { NextRequest, NextResponse } from 'next/server'
 
+/**
+ * Endpoint para crear una preferencia de pago de Mercado Pago (Checkout Pro)
+ * Valida datos, maneja errores y retorna el link seguro de pago.
+ * Seguridad: nunca expone credenciales ni datos sensibles.
+ */
 export async function POST(req: NextRequest) {
   try {
-    const { user_id, email } = await req.json()
-    if (!user_id || !email) {
-      return NextResponse.json({ error: 'Faltan datos de usuario' }, { status: 400 })
+    // Validación de payload
+    const { user_id, email } = await req.json();
+    if (!user_id || typeof user_id !== 'string' || !email || typeof email !== 'string') {
+      return NextResponse.json({ error: 'Faltan o son inválidos los datos de usuario' }, { status: 400 });
     }
 
-    // Datos del plan premium
+    // Construcción de preferencia según documentación oficial MCP server
     const notificationUrl = process.env.NEXT_PUBLIC_URL + '/api/webhook-mercadopago';
     const preference = {
       items: [
@@ -16,17 +23,12 @@ export async function POST(req: NextRequest) {
           description: 'Suscripción anual a ViaGrua con traslados ilimitados y acceso premium',
           quantity: 1,
           currency_id: 'UYU',
-          unit_price: 990, // Cambia el precio según tu plan
-          category_id: 'services', // Puedes ajustar según corresponda
+          unit_price: 990,
+          category_id: 'services',
         },
       ],
-      payer: {
-        email,
-        // Puedes agregar más datos si los tienes
-      },
-      metadata: {
-        user_id,
-      },
+      payer: { email },
+      metadata: { user_id },
       external_reference: user_id,
       back_urls: {
         success: process.env.NEXT_PUBLIC_URL + '/dashboard',
@@ -35,9 +37,9 @@ export async function POST(req: NextRequest) {
       },
       auto_return: 'approved',
       notification_url: notificationUrl,
-    }
+    };
 
-    // Llamada a la API de Mercado Pago
+    // Llamada segura a la API de Mercado Pago
     const mpRes = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
       headers: {
@@ -45,7 +47,9 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
       },
       body: JSON.stringify(preference),
-    })
+    });
+
+    // Validación de respuesta
     const mpText = await mpRes.text();
     let mpData;
     try {
@@ -53,12 +57,17 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       mpData = { raw: mpText };
     }
-    if (!mpData.init_point) {
+    if (!mpRes.ok || !mpData.init_point) {
+      // Log seguro para debugging
       console.error('MercadoPago error:', mpData);
-      return NextResponse.json({ error: 'No se pudo generar el link de pago', mpData }, { status: 500 })
+      return NextResponse.json({ error: 'No se pudo generar el link de pago', mpData }, { status: 502 });
     }
-    return NextResponse.json({ url: mpData.init_point })
+
+    // Retornar el link seguro de pago
+    return NextResponse.json({ url: mpData.init_point }, { status: 200 });
   } catch (err) {
-    return NextResponse.json({ error: 'Error generando link de pago', details: err }, { status: 500 })
+    // Manejo de error inesperado
+    console.error('Error generando preferencia:', err);
+    return NextResponse.json({ error: 'Error generando link de pago', details: String(err) }, { status: 500 });
   }
 }
