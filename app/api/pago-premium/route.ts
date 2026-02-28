@@ -8,13 +8,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Datos del plan premium
+    const notificationUrl = process.env.NEXT_PUBLIC_URL + '/api/webhook-mercadopago';
     const preference = {
       items: [
         {
           title: 'Plan Premium ViaGrua (1 año)',
+          description: 'Suscripción anual a ViaGrua con traslados ilimitados y acceso premium',
           quantity: 1,
           currency_id: 'UYU',
           unit_price: 990, // Cambia el precio según tu plan
+          category_id: 'services', // Puedes ajustar según corresponda
         },
       ],
       payer: {
@@ -24,12 +27,14 @@ export async function POST(req: NextRequest) {
       metadata: {
         user_id,
       },
+      external_reference: user_id,
       back_urls: {
         success: process.env.NEXT_PUBLIC_URL + '/dashboard',
         failure: process.env.NEXT_PUBLIC_URL + '/dashboard',
         pending: process.env.NEXT_PUBLIC_URL + '/dashboard',
       },
       auto_return: 'approved',
+      notification_url: notificationUrl,
     }
 
     // Llamada a la API de Mercado Pago
