@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ ok: true, init_point: result.init_point });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, message: err.message || "Error creando preferencia" }, { status: 500 });
+    console.error("[MercadoPago Error]", err);
+    return NextResponse.json({ ok: false, message: err.message || JSON.stringify(err) || "Error creando preferencia" }, { status: 500 });
   }
 }
