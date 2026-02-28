@@ -11,6 +11,7 @@ interface Perfil {
     plan?: string;
     plan_renovacion?: string;
     traslados_mes_actual?: number;
+    email?: string;
 }
 interface Chofer { id: string; nombre_completo: string; email: string }
 interface Empresa { id: string; nombre: string }
