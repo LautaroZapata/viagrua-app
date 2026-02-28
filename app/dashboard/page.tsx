@@ -34,7 +34,29 @@ export default function Dashboard() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
-    // --- PLANES Y RESTRICCIONES ---
+        // --- PLANES Y RESTRICCIONES ---
+        const [comprando, setComprando] = useState(false);
+        const handlePagoPremium = async () => {
+            if (!perfil?.id || !perfil?.email) return;
+            setComprando(true);
+            try {
+                const res = await fetch('/api/pago-premium', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: perfil.id, email: perfil.email })
+                });
+                const data = await res.json();
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    alert('No se pudo generar el link de pago. Intenta más tarde.');
+                }
+            } catch (err) {
+                alert('Error generando link de pago.');
+            } finally {
+                setComprando(false);
+            }
+        };
     const PLANES: Record<string, { nombre: string; traslados_max: number | null; puede_agregar_personas: boolean; puede_exportar: boolean; } > = {
       free: {
         nombre: 'Free',
@@ -55,13 +77,24 @@ export default function Dashboard() {
         puede_exportar: true,
       },
     };
-    const planKey = perfil?.plan || 'free';
-    const planInfo = PLANES[planKey];
-    const trasladosMax = planInfo.traslados_max;
-    const trasladosUsados = perfil?.traslados_mes_actual || 0;
-    const trasladosRestantes = trasladosMax !== null ? Math.max(trasladosMax - trasladosUsados, 0) : null;
-    const planVencimiento = perfil?.plan_renovacion ? new Date(perfil.plan_renovacion).toLocaleDateString() : 'Sin vencimiento';
-    const bloqueoTraslados = planKey === 'free' && trasladosRestantes === 0;
+        // --- Lógica de plan y expiración ---
+        let planKey = perfil?.plan || 'free';
+        let planExpirado = false;
+        let planVencimiento = '';
+        if (planKey === 'premium' && perfil?.plan_renovacion) {
+            const hoy = new Date();
+            const expiracion = new Date(perfil.plan_renovacion);
+            planVencimiento = expiracion.toLocaleDateString();
+            if (hoy > expiracion) {
+                planExpirado = true;
+                planKey = 'free';
+            }
+        }
+        const planInfo = PLANES[planKey];
+        const trasladosMax = planInfo.traslados_max;
+        const trasladosUsados = perfil?.traslados_mes_actual || 0;
+        const trasladosRestantes = trasladosMax !== null ? Math.max(trasladosMax - trasladosUsados, 0) : null;
+        const bloqueoTraslados = planKey === 'free' && trasladosRestantes === 0;
 
     useEffect(() => { cargarDatos() }, [])
 
@@ -483,9 +516,18 @@ export default function Dashboard() {
                                         <div className="text-sm text-gray-500">Plan actual</div>
                                         <div className="font-semibold text-lg text-blue-700">{planInfo.nombre}</div>
                                     </div>
-                                    <div className="text-sm text-gray-500">{planVencimiento}</div>
+                                    {/* Mostrar vencimiento solo si es premium */}
+                                    {perfil?.plan === 'premium' && (
+                                      <div className="text-sm text-gray-500">Vence: {planVencimiento}</div>
+                                    )}
                                 </div>
-                                <div className="text-sm text-gray-700">
+                                {/* Advertencia si expiró el premium */}
+                                {planExpirado && (
+                                  <div className="text-red-600 font-bold text-sm mt-2">
+                                    Tu plan premium expiró. Renueva para seguir con beneficios ilimitados.
+                                  </div>
+                                )}
+                                <div className="text-sm text-gray-700 mt-1">
                                     Traslados usados este mes: <span className="font-bold">{trasladosUsados}</span>{trasladosMax !== null ? ` / ${trasladosMax}` : ''}
                                     <br />
                                     {planKey === 'free' ? (
@@ -500,12 +542,13 @@ export default function Dashboard() {
                                 </div>
                             </div>
 
-                            {/* Botón Mejorar plan siempre visible */}
+                            {/* Botón Mejorar/Renovar plan */}
                             <button
-                                className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
-                                onClick={() => router.push('/planes')}
+                                className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition disabled:opacity-60"
+                                onClick={handlePagoPremium}
+                                disabled={comprando}
                             >
-                                Mejorar plan
+                                {comprando ? 'Redirigiendo...' : (planExpirado ? 'Renovar plan' : 'Mejorar plan')}
                             </button>
                         </div>
                     )}

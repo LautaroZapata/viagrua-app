@@ -31,24 +31,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Missing required fields' })
     }
 
-    // Obtener perfil y plan
+
+    // Obtener perfil y plan, incluyendo fecha de expiración
     const { data: perfil } = await supabaseAdmin
       .from('perfiles')
-      .select('id, plan, traslados_mes_actual')
+      .select('id, plan, traslados_mes_actual, plan_renovacion')
       .eq('id', user_id)
       .single()
 
     if (!perfil) return res.status(404).json({ error: 'Perfil not found' })
 
+    // Definir lógica de planes
     const PLANES: Record<string, { traslados_max: number | null, puede_chofer: boolean }> = {
       free: { traslados_max: 30, puede_chofer: false },
-      mensual: { traslados_max: null, puede_chofer: true },
-      anual: { traslados_max: null, puede_chofer: true }
+      premium: { traslados_max: null, puede_chofer: true }
     }
 
-
-    const planKey = perfil.plan || 'free'
-    const trasladosMax = PLANES[planKey].traslados_max
+    // Determinar plan activo según expiración
+    let planKey = perfil.plan || 'free';
+    if (planKey === 'premium') {
+      const hoy = new Date();
+      const expiracion = perfil.plan_renovacion ? new Date(perfil.plan_renovacion) : null;
+      if (!expiracion || hoy > expiracion) {
+        planKey = 'free'; // Si expiró, se fuerza a free
+      }
+    }
+    const trasladosMax = PLANES[planKey].traslados_max;
     const puedeAgregarChofer = PLANES[planKey].puede_chofer;
 
     // Si es free, verificar y actualizar contador con optimistic locking
