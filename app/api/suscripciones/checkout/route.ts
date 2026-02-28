@@ -57,4 +57,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, message: err.message || "Error creando preferencia" }, { status: 500 });
   }
 }
-// Archivo eliminado. Usar app/api/suscripciones/checkout/route.ts
