@@ -41,8 +41,15 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify(preference),
     })
-    const mpData = await mpRes.json()
+    const mpText = await mpRes.text();
+    let mpData;
+    try {
+      mpData = JSON.parse(mpText);
+    } catch (e) {
+      mpData = { raw: mpText };
+    }
     if (!mpData.init_point) {
+      console.error('MercadoPago error:', mpData);
       return NextResponse.json({ error: 'No se pudo generar el link de pago', mpData }, { status: 500 })
     }
     return NextResponse.json({ url: mpData.init_point })
