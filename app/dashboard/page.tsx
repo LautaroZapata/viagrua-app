@@ -9,6 +9,8 @@ interface Perfil {
     rol: string;
     empresa_id: string;
     email?: string;
+    plan?: string;
+    traslados_mes_actual?: number;
 }
 interface Chofer { id: string; nombre_completo: string; email: string }
 interface Empresa { id: string; nombre: string }
