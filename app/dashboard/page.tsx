@@ -8,9 +8,6 @@ interface Perfil {
     nombre_completo: string;
     rol: string;
     empresa_id: string;
-    plan?: string;
-    plan_renovacion?: string;
-    traslados_mes_actual?: number;
     email?: string;
 }
 interface Chofer { id: string; nombre_completo: string; email: string }
@@ -35,67 +32,7 @@ export default function Dashboard() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
-        // --- PLANES Y RESTRICCIONES ---
-        const [comprando, setComprando] = useState(false);
-        const handlePagoPremium = async () => {
-            if (!perfil?.id || !perfil?.email) return;
-            setComprando(true);
-            try {
-                const res = await fetch('/api/pago-premium', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: perfil.id, email: perfil.email })
-                });
-                const data = await res.json();
-                if (data.url) {
-                    window.location.href = data.url;
-                } else {
-                    alert('No se pudo generar el link de pago. Intenta más tarde.');
-                }
-            } catch (err) {
-                alert('Error generando link de pago.');
-            } finally {
-                setComprando(false);
-            }
-        };
-    const PLANES: Record<string, { nombre: string; traslados_max: number | null; puede_agregar_personas: boolean; puede_exportar: boolean; } > = {
-      free: {
-        nombre: 'Free',
-        traslados_max: 30,
-        puede_agregar_personas: false,
-        puede_exportar: false,
-      },
-      mensual: {
-        nombre: 'Pago Mensual',
-        traslados_max: null,
-        puede_agregar_personas: true,
-        puede_exportar: true,
-      },
-      anual: {
-        nombre: 'Pago Anual',
-        traslados_max: null,
-        puede_agregar_personas: true,
-        puede_exportar: true,
-      },
-    };
-        // --- Lógica de plan y expiración ---
-        let planKey = perfil?.plan || 'free';
-        let planExpirado = false;
-        let planVencimiento = '';
-        if (planKey === 'premium' && perfil?.plan_renovacion) {
-            const hoy = new Date();
-            const expiracion = new Date(perfil.plan_renovacion);
-            planVencimiento = expiracion.toLocaleDateString();
-            if (hoy > expiracion) {
-                planExpirado = true;
-                planKey = 'free';
-            }
-        }
-        const planInfo = PLANES[planKey];
-        const trasladosMax = planInfo.traslados_max;
-        const trasladosUsados = perfil?.traslados_mes_actual || 0;
-        const trasladosRestantes = trasladosMax !== null ? Math.max(trasladosMax - trasladosUsados, 0) : null;
-        const bloqueoTraslados = planKey === 'free' && trasladosRestantes === 0;
+
 
     useEffect(() => { cargarDatos() }, [])
 
@@ -151,7 +88,7 @@ export default function Dashboard() {
             if (!user) { router.push('/login'); return; }
 
             const { data: perfilData, error: perfilError } = await supabase
-                .from('perfiles').select('id, nombre_completo, rol, empresa_id, plan, plan_renovacion, traslados_mes_actual, email').eq('id', user.id).single();
+                .from('perfiles').select('id, nombre_completo, rol, empresa_id, email').eq('id', user.id).single();
             if (perfilError) throw new Error(perfilError.message);
             if (!perfilData) { router.push('/login'); return; }
 
@@ -509,50 +446,7 @@ export default function Dashboard() {
                         Hola, {perfil?.nombre_completo?.split(' ')[0] || 'Admin'}
                     </h1>
                     <p className="text-sm sm:text-base text-gray-500">{empresa?.nombre}</p>
-                    {perfil && (
-                        <div className="mt-4 flex flex-col md:flex-row md:items-center gap-4">
-                            <div className="max-w-md p-4 rounded-lg shadow bg-white border flex flex-col gap-2">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <div className="text-sm text-gray-500">Plan actual</div>
-                                        <div className="font-semibold text-lg text-blue-700">{planInfo.nombre}</div>
-                                    </div>
-                                    {/* Mostrar vencimiento solo si es premium */}
-                                    {perfil?.plan === 'premium' && (
-                                      <div className="text-sm text-gray-500">Vence: {planVencimiento}</div>
-                                    )}
-                                </div>
-                                {/* Advertencia si expiró el premium */}
-                                {planExpirado && (
-                                  <div className="text-red-600 font-bold text-sm mt-2">
-                                    Tu plan premium expiró. Renueva para seguir con beneficios ilimitados.
-                                  </div>
-                                )}
-                                <div className="text-sm text-gray-700 mt-1">
-                                    Traslados usados este mes: <span className="font-bold">{trasladosUsados}</span>{trasladosMax !== null ? ` / ${trasladosMax}` : ''}
-                                    <br />
-                                    {planKey === 'free' ? (
-                                        bloqueoTraslados ? (
-                                            <span className="text-red-600 font-bold">¡Has alcanzado el límite de traslados este mes! Actualiza tu plan.</span>
-                                        ) : (
-                                            <span className="text-green-700">Te quedan <b>{trasladosRestantes}</b> traslados este mes.</span>
-                                        )
-                                    ) : (
-                                        <span className="text-sm text-green-700">Traslados ilimitados. Acceso a exportar datos y agregar personas.</span>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Botón Mejorar/Renovar plan */}
-                            <button
-                                className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition disabled:opacity-60"
-                                onClick={handlePagoPremium}
-                                disabled={comprando}
-                            >
-                                {comprando ? 'Redirigiendo...' : (planExpirado ? 'Renovar plan' : 'Mejorar plan')}
-                            </button>
-                        </div>
-                    )}
+                    {/* ...resto del header sin lógica de planes... */}
                 </div>
 
                 {/* Stats Grid - Dinámico */}

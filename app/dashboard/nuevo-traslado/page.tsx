@@ -21,13 +21,13 @@ const PLANES: Record<string, { nombre: string; traslados_max: number | null; } >
         nombre: 'Free',
         traslados_max: 30,
     },
-    mensual: {
-        nombre: 'Pago Mensual',
-        traslados_max: null,
+    premium: {
+        nombre: 'Premium',
+        traslados_max: null, // sin configurar, futuro
     },
-    anual: {
-        nombre: 'Pago Anual',
-        traslados_max: null,
+    admin: {
+        nombre: 'Admin',
+        traslados_max: null, // ilimitado
     },
 };
 

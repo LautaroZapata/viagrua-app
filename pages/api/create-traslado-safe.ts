@@ -44,7 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Definir lógica de planes
     const PLANES: Record<string, { traslados_max: number | null, puede_chofer: boolean }> = {
       free: { traslados_max: 30, puede_chofer: false },
-      premium: { traslados_max: null, puede_chofer: true }
+      premium: { traslados_max: null, puede_chofer: true }, // sin configurar, futuro
+      admin: { traslados_max: null, puede_chofer: true } // ilimitado
     }
 
     // Determinar plan activo según expiración
