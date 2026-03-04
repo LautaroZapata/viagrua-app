@@ -278,7 +278,7 @@ export default function NuevoTraslado() {
                         <h2 className="text-lg font-semibold text-gray-900 mb-4">Detalles del Traslado</h2>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            {planKey === 'free' && (
+                            {perfil && planKey === 'free' && (
                                 <div className="mb-2 p-2 rounded bg-yellow-50 text-yellow-800 text-xs">
                                     Traslados usados este mes: <b>{trasladosUsados}</b> / {trasladosMax}
                                     {bloqueoTraslados && (

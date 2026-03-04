@@ -453,14 +453,23 @@ export default function Dashboard() {
             {/* Tabs Mobile eliminados: navegación solo por drawer en mobile */}
 
             {/* Content - Responsive */}
-            <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-7xl mx-auto">
+            <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-6xl mx-auto">
+
                 {/* Header */}
                 <div className="mb-8 sm:mb-10">
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-1">
                         Hola, {perfil?.nombre_completo?.split(' ')[0] || 'Admin'}
                     </h1>
                     <p className="text-sm sm:text-base text-gray-500">{empresa?.nombre}</p>
-                    {/* ...resto del header sin lógica de planes... */}
+                    {/* Traslados usados solo para plan free y cuando perfil cargado */}
+                    {perfil && planKey === 'free' && (
+                        <div className="mt-2 text-xs sm:text-sm bg-yellow-50 text-yellow-800 rounded px-2 py-1 inline-block">
+                            Traslados usados este mes: <b>{trasladosUsados}</b> / {trasladosMax}
+                            {bloqueoTraslados && (
+                                <span className="block text-red-600 font-bold mt-1">¡Has alcanzado el límite de traslados este mes!</span>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Stats Grid - Dinámico */}
@@ -527,7 +536,7 @@ export default function Dashboard() {
                         <button onClick={() => { if (planInfo.puede_agregar_personas) abrirModalInvitacion() }}
                             className={`card p-5 sm:p-6 lg:p-8 text-left transition-all group ${!planInfo.puede_agregar_personas ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-lg active:shadow-md cursor-pointer'}`}
                             disabled={!planInfo.puede_agregar_personas}
-                            title={!planInfo.puede_agregar_personas ? 'Disponible solo en planes pagos' : ''}>
+                            title={!planInfo.puede_agregar_personas ? 'Disponible solo en planes pagos (Premium/Admin)' : ''}>
                             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center mb-4 transition">
                                 <svg className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
