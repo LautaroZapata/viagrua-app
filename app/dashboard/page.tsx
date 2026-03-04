@@ -18,6 +18,17 @@ export default function Dashboard() {
     const [empresa, setEmpresa] = useState<Empresa | null>(null);
     const [choferes, setChoferes] = useState<Chofer[]>([]);
     const [traslados, setTraslados] = useState<any[]>([]);
+    // --- Lógica de planes y bloqueo traslados ---
+    const PLANES: Record<string, { traslados_max: number | null }> = {
+        free: { traslados_max: 30 },
+        premium: { traslados_max: null }, // sin configurar
+        admin: { traslados_max: null }, // ilimitado
+    };
+    const planKey = perfil?.plan || 'free';
+    const trasladosMax = PLANES[planKey]?.traslados_max;
+    const trasladosUsados = perfil?.traslados_mes_actual || 0;
+    const trasladosRestantes = trasladosMax !== null ? Math.max(trasladosMax - trasladosUsados, 0) : null;
+    const bloqueoTraslados = planKey === 'free' && trasladosRestantes === 0;
     const [trasladosPage, setTrasladosPage] = useState(1);
     const [trasladosTotal, setTrasladosTotal] = useState(0);
     const [trasladosPendientesTotal, setTrasladosPendientesTotal] = useState(0);
