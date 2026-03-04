@@ -103,7 +103,8 @@ export default function Dashboard() {
             if (!user) { router.push('/login'); return; }
 
             const { data: perfilData, error: perfilError } = await supabase
-                .from('perfiles').select('id, nombre_completo, rol, empresa_id, email').eq('id', user.id).single();
+                .from('perfiles').select('id, nombre_completo, rol, empresa_id, email, plan, traslados_mes_actual').eq('id', user.id).single();
+            console.log('PERFIL DESDE SUPABASE:', perfilData);
             if (perfilError) throw new Error(perfilError.message);
             if (!perfilData) { router.push('/login'); return; }
 
