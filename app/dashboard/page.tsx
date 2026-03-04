@@ -21,13 +21,14 @@ export default function Dashboard() {
     const [choferes, setChoferes] = useState<Chofer[]>([]);
     const [traslados, setTraslados] = useState<any[]>([]);
     // --- Lógica de planes y bloqueo traslados ---
-    const PLANES: Record<string, { traslados_max: number | null }> = {
-        free: { traslados_max: 30 },
-        premium: { traslados_max: null }, // sin configurar
-        admin: { traslados_max: null }, // ilimitado
+    const PLANES: Record<string, { traslados_max: number | null, puede_agregar_personas: boolean }> = {
+        free: { traslados_max: 30, puede_agregar_personas: false },
+        premium: { traslados_max: null, puede_agregar_personas: true },
+        admin: { traslados_max: null, puede_agregar_personas: true },
     };
     const planKey = perfil?.plan || 'free';
-    const trasladosMax = PLANES[planKey]?.traslados_max;
+    const planInfo = PLANES[planKey];
+    const trasladosMax = planInfo.traslados_max;
     const trasladosUsados = perfil?.traslados_mes_actual || 0;
     const trasladosRestantes = trasladosMax !== null ? Math.max(trasladosMax - trasladosUsados, 0) : null;
     const bloqueoTraslados = planKey === 'free' && trasladosRestantes === 0;
