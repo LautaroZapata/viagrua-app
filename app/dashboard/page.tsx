@@ -31,6 +31,7 @@ export default function Dashboard() {
     const trasladosMax = planInfo.traslados_max;
     const trasladosUsados = perfil?.traslados_mes_actual || 0;
     const trasladosRestantes = trasladosMax !== null ? Math.max(trasladosMax - trasladosUsados, 0) : null;
+    // Solo bloquear traslados si es free y llegó al límite
     const bloqueoTraslados = planKey === 'free' && trasladosRestantes === 0;
     const [trasladosPage, setTrasladosPage] = useState(1);
     const [trasladosTotal, setTrasladosTotal] = useState(0);
@@ -453,7 +454,7 @@ export default function Dashboard() {
             {/* Tabs Mobile eliminados: navegación solo por drawer en mobile */}
 
             {/* Content - Responsive */}
-            <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-6xl mx-auto">
+            <div className="w-full px-2 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 mx-auto" style={{maxWidth: '90vw', background: '#fff', borderRadius: '18px', boxShadow: '0 2px 16px 0 #0001'}}>
 
                 {/* Header */}
                 <div className="mb-8 sm:mb-10">
@@ -462,6 +463,7 @@ export default function Dashboard() {
                     </h1>
                     <p className="text-sm sm:text-base text-gray-500">{empresa?.nombre}</p>
                     {/* Traslados usados solo para plan free y cuando perfil cargado */}
+                    {/* Solo mostrar traslados usados si es plan free y perfil cargado */}
                     {perfil && planKey === 'free' && (
                         <div className="mt-2 text-xs sm:text-sm bg-yellow-50 text-yellow-800 rounded px-2 py-1 inline-block">
                             Traslados usados este mes: <b>{trasladosUsados}</b> / {trasladosMax}
@@ -533,10 +535,10 @@ export default function Dashboard() {
                             <p className="text-sm text-gray-500 mt-1">Crear y asignar un nuevo servicio</p>
                         </button>
                         
-                        <button onClick={() => { if (planInfo.puede_agregar_personas) abrirModalInvitacion() }}
-                            className={`card p-5 sm:p-6 lg:p-8 text-left transition-all group ${!planInfo.puede_agregar_personas ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-lg active:shadow-md cursor-pointer'}`}
-                            disabled={!planInfo.puede_agregar_personas}
-                            title={!planInfo.puede_agregar_personas ? 'Disponible solo en planes pagos (Premium/Admin)' : ''}>
+                        <button onClick={() => abrirModalInvitacion()}
+                            className={`card p-5 sm:p-6 lg:p-8 text-left transition-all group ${planKey === 'free' ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-lg active:shadow-md cursor-pointer'}`}
+                            disabled={planKey === 'free'}
+                            title={planKey === 'free' ? 'Disponible solo en planes pagos (Premium/Admin)' : ''}>
                             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center mb-4 transition">
                                 <svg className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />

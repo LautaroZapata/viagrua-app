@@ -254,13 +254,14 @@ export default function NuevoTraslado() {
     const trasladosMax = planInfo.traslados_max;
     const trasladosUsados = perfil?.traslados_mes_actual || 0;
     const trasladosRestantes = trasladosMax !== null ? Math.max(trasladosMax - trasladosUsados, 0) : null;
+    // Solo bloquear traslados si es free y llegó al límite
     const bloqueoTraslados = planKey === 'free' && trasladosRestantes === 0;
 
     return (
         <div className="page-bg min-h-screen pb-8">
             {/* Navbar */}
-            <nav className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-30">
-                <div className="max-w-6xl mx-auto flex items-center gap-3">
+            <nav className="bg-white border-b border-gray-100 px-2 py-3 sticky top-0 z-30">
+                <div className="max-w-7xl mx-auto flex items-center gap-3">
                     <button onClick={() => router.push('/dashboard')} className="p-2 -ml-2 text-gray-500 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -271,13 +272,14 @@ export default function NuevoTraslado() {
             </nav>
 
             {/* Content */}
-            <div className="w-full px-4 py-4 max-w-6xl mx-auto">
+            <div className="w-full px-2 py-4 mx-auto" style={{maxWidth: '90vw', background: '#fff', borderRadius: '18px', boxShadow: '0 2px 16px 0 #0001'}}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Form - Left Column */}
                     <div className="card">
                         <h2 className="text-lg font-semibold text-gray-900 mb-4">Detalles del Traslado</h2>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
+                            {/* Solo mostrar traslados usados si es plan free y perfil cargado */}
                             {perfil && planKey === 'free' && (
                                 <div className="mb-2 p-2 rounded bg-yellow-50 text-yellow-800 text-xs">
                                     Traslados usados este mes: <b>{trasladosUsados}</b> / {trasladosMax}
