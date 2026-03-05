@@ -5,17 +5,20 @@ import type { NextRequest } from 'next/server'
 export async function middleware(req: NextRequest) {
     const res = NextResponse.next();
 
-    // Usar createClient de supabase-js (no maneja cookies automáticamente en edge)
+    // Crear cliente Supabase
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    // Si necesitas manejar JWT manualmente, puedes extraerlo de las cookies:
-    // const access_token = req.cookies.get('sb-access-token')?.value;
-    // if (access_token) supabase.auth.setSession({ access_token, refresh_token: '' });
+    // Leer el access_token de la cookie (autenticación SSR/Edge)
+    const access_token = req.cookies.get('sb-access-token')?.value;
+    if (access_token) {
+        // Setear la sesión manualmente (refresh_token vacío, solo para validar)
+        await supabase.auth.setSession({ access_token, refresh_token: '' });
+    }
 
-    // ✅ SEGURO: getUser() verifica el JWT con Supabase
+    // Ahora sí, getUser() detecta la sesión
     const { data: { user } } = await supabase.auth.getUser();
 
     const pathname = req.nextUrl.pathname;

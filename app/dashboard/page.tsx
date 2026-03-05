@@ -109,8 +109,8 @@ export default function Dashboard() {
             if (!perfilData) { router.push('/login'); return; }
 
             setPerfil(perfilData);
-            // Guardar email y user_id en localStorage para el flujo de pago
-            if (perfilData?.email && perfilData?.id) {
+            // Guardar email y user_id en localStorage para el flujo de pago SOLO en cliente
+            if (perfilData?.email && perfilData?.id && typeof window !== 'undefined') {
                 window.localStorage.setItem('email', perfilData.email);
                 window.localStorage.setItem('user_id', perfilData.id);
             }
@@ -308,9 +308,11 @@ export default function Dashboard() {
     }
 
     const handleCerrarSesion = async () => {
-        // Limpiar email y user_id de localStorage al cerrar sesión
-        window.localStorage.removeItem('email');
-        window.localStorage.removeItem('user_id');
+        // Limpiar email y user_id de localStorage al cerrar sesión SOLO en cliente
+        if (typeof window !== 'undefined') {
+            window.localStorage.removeItem('email');
+            window.localStorage.removeItem('user_id');
+        }
         await supabase.auth.signOut();
         router.push('/login');
     }

@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -29,16 +29,18 @@ export default function Login() {
         const { data: perfil } = await supabase
             .from('perfiles').select('rol').eq('id', data.user.id).single()
 
-        // Limpiar email y user_id anteriores y guardar el nuevo email
-        window.localStorage.removeItem('email');
-        window.localStorage.removeItem('user_id');
-        if (formData.email) {
-            window.localStorage.setItem('email', formData.email);
-        }
-        if (perfil?.rol === 'admin') {
-            router.push('/dashboard')
-        } else {
-            router.push('/chofer')
+        // Guardar email en localStorage y navegar SOLO en cliente
+        if (typeof window !== 'undefined') {
+            window.localStorage.removeItem('email');
+            window.localStorage.removeItem('user_id');
+            if (formData.email) {
+                window.localStorage.setItem('email', formData.email);
+            }
+            if (perfil?.rol === 'admin') {
+                router.push('/dashboard')
+            } else {
+                router.push('/chofer')
+            }
         }
         setLoading(false)
     }
