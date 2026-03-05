@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.98.0",
     "autoprefixer": "^10.4.24",
     "firebase-admin": "^13.7.0",
