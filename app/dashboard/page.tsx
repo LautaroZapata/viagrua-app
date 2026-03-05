@@ -66,7 +66,7 @@ export default function Dashboard() {
                     schema: 'public',
                     table: 'perfiles'
                 },
-                (payload) => {
+                (payload: any) => {
                     console.log('📡 Evento Realtime recibido:', payload);
                     // Recargar cuando alguien se une o sale de nuestra empresa
                     const newRecord = payload.new as { empresa_id?: string };
@@ -78,7 +78,7 @@ export default function Dashboard() {
                     }
                 }
             )
-            .subscribe((status) => {
+            .subscribe((status: string) => {
                 console.log('📶 Estado suscripción:', status);
             });
 
