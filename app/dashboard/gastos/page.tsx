@@ -63,6 +63,7 @@ export default function GastosPage() {
     const [totalIngresos, setTotalIngresos] = useState(0)
     const [verTodos, setVerTodos] = useState(true) // Admin: toggle para ver todos o solo propios
     const [paginaActual, setPaginaActual] = useState(1)
+    const [paginaGastosAdmin, setPaginaGastosAdmin] = useState(1)
     const [filtroMovimientos, setFiltroMovimientos] = useState('fecha_desc')
     const [filtroTipoGasto, setFiltroTipoGasto] = useState('todos')
     const ITEMS_POR_PAGINA = 10
@@ -300,11 +301,18 @@ export default function GastosPage() {
         }
     })
 
-    // Paginación de movimientos
+    // Paginación de movimientos (chofer)
     const totalPaginas = Math.ceil(movimientos.length / ITEMS_POR_PAGINA)
     const movimientosPaginados = movimientos.slice(
         (paginaActual - 1) * ITEMS_POR_PAGINA,
         paginaActual * ITEMS_POR_PAGINA
+    )
+
+    // Paginación de gastos (admin)
+    const totalPaginasGastos = Math.ceil(gastosFiltrados.length / ITEMS_POR_PAGINA)
+    const gastosPaginados = gastosFiltrados.slice(
+        (paginaGastosAdmin - 1) * ITEMS_POR_PAGINA,
+        paginaGastosAdmin * ITEMS_POR_PAGINA
     )
 
     if (loading) {
@@ -561,8 +569,9 @@ export default function GastosPage() {
                                 <p className="text-gray-500 text-sm">No hay gastos registrados</p>
                             </div>
                         ) : (
+                            <>
                             <div className="space-y-2">
-                                {gastosFiltrados.map((gasto) => (
+                                {gastosPaginados.map((gasto) => (
                                     <div 
                                         key={gasto.id} 
                                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
@@ -604,6 +613,49 @@ export default function GastosPage() {
                                     </div>
                                 ))}
                             </div>
+                            {/* Paginación admin */}
+                            {totalPaginasGastos > 1 && (
+                                <div className="flex items-center justify-center gap-2 mt-5 pt-5 border-t border-gray-100">
+                                    <button
+                                        onClick={() => setPaginaGastosAdmin(p => Math.max(1, p - 1))}
+                                        disabled={paginaGastosAdmin === 1}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                                            paginaGastosAdmin === 1
+                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        Anterior
+                                    </button>
+                                    <div className="flex items-center gap-1">
+                                        {Array.from({ length: totalPaginasGastos }, (_, i) => i + 1).map(num => (
+                                            <button
+                                                key={num}
+                                                onClick={() => setPaginaGastosAdmin(num)}
+                                                className={`w-8 h-8 rounded-lg text-xs font-medium transition ${
+                                                    paginaGastosAdmin === num
+                                                        ? 'bg-orange-500 text-white'
+                                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                }`}
+                                            >
+                                                {num}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <button
+                                        onClick={() => setPaginaGastosAdmin(p => Math.min(totalPaginasGastos, p + 1))}
+                                        disabled={paginaGastosAdmin === totalPaginasGastos}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                                            paginaGastosAdmin === totalPaginasGastos
+                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        Siguiente
+                                    </button>
+                                </div>
+                            )}
+                            </>
                         )
                     )}
 

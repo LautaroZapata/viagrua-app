@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "trasladosapp-c6164",
+  "private_key_id": "3ad22e0857a1f707dfb121ae3910a100a6efdb6e",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDvFQNUCnJSgFhO\nBooY7aANINbMd2eRbQAPcSodP2U3AU66kaZUo8Ukb33ysNCmWf+/gS/ra+8jRSjI\nMhHXd55cbgykA55bBD6EIBw5s964w1aoe5qU+QI9fC/MaGgntY7yM3qDSLp4OjU1\nb5/jn8t8I4Vz+IMc/6hHnosEbJSXzlovKh5g7dwUotrU2e8IF+kKZtVRKOJ1kdA1\nXarS5yBOjdBNIat8G0sSZJXv0gWy5umNn7GMjHJ+GGEeRj3qG7vdU2HL7o4udDAD\n3x3BfwzJYMkl43+K8RVOpIXLBmKm3X/vHp+rueEZeIk+bs+1rXEq+v2zTX66hj9f\nmSgp4l9jAgMBAAECggEAGwTua9yEYAOGN0cw6zFLscAg1lm2OC6v347j+gs0lptM\nuPQF7rHVcVEyVC+cXPh12UAx2LLJg1xpB/r0nju0B3Eed5i7GEEqCYeReQn1ZT8a\nN49EgIqFsMosora38qjnn0KnGVgqTrURV1kmojRobD6dceZHdwsDixiFUHou7trY\n1TC55UemjsxXFEUNtY/ldfeRqlsn57b3LX0K1iBHqVLfV+lRVXiZ0f4Wvl81sp13\nuErSPrEvNOwcPxTQxQ7V26l3bdy5qlJdEiYCWleF4S8uP4vmNvRB8jTrTIA0+NI0\n5AqxkkRSm//eVH+FRZsdVDYvienGGcijymEvZDI3JQKBgQD6Sr1Dwxf56R36dk2A\n7BnWtpTpJML1tbzNp5yw4sBg9xM33pcVRfzqLnHTcLocPu7pXEXoI4wO81M7+3gy\nHK4b++YeaBCYi5c2oYvVcsQc6EPYsGqrBUp/txxW2lG0Y8fWwiA/qE3YZCipQjJt\ngAptTE1lRtbs7JhJ/1XNYN6Q7QKBgQD0iNP0w6E/bRLacBFqrvklOLQN8f2irsMF\n5Akrdnsx+G0TNiCAKq4e/ZBCxAQfGk2shWRp+lRMCOJPutD0Y7onFCN7lIczzF+z\nJi5ICUKpwjXloeYzHLb0NnaFVhmKQy6gTSuHgR5WgE77bxSo9Ug3lXziwCq8MglZ\nHEauQw63jwKBgCX2OAaTDIvnA5j9YHvxU2nxf1xtKvTBf8Vhaq6Zdbw/PTb4F8ou\nN1H9gV4kdtXZ5bqXODMhURjjZvhuB6jyGKY96oUqG3pHkcPDdMYHBh+sSr4O497U\nipwcVbwGmOXXTHQSNXnyOPxdFJ23YJajGPHC5Oo7eFWu/NocVBM2YgtxAoGBAK8F\nfAdVOgVGkVbtHVopUEO22RCeInac9RMzSujjzXtPnupANHTnl2aw/975oyWL0wpn\nEx7TQCCHv0tnoAU7l9I+lMLv5PFLFzgHXNrMXf1Y9vCbt0LgC4axsJTwsikGusmb\nUkuTO96XyXAm6jegD4dRJGi7OBspCQ3Rsjkp38+7AoGAKZwhkSvR/fNfg80yJi5D\n1I8BTMehk+JrLxCsqArincXyLR3GXLO9fLcYprX7D8nugNV7XnXQeGkV3crMjymQ\nPAb84svok8hG6lO9SS4M0f9SKUK14ajD/H83kBrVB4Xo4hVQ2uDXAvmMc7aa0pCC\nqSkOryRhmE6JdaDzBgOty+k=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@trasladosapp-c6164.iam.gserviceaccount.com",
+  "client_id": "106798782552599470408",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40trasladosapp-c6164.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
