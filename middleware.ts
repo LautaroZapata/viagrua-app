@@ -1,33 +1,26 @@
-import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
-    const res = NextResponse.next()
+    const res = NextResponse.next();
 
-    const supabase = createServerClient(
+    // Usar createClient de supabase-js (no maneja cookies automáticamente en edge)
+    const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return req.cookies.getAll()
-                },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => {
-                        res.cookies.set(name, value, options)
-                    })
-                },
-            },
-        }
-    )
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    // Si necesitas manejar JWT manualmente, puedes extraerlo de las cookies:
+    // const access_token = req.cookies.get('sb-access-token')?.value;
+    // if (access_token) supabase.auth.setSession({ access_token, refresh_token: '' });
 
     // ✅ SEGURO: getUser() verifica el JWT con Supabase
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser();
 
-    const pathname = req.nextUrl.pathname
-    const isDashboard = pathname.startsWith('/dashboard')
-    const isChofer = pathname.startsWith('/chofer')
+    const pathname = req.nextUrl.pathname;
+    const isDashboard = pathname.startsWith('/dashboard');
+    const isChofer = pathname.startsWith('/chofer');
     const isProtected = isDashboard || isChofer
 
     // Sin usuario autenticado y quiere entrar a ruta protegida → login
