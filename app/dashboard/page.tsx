@@ -99,8 +99,13 @@ export default function Dashboard() {
     const cargarDatos = async () => {
         try {
             const { data: { user }, error: userError } = await supabase.auth.getUser();
+            console.log('Usuario obtenido desde supabase.auth.getUser():', user);
             if (userError) throw new Error(userError.message);
-            if (!user) { router.push('/login'); return; }
+            if (!user) {
+                setError('No se detectó usuario autenticado. Revisa si la cookie de sesión se está guardando correctamente.');
+                router.push('/login');
+                return;
+            }
 
             const { data: perfilData, error: perfilError } = await supabase
                 .from('perfiles').select('id, nombre_completo, rol, empresa_id, email, plan, traslados_mes_actual').eq('id', user.id).single();
