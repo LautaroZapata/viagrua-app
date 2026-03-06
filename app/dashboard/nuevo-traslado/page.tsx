@@ -161,7 +161,6 @@ export default function NuevoTraslado() {
                         .from('fotos-traslados')
                         .getPublicUrl(fileName)
                     urls[`foto_${tipo}`] = urlData.publicUrl
-                    console.log(`Foto ${tipo} subida:`, urlData.publicUrl)
                 }
             }
         }
@@ -228,9 +227,7 @@ export default function NuevoTraslado() {
         // 3. Subir fotos si hay alguna
         const hayFotos = Object.values(fotos).some(f => f !== null)
         if (hayFotos) {
-            console.log('Subiendo fotos...')
             const fotoUrls = await subirFotos(traslado.id)
-            console.log('URLs generadas:', fotoUrls)
             
             // 3. Actualizar traslado con URLs de fotos
             if (Object.keys(fotoUrls).length > 0) {
@@ -241,8 +238,6 @@ export default function NuevoTraslado() {
                 if (updateError) {
                     console.error('Error guardando URLs:', updateError)
                     alert('Error al guardar URLs de fotos: ' + updateError.message)
-                } else {
-                    console.log('URLs guardadas correctamente')
                 }
             }
         }

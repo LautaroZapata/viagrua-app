@@ -61,7 +61,6 @@ export default function Dashboard() {
             setCheckingSession(true);
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             setUserDebug(user);
-            console.log('Dashboard: usuario detectado tras reload:', user, userError);
             if (!user) {
                 if (isMounted) {
                     setCheckingSession(false);
@@ -97,8 +96,6 @@ export default function Dashboard() {
     useEffect(() => {
         if (!perfil?.empresa_id) return;
 
-        console.log('🔌 Conectando Realtime para empresa:', perfil.empresa_id);
-
         const subscription = supabase
             .channel('choferes-changes')
             .on(
@@ -109,20 +106,16 @@ export default function Dashboard() {
                     table: 'perfiles'
                 },
                 (payload: any) => {
-                    console.log('📡 Evento Realtime recibido:', payload);
                     // Recargar cuando alguien se une o sale de nuestra empresa
                     const newRecord = payload.new as { empresa_id?: string };
                     const oldRecord = payload.old as { empresa_id?: string };
                     if (newRecord?.empresa_id === perfil?.empresa_id || 
                         oldRecord?.empresa_id === perfil?.empresa_id) {
-                        console.log('✅ Recargando lista de choferes...');
                         if (perfil?.empresa_id) cargarChoferes(perfil.empresa_id);
                     }
                 }
             )
-            .subscribe((status: string) => {
-                console.log('📶 Estado suscripción:', status);
-            });
+            .subscribe();
 
         return () => {
             supabase.removeChannel(subscription);
@@ -141,7 +134,6 @@ export default function Dashboard() {
     const cargarDatos = async () => {
         try {
             const { data: { user }, error: userError } = await supabase.auth.getUser();
-            console.log('Usuario obtenido desde supabase.auth.getUser():', user);
             if (userError) throw new Error(userError.message);
             if (!user) {
                 setError('No se detectó usuario autenticado. Revisa si la cookie de sesión se está guardando correctamente.');
@@ -151,7 +143,6 @@ export default function Dashboard() {
 
             const { data: perfilData, error: perfilError } = await supabase
                 .from('perfiles').select('id, nombre_completo, rol, empresa_id, email, plan, traslados_mes_actual').eq('id', user.id).single();
-            console.log('PERFIL DESDE SUPABASE:', perfilData);
             if (perfilError) throw new Error(perfilError.message);
             if (!perfilData) { router.push('/login'); return; }
 
@@ -397,7 +388,6 @@ export default function Dashboard() {
                     <div className="text-center">
                         <p className="text-gray-700 font-semibold">Cargando</p>
                         <p className="text-gray-400 text-sm">Verificando sesión y cargando datos...</p>
-                        <pre style={{fontSize:'10px',color:'#888',marginTop:'1em',maxWidth:'90vw',overflowX:'auto'}}>user: {JSON.stringify(userDebug)}</pre>
                     </div>
                 </div>
             </div>
@@ -408,7 +398,6 @@ export default function Dashboard() {
             <div className="flex flex-col items-center justify-center min-h-screen">
                 <div className="bg-red-100 text-red-700 px-6 py-4 rounded shadow">
                     <b>Error:</b> {error}
-                    <pre style={{fontSize:'10px',color:'#888',marginTop:'1em',maxWidth:'90vw',overflowX:'auto'}}>user: {JSON.stringify(userDebug)}</pre>
                 </div>
             </div>
         );
@@ -418,7 +407,6 @@ export default function Dashboard() {
             <div className="flex flex-col items-center justify-center min-h-screen">
                 <div className="bg-yellow-100 text-yellow-700 px-6 py-4 rounded shadow">
                     <b>No se pudo cargar el perfil del usuario.</b>
-                    <pre style={{fontSize:'10px',color:'#888',marginTop:'1em',maxWidth:'90vw',overflowX:'auto'}}>user: {JSON.stringify(userDebug)}</pre>
                 </div>
             </div>
         );

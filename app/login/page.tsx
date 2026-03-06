@@ -20,7 +20,6 @@ export default function Login() {
             email: formData.email,
             password: formData.password
         })
-        console.log('Resultado login:', { data, error });
 
         if (error) {
             alert('Error: ' + error.message)
