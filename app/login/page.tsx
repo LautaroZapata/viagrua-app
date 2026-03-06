@@ -15,10 +15,12 @@ export default function Login() {
         e.preventDefault()
         setLoading(true)
 
+
         const { data, error } = await supabase.auth.signInWithPassword({
             email: formData.email,
             password: formData.password
         })
+        console.log('Resultado login:', { data, error });
 
         if (error) {
             alert('Error: ' + error.message)
