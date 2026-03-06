@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -7,23 +7,36 @@ export const config = {
 };
 
 export default async function proxy(req: NextRequest) {
-  const res = NextResponse.next();
+  // Respuesta base, se actualizará si Supabase necesita refrescar cookies
+  let res = NextResponse.next({ request: req });
 
-  // Crear cliente Supabase
-  const supabase = createClient(
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => {
+            req.cookies.set(name, value);
+          });
+
+          // recreamos la respuesta para propagar las cookies actualizadas
+          res = NextResponse.next({ request: req });
+
+          cookiesToSet.forEach(({ name, value, options }) => {
+            res.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
   );
 
-  // Leer el access_token de la cookie (autenticación SSR/Edge)
-  const access_token = req.cookies.get('sb-access-token')?.value;
-  if (access_token) {
-    // Setear la sesión manualmente (refresh_token vacío, solo para validar)
-    await supabase.auth.setSession({ access_token, refresh_token: '' });
-  }
-
-  // Ahora sí, getUser() detecta la sesión
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const pathname = req.nextUrl.pathname;
   const isDashboard = pathname.startsWith('/dashboard');
