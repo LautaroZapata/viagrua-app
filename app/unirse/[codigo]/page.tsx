@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import ClientOnly from '../../components/ClientOnly'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -112,8 +113,9 @@ export default function UnirseEmpresa() {
             password: formData.password
         })
         // Guardar email en localStorage
-        if (formData.email) {
-            window.localStorage.setItem('email', formData.email);
+        <ClientOnly>
+            {formData.email && window.localStorage.setItem('email', formData.email)}
+        </ClientOnly>
         }
         router.push('/chofer')
     }

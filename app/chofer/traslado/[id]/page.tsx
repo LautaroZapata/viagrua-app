@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import ClientOnly from '../../../components/ClientOnly'
 import { createClient } from '@supabase/supabase-js'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -34,7 +35,9 @@ export default function DetalleTraslado() {
     const [loading, setLoading] = useState(true)
     const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null)
     const [actualizando, setActualizando] = useState(false)
+    const [isClient, setIsClient] = useState(false)
 
+    useEffect(() => { setIsClient(true); }, [])
     useEffect(() => { cargarTraslado() }, [id])
 
     useEffect(() => {
@@ -204,11 +207,13 @@ export default function DetalleTraslado() {
                 <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 rounded-xl">
                     <p className="text-[10px] uppercase tracking-wide opacity-80 mb-1">Trabajo para</p>
                     <p className="text-lg font-semibold">{traslado.empresas?.nombre || 'Empresa'}</p>
-                    <p className="text-xs opacity-80 mt-1">
-                        {new Date(traslado.created_at).toLocaleDateString('es-AR', { 
-                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-                        })}
-                    </p>
+                    <ClientOnly>
+                        <p className="text-xs opacity-80 mt-1">
+                            {traslado.created_at ? new Date(traslado.created_at).toLocaleDateString('es-AR', { 
+                                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+                            }) : ''}
+                        </p>
+                    </ClientOnly>
                 </div>
 
                 {/* Info Principal */}

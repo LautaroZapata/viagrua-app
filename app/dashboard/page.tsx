@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import ClientOnly from '../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -14,6 +15,7 @@ interface Perfil {
 }
 interface Chofer { id: string; nombre_completo: string; email: string }
 interface Empresa { id: string; nombre: string }
+
 
 export default function Dashboard() {
     const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -42,14 +44,54 @@ export default function Dashboard() {
     const [modalAbierto, setModalAbierto] = useState(false);
     const [activeTab, setActiveTab] = useState('inicio');
     const [codigoInvitacion, setCodigoInvitacion] = useState('');
+    const [linkInvitacion, setLinkInvitacion] = useState('');
     const [generandoCodigo, setGenerandoCodigo] = useState(false);
     const [linkCopiado, setLinkCopiado] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [checkingSession, setCheckingSession] = useState(true);
     const router = useRouter();
+    const [isClient, setIsClient] = useState(false);
 
+    // Validar sesión al montar el componente
+    const [userDebug, setUserDebug] = useState<any>(null);
+    useEffect(() => {
+        let isMounted = true;
+        async function checkSession() {
+            setCheckingSession(true);
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            setUserDebug(user);
+            console.log('Dashboard: usuario detectado tras reload:', user, userError);
+            if (!user) {
+                if (isMounted) {
+                    setCheckingSession(false);
+                    setError('No hay sesión activa. Redirigiendo a login...');
+                    setTimeout(() => router.replace('/login'), 1000);
+                }
+                return;
+            }
+            // Si hay usuario, cargar datos normales
+            if (isMounted) {
+                try {
+                    await cargarDatos();
+                } catch (err) {
+                    let msg = 'Error al cargar datos';
+                    if (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string') {
+                        msg = msg + ': ' + (err as any).message;
+                    }
+                    setError(msg);
+                } finally {
+                    setCheckingSession(false);
+                }
+            }
+        }
+        checkSession();
+        return () => { isMounted = false; };
+    }, []);
 
-    useEffect(() => { cargarDatos() }, [])
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     // Suscripción en tiempo real para nuevos choferes
     useEffect(() => {
@@ -115,9 +157,14 @@ export default function Dashboard() {
 
             setPerfil(perfilData);
             // Guardar email y user_id en localStorage para el flujo de pago SOLO en cliente
-            if (perfilData?.email && perfilData?.id && typeof window !== 'undefined') {
-                window.localStorage.setItem('email', perfilData.email);
-                window.localStorage.setItem('user_id', perfilData.id);
+            // Guardar email y user_id en localStorage SOLO en cliente después del render
+            if (perfilData?.email && perfilData?.id) {
+                setTimeout(() => {
+                    if (typeof window !== 'undefined') {
+                        window.localStorage.setItem('email', perfilData.email);
+                        window.localStorage.setItem('user_id', perfilData.id);
+                    }
+                }, 0);
             }
 
             const { data: empresaData, error: empresaError } = await supabase
@@ -128,7 +175,11 @@ export default function Dashboard() {
             await cargarChoferes(perfilData.empresa_id);
             await cargarTraslados(perfilData.empresa_id, 1);
         } catch (err: any) {
-            setError(err.message || 'Error inesperado al cargar datos');
+            let msg = 'Error inesperado al cargar datos';
+            if (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string') {
+                msg = (err as any).message;
+            }
+            setError(msg);
         } finally {
             setLoading(false);
         }
@@ -206,8 +257,10 @@ export default function Dashboard() {
 
     const cambiarEstadoTraslado = async (trasladoId: string, nuevoEstado: string) => {
         if (nuevoEstado === 'completado') {
-            const confirmed = window.confirm('¿Confirmar marcar como completado? Esta acción bloqueará el traslado.');
-            if (!confirmed) return;
+            if (typeof window !== 'undefined') {
+                const confirmed = window.confirm('¿Confirmar marcar como completado? Esta acción bloqueará el traslado.');
+                if (!confirmed) return;
+            }
         }
         // Actualización optimista - cambiar UI inmediatamente
         setTraslados(prev => prev.map(t => 
@@ -266,8 +319,11 @@ export default function Dashboard() {
         if (!perfil?.empresa_id) return
         setGenerandoCodigo(true)
         
-        // Generar código aleatorio
-        const codigo = Math.random().toString(36).substring(2, 10).toUpperCase()
+        // Generar código solo en cliente
+        let codigo = '';
+        if (isClient) {
+            codigo = Math.random().toString(36).substring(2, 10).toUpperCase();
+        }
         
         const { error } = await supabase.from('invitaciones').insert({
             empresa_id: perfil.empresa_id,
@@ -279,20 +335,25 @@ export default function Dashboard() {
             setGenerandoCodigo(false)
             return
         }
-
         setCodigoInvitacion(codigo)
+        // Generar link solo en cliente
+        if (isClient) {
+            setLinkInvitacion(`${window.location.origin}/unirse/${codigo}`);
+        } else {
+            setLinkInvitacion('');
+        }
         setGenerandoCodigo(false)
     }
 
     const copiarLink = async () => {
-        const link = `${window.location.origin}/unirse/${codigoInvitacion}`;
+        if (!linkInvitacion) return;
         try {
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(link);
-            } else {
+            if (isClient && navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(linkInvitacion);
+            } else if (isClient) {
                 // Fallback para navegadores inseguros
                 const textArea = document.createElement('textarea');
-                textArea.value = link;
+                textArea.value = linkInvitacion;
                 document.body.appendChild(textArea);
                 textArea.focus();
                 textArea.select();
@@ -302,36 +363,30 @@ export default function Dashboard() {
             setLinkCopiado(true);
             setTimeout(() => setLinkCopiado(false), 2000);
         } catch (err) {
-            alert('No se pudo copiar el link. Copialo manualmente: ' + link);
+            alert('No se pudo copiar el link. Copialo manualmente: ' + linkInvitacion);
         }
     }
 
     const abrirModalInvitacion = () => {
         setCodigoInvitacion('')
+        setLinkInvitacion('')
         setLinkCopiado(false)
         setModalAbierto(true)
     }
 
     const handleCerrarSesion = async () => {
         // Limpiar email y user_id de localStorage al cerrar sesión SOLO en cliente
-        if (typeof window !== 'undefined') {
-            window.localStorage.removeItem('email');
-            window.localStorage.removeItem('user_id');
-        }
+        setTimeout(() => {
+            if (typeof window !== 'undefined') {
+                window.localStorage.removeItem('email');
+                window.localStorage.removeItem('user_id');
+            }
+        }, 0);
         await supabase.auth.signOut();
         router.push('/login');
     }
 
-    if (error) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen">
-                <div className="bg-red-100 text-red-700 px-6 py-4 rounded shadow">
-                    <b>Error:</b> {error}
-                </div>
-            </div>
-        );
-    }
-    if (loading) {
+    if (checkingSession || loading) {
         return (
             <div className="page-bg flex items-center justify-center min-h-screen">
                 <div className="flex flex-col items-center gap-4">
@@ -341,11 +396,32 @@ export default function Dashboard() {
                     </div>
                     <div className="text-center">
                         <p className="text-gray-700 font-semibold">Cargando</p>
-                        <p className="text-gray-400 text-sm">Obteniendo datos...</p>
+                        <p className="text-gray-400 text-sm">Verificando sesión y cargando datos...</p>
+                        <pre style={{fontSize:'10px',color:'#888',marginTop:'1em',maxWidth:'90vw',overflowX:'auto'}}>user: {JSON.stringify(userDebug)}</pre>
                     </div>
                 </div>
             </div>
         )
+    }
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen">
+                <div className="bg-red-100 text-red-700 px-6 py-4 rounded shadow">
+                    <b>Error:</b> {error}
+                    <pre style={{fontSize:'10px',color:'#888',marginTop:'1em',maxWidth:'90vw',overflowX:'auto'}}>user: {JSON.stringify(userDebug)}</pre>
+                </div>
+            </div>
+        );
+    }
+    if (!perfil) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen">
+                <div className="bg-yellow-100 text-yellow-700 px-6 py-4 rounded shadow">
+                    <b>No se pudo cargar el perfil del usuario.</b>
+                    <pre style={{fontSize:'10px',color:'#888',marginTop:'1em',maxWidth:'90vw',overflowX:'auto'}}>user: {JSON.stringify(userDebug)}</pre>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -616,7 +692,7 @@ export default function Dashboard() {
                                                         </span>
                                                     )}
                                                     <span>{traslado.perfiles?.nombre_completo || 'Sin asignar'}</span>
-                                                    <span>{new Date(traslado.created_at).toLocaleDateString()}</span>
+                                                    <ClientOnly>{traslado.created_at ? new Date(traslado.created_at).toLocaleDateString() : ''}</ClientOnly>
                                                 </div>
                                                 {traslado.observaciones && (
                                                     <p className="text-xs text-gray-400 mt-2 italic line-clamp-1">"{traslado.observaciones}"</p>
@@ -800,21 +876,19 @@ export default function Dashboard() {
                                 <p className="text-2xl font-bold text-orange-600 mb-5 tracking-widest font-mono">{codigoInvitacion}</p>
                                 
                                 {/* QR Code */}
-                                <div className="bg-white border border-gray-100 rounded-xl p-4 mb-5 inline-block shadow-sm">
-                                    <img 
-                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.origin : ''}/unirse/${codigoInvitacion}`)}`}
+                                {isClient && linkInvitacion && (
+                                    <img
+                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(linkInvitacion)}`}
                                         alt="QR Code"
                                         className="w-40 h-40"
                                     />
-                                </div>
+                                )}
 
                                 <p className="text-xs text-gray-400 mb-4">El chofer puede escanear el QR o usar el link</p>
 
                                 {/* Link */}
                                 <div className="bg-gray-50 rounded-lg p-3 mb-5">
-                                    <p className="text-xs text-gray-600 break-all font-mono">
-                                        {typeof window !== 'undefined' ? window.location.origin : ''}/unirse/{codigoInvitacion}
-                                    </p>
+                                    <p className="text-xs text-gray-600 break-all font-mono">{isClient && linkInvitacion ? linkInvitacion : ''}</p>
                                 </div>
 
                                 <button 

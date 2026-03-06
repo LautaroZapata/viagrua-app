@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import ClientOnly from '../../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -53,7 +54,11 @@ const tiposGasto = [
     { value: 'otro', label: 'Otro', icon: '📦' },
 ]
 
+
 export default function GastosPage() {
+    const [isClient, setIsClient] = useState(false);
+    useEffect(() => { setIsClient(true); }, []);
+
     const router = useRouter()
     const [gastos, setGastos] = useState<Gasto[]>([])
     const [misTraslados, setMisTraslados] = useState<TrasladoCompletado[]>([])
@@ -590,7 +595,7 @@ export default function GastosPage() {
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
-                                                    <span>{new Date(gasto.fecha).toLocaleDateString('es-AR')}</span>
+                                                    <ClientOnly>{gasto.fecha ? new Date(gasto.fecha).toLocaleDateString('es-AR') : ''}</ClientOnly>
                                                     {gasto.descripcion && (
                                                         <span className="truncate max-w-[120px]">{gasto.descripcion}</span>
                                                     )}
@@ -698,7 +703,7 @@ export default function GastosPage() {
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
-                                                        <span>{new Date(mov.fecha).toLocaleDateString('es-AR')}</span>
+                                                        <ClientOnly>{mov.fecha ? new Date(mov.fecha).toLocaleDateString('es-AR') : ''}</ClientOnly>
                                                         {mov.descripcion && (
                                                             <span className="truncate max-w-[120px]">{mov.descripcion}</span>
                                                         )}

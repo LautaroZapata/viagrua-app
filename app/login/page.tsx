@@ -32,18 +32,20 @@ export default function Login() {
             .from('perfiles').select('rol').eq('id', data.user.id).single()
 
         // Guardar email en localStorage y navegar SOLO en cliente
-        if (typeof window !== 'undefined') {
-            window.localStorage.removeItem('email');
-            window.localStorage.removeItem('user_id');
-            if (formData.email) {
-                window.localStorage.setItem('email', formData.email);
+        setTimeout(() => {
+            if (typeof window !== 'undefined') {
+                window.localStorage.removeItem('email');
+                window.localStorage.removeItem('user_id');
+                if (formData.email) {
+                    window.localStorage.setItem('email', formData.email);
+                }
+                if (perfil?.rol === 'admin') {
+                    router.push('/dashboard');
+                } else {
+                    router.push('/chofer');
+                }
             }
-            if (perfil?.rol === 'admin') {
-                router.push('/dashboard')
-            } else {
-                router.push('/chofer')
-            }
-        }
+        }, 0);
         setLoading(false)
     }
 

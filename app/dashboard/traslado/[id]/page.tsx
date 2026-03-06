@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import ClientOnly from '../../../components/ClientOnly'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -32,6 +33,9 @@ export default function DetalleTrasladoAdmin() {
     const [loading, setLoading] = useState(true)
     const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null)
     const [actualizando, setActualizando] = useState(false)
+    const [isClient, setIsClient] = useState(false)
+
+    useEffect(() => { setIsClient(true); }, []);
 
     useEffect(() => { cargarTraslado() }, [id])
 
@@ -281,7 +285,7 @@ export default function DetalleTrasladoAdmin() {
                         <div className="bg-gray-50 p-3 rounded-lg">
                             <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Fecha</p>
                             <p className="text-base font-semibold text-gray-900">
-                                {new Date(traslado.created_at).toLocaleDateString()}
+                                <ClientOnly>{traslado.created_at ? new Date(traslado.created_at).toLocaleDateString() : ''}</ClientOnly>
                             </p>
                         </div>
                     </div>

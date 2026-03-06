@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import ClientOnly from '../../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { compressImage, formatFileSize } from '@/lib/compressImage'
@@ -146,7 +147,15 @@ export default function NuevoTraslado() {
         
         for (const [tipo, fotoData] of Object.entries(fotos)) {
             if (fotoData) {
-                const fileName = `${trasladoId}/${tipo}_${Date.now()}.jpg`
+                let fileName = '';
+                <ClientOnly>
+                    {(() => {
+                        fileName = `${trasladoId}/${tipo}_${Date.now()}.jpg`;
+                    })()}
+                </ClientOnly>
+                if (!fileName) {
+                    fileName = `${trasladoId}/${tipo}_ssr.jpg`;
+                }
                 const { error } = await supabase.storage
                     .from('fotos-traslados')
                     .upload(fileName, fotoData.file)

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import ClientOnly from '../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -40,6 +41,7 @@ export default function PanelChofer() {
     const [trasladosTotal, setTrasladosTotal] = useState(0)
     const [loading, setLoading] = useState(true)
     const [nombreEmpresa, setNombreEmpresa] = useState<string | null>(null)
+    const [isClient, setIsClient] = useState(false)
     
     // Estados para unirse a empresa
     const [mostrarFormCodigo, setMostrarFormCodigo] = useState(false)
@@ -584,7 +586,7 @@ export default function PanelChofer() {
                                                 </span>
                                             )}
                                             <span className="text-[10px] text-gray-400">
-                                                {new Date(traslado.created_at).toLocaleDateString()}
+                                                <ClientOnly>{traslado.created_at ? new Date(traslado.created_at).toLocaleDateString() : ''}</ClientOnly>
                                             </span>
                                         </div>
                                         <h3 className="text-sm sm:text-base font-semibold text-gray-900 flex items-center gap-2">
