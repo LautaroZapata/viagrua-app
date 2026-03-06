@@ -147,15 +147,8 @@ export default function NuevoTraslado() {
         
         for (const [tipo, fotoData] of Object.entries(fotos)) {
             if (fotoData) {
-                let fileName = '';
-                <ClientOnly>
-                    {(() => {
-                        fileName = `${trasladoId}/${tipo}_${Date.now()}.jpg`;
-                    })()}
-                </ClientOnly>
-                if (!fileName) {
-                    fileName = `${trasladoId}/${tipo}_ssr.jpg`;
-                }
+                // Esta página es un Client Component, así que podemos generar el nombre directamente en el cliente
+                const fileName = `${trasladoId}/${tipo}_${Date.now()}.jpg`;
                 const { error } = await supabase.storage
                     .from('fotos-traslados')
                     .upload(fileName, fotoData.file)
