@@ -530,7 +530,7 @@ export default function Dashboard() {
             {/* Tabs Mobile eliminados: navegación solo por drawer en mobile */}
 
             {/* Content - Responsive */}
-            <div className="w-full px-2 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 mx-auto" style={{maxWidth: '90vw', background: '#fff', borderRadius: '18px', boxShadow: '0 2px 16px 0 #0001'}}>
+            <div className="w-full min-w-0 px-2 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 mx-auto max-w-[90vw] sm:max-w-4xl lg:max-w-5xl bg-white rounded-2xl shadow-sm">
 
                 {/* Header */}
                 <div className="mb-8 sm:mb-10">
@@ -725,12 +725,12 @@ export default function Dashboard() {
                             </div>
                         )}
 
-                        {/* Paginación */}
-                        <div className="mt-4 pagination-flex">
-                            <div className="text-sm text-gray-500">
+                        {/* Paginación — responsive */}
+                        <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="text-sm text-gray-500 order-2 sm:order-1">
                                 Mostrando {traslados.length > 0 ? ((trasladosPage - 1) * ITEMS_PER_PAGE) + 1 : 0} - {Math.min(trasladosPage * ITEMS_PER_PAGE, trasladosTotal)} de {trasladosTotal}
                             </div>
-                            <div className="pagination-controls flex items-center gap-2">
+                            <div className="pagination-controls flex flex-wrap items-center justify-center sm:justify-end gap-2 order-1 sm:order-2">
                                 <button
                                     onClick={async () => {
                                         const newPage = Math.max(1, trasladosPage - 1)

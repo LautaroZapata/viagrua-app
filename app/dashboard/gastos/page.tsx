@@ -72,6 +72,9 @@ export default function GastosPage() {
     const [paginaGastosAdmin, setPaginaGastosAdmin] = useState(1)
     const [filtroMovimientos, setFiltroMovimientos] = useState('fecha_desc')
     const [filtroTipoGasto, setFiltroTipoGasto] = useState('todos')
+    // Admin: mismo sistema de filtro y orden que chofer
+    const [filtroTipoGastoAdmin, setFiltroTipoGastoAdmin] = useState('todos')
+    const [filtroOrdenAdmin, setFiltroOrdenAdmin] = useState('fecha_desc')
     const ITEMS_POR_PAGINA = 10
     
     const [formData, setFormData] = useState({
@@ -248,6 +251,27 @@ export default function GastosPage() {
         ? gastos.filter(g => g.usuario_id === perfil?.id)
         : gastos
 
+    // Admin: filtrar por tipo de gasto (igual que chofer)
+    const gastosPorTipoAdmin = filtroTipoGastoAdmin === 'todos'
+        ? gastosFiltrados
+        : gastosFiltrados.filter(g => g.tipo === filtroTipoGastoAdmin)
+
+    // Admin: ordenar (igual que chofer)
+    const gastosOrdenadosAdmin = [...gastosPorTipoAdmin].sort((a, b) => {
+        switch (filtroOrdenAdmin) {
+            case 'fecha_desc':
+                return new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+            case 'fecha_asc':
+                return new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+            case 'mayor_importe':
+                return b.importe - a.importe
+            case 'menor_importe':
+                return a.importe - b.importe
+            default:
+                return new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+        }
+    })
+
     // Calcular totales
     const totalGastos = gastosFiltrados.reduce((sum, g) => sum + g.importe, 0)
     const misGastos = gastos.filter(g => g.usuario_id === perfil?.id).reduce((sum, g) => sum + g.importe, 0)
@@ -317,9 +341,9 @@ export default function GastosPage() {
         paginaActual * ITEMS_POR_PAGINA
     )
 
-    // Paginación de gastos (admin)
-    const totalPaginasGastos = Math.ceil(gastosFiltrados.length / ITEMS_POR_PAGINA)
-    const gastosPaginados = gastosFiltrados.slice(
+    // Paginación de gastos (admin) — sobre lista filtrada y ordenada
+    const totalPaginasGastos = Math.ceil(gastosOrdenadosAdmin.length / ITEMS_POR_PAGINA)
+    const gastosPaginados = gastosOrdenadosAdmin.slice(
         (paginaGastosAdmin - 1) * ITEMS_POR_PAGINA,
         paginaGastosAdmin * ITEMS_POR_PAGINA
     )
@@ -369,7 +393,7 @@ export default function GastosPage() {
                 </div>
             </nav>
 
-            <div className="w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-8 max-w-3xl mx-auto">
+            <div className="w-full min-w-0 px-4 sm:px-6 lg:px-8 py-5 sm:py-8 max-w-3xl mx-auto overflow-x-hidden">
                 
                 {/* SOLO ADMIN: Resumen de Rentabilidad */}
                 {isAdmin && (
@@ -496,79 +520,106 @@ export default function GastosPage() {
 
                 {/* Lista de Gastos (Admin) o Movimientos (Chofer) */}
                 <div className="card p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
-                        <div>
-                            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
-                                {isAdmin ? 'Gastos de la Empresa' : 'Mis Movimientos'}
-                            </h2>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                                {isAdmin ? `${gastosFiltrados.length} registros` : `${movimientos.length} movimientos`}
-                            </p>
+                    <div className="flex flex-col gap-4 mb-5">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
+                                    {isAdmin ? 'Gastos de la Empresa' : 'Mis Movimientos'}
+                                </h2>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    {isAdmin ? `${gastosOrdenadosAdmin.length} registros` : `${movimientos.length} movimientos`}
+                                </p>
+                            </div>
+                            
+                            {/* SOLO ADMIN: Toggle + Filtros (mismo sistema que chofer) */}
+                            {isAdmin && (
+                                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                    <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+                                        <button
+                                            onClick={() => { setVerTodos(true); setPaginaGastosAdmin(1) }}
+                                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
+                                                verTodos ? 'bg-white shadow text-orange-600' : 'text-gray-500'
+                                            }`}
+                                        >
+                                            Todos
+                                        </button>
+                                        <button
+                                            onClick={() => { setVerTodos(false); setPaginaGastosAdmin(1) }}
+                                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
+                                                !verTodos ? 'bg-white shadow text-orange-600' : 'text-gray-500'
+                                            }`}
+                                        >
+                                            Solo míos
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                        <select
+                                            value={filtroTipoGastoAdmin}
+                                            onChange={(e) => { setFiltroTipoGastoAdmin(e.target.value); setPaginaGastosAdmin(1) }}
+                                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-2 focus:ring-orange-300 focus:outline-none w-full sm:w-auto min-w-0"
+                                        >
+                                            <option value="todos">Todos los tipos</option>
+                                            {tiposGasto.map((tipo) => (
+                                                <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
+                                            ))}
+                                        </select>
+                                        <select
+                                            value={filtroOrdenAdmin}
+                                            onChange={(e) => { setFiltroOrdenAdmin(e.target.value); setPaginaGastosAdmin(1) }}
+                                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-2 focus:ring-orange-300 focus:outline-none w-full sm:w-auto min-w-0"
+                                        >
+                                            <optgroup label="Por fecha">
+                                                <option value="fecha_desc">Más recientes</option>
+                                                <option value="fecha_asc">Más antiguos</option>
+                                            </optgroup>
+                                            <optgroup label="Por importe">
+                                                <option value="mayor_importe">Mayor importe</option>
+                                                <option value="menor_importe">Menor importe</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* SOLO CHOFER: Filtros de movimientos */}
+                            {!isAdmin && (
+                                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto min-w-0">
+                                    <select
+                                        value={filtroTipoGasto}
+                                        onChange={(e) => { setFiltroTipoGasto(e.target.value); setPaginaActual(1) }}
+                                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-2 focus:ring-orange-300 focus:outline-none w-full sm:w-auto min-w-0"
+                                    >
+                                        <option value="todos">Todos</option>
+                                        <option value="solo_ingresos">Solo Ingresos</option>
+                                        <option value="solo_gastos">Solo Gastos</option>
+                                        <optgroup label="Por tipo">
+                                            {tiposGasto.map((tipo) => (
+                                                <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
+                                            ))}
+                                        </optgroup>
+                                    </select>
+                                    <select
+                                        value={filtroMovimientos}
+                                        onChange={(e) => { setFiltroMovimientos(e.target.value); setPaginaActual(1) }}
+                                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-2 focus:ring-orange-300 focus:outline-none w-full sm:w-auto min-w-0"
+                                    >
+                                        <optgroup label="Por fecha">
+                                            <option value="fecha_desc">Más recientes</option>
+                                            <option value="fecha_asc">Más antiguos</option>
+                                        </optgroup>
+                                        <optgroup label="Por importe">
+                                            <option value="mayor_importe">Mayor importe</option>
+                                            <option value="menor_importe">Menor importe</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                            )}
                         </div>
-                        
-                        {/* SOLO ADMIN: Toggle para ver todos o solo propios */}
-                        {isAdmin && (
-                            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-                                <button
-                                    onClick={() => setVerTodos(true)}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                                        verTodos ? 'bg-white shadow text-orange-600' : 'text-gray-500'
-                                    }`}
-                                >
-                                    Todos
-                                </button>
-                                <button
-                                    onClick={() => setVerTodos(false)}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                                        !verTodos ? 'bg-white shadow text-orange-600' : 'text-gray-500'
-                                    }`}
-                                >
-                                    Solo míos
-                                </button>
-                            </div>
-                        )}
-
-                        {/* SOLO CHOFER: Filtros de movimientos */}
-                        {!isAdmin && (
-                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                                {/* Filtro por tipo */}
-                                <select
-                                    value={filtroTipoGasto}
-                                    onChange={(e) => { setFiltroTipoGasto(e.target.value); setPaginaActual(1) }}
-                                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-2 focus:ring-orange-300 focus:outline-none"
-                                >
-                                    <option value="todos">Todos</option>
-                                    <option value="solo_ingresos">Solo Ingresos</option>
-                                    <option value="solo_gastos">Solo Gastos</option>
-                                    <optgroup label="Por tipo">
-                                        {tiposGasto.map((tipo) => (
-                                            <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
-                                        ))}
-                                    </optgroup>
-                                </select>
-
-                                {/* Ordenar por */}
-                                <select
-                                    value={filtroMovimientos}
-                                    onChange={(e) => { setFiltroMovimientos(e.target.value); setPaginaActual(1) }}
-                                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-2 focus:ring-orange-300 focus:outline-none"
-                                >
-                                    <optgroup label="Por fecha">
-                                        <option value="fecha_desc">Más recientes</option>
-                                        <option value="fecha_asc">Más antiguos</option>
-                                    </optgroup>
-                                    <optgroup label="Por importe">
-                                        <option value="mayor_importe">Mayor importe</option>
-                                        <option value="menor_importe">Menor importe</option>
-                                    </optgroup>
-                                </select>
-                            </div>
-                        )}
                     </div>
 
                     {/* ADMIN: Lista de gastos */}
                     {isAdmin && (
-                        gastosFiltrados.length === 0 ? (
+                        gastosOrdenadosAdmin.length === 0 ? (
                             <div className="text-center py-12">
                                 <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
                                     <svg className="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -579,40 +630,41 @@ export default function GastosPage() {
                             </div>
                         ) : (
                             <>
-                            <div className="space-y-2">
+                                <div className="space-y-2">
                                 {gastosPaginados.map((gasto) => (
                                     <div 
                                         key={gasto.id} 
-                                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-lg bg-gray-200 flex items-center justify-center text-sm">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-9 h-9 shrink-0 rounded-lg bg-gray-200 flex items-center justify-center text-sm">
                                                 {getIconForTipo(gasto.tipo)}
                                             </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
+                                            <div className="min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2">
                                                     <p className="font-medium text-sm text-gray-900">{getLabelForTipo(gasto.tipo)}</p>
                                                     {gasto.perfiles && (
-                                                        <span className="text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">
+                                                        <span className="text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded shrink-0">
                                                             {gasto.usuario_id === perfil?.id ? 'Yo' : gasto.perfiles.nombre_completo}
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
+                                                <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500 mt-0.5">
                                                     <ClientOnly>{gasto.fecha ? new Date(gasto.fecha).toLocaleDateString('es-AR') : ''}</ClientOnly>
                                                     {gasto.descripcion && (
-                                                        <span className="truncate max-w-[120px]">{gasto.descripcion}</span>
+                                                        <span className="truncate max-w-[180px] sm:max-w-[240px]">{gasto.descripcion}</span>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
                                             <span className="font-semibold text-sm text-red-500">
                                                 -${gasto.importe.toLocaleString('es-AR')}
                                             </span>
                                             <button
                                                 onClick={() => eliminarGasto(gasto)}
                                                 className="text-gray-400 hover:text-red-500 transition p-1.5 hover:bg-red-50 rounded-lg"
+                                                aria-label="Eliminar gasto"
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -622,9 +674,9 @@ export default function GastosPage() {
                                     </div>
                                 ))}
                             </div>
-                            {/* Paginación admin */}
+                            {/* Paginación admin — mismo estilo que chofer, responsive */}
                             {totalPaginasGastos > 1 && (
-                                <div className="flex items-center justify-center gap-2 mt-5 pt-5 border-t border-gray-100">
+                                <div className="flex flex-wrap items-center justify-center gap-2 mt-5 pt-5 border-t border-gray-100">
                                     <button
                                         onClick={() => setPaginaGastosAdmin(p => Math.max(1, p - 1))}
                                         disabled={paginaGastosAdmin === 1}
@@ -636,12 +688,12 @@ export default function GastosPage() {
                                     >
                                         Anterior
                                     </button>
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex flex-wrap items-center justify-center gap-1">
                                         {Array.from({ length: totalPaginasGastos }, (_, i) => i + 1).map(num => (
                                             <button
                                                 key={num}
                                                 onClick={() => setPaginaGastosAdmin(num)}
-                                                className={`w-8 h-8 rounded-lg text-xs font-medium transition ${
+                                                className={`min-w-[2rem] h-8 px-2 rounded-lg text-xs font-medium transition ${
                                                     paginaGastosAdmin === num
                                                         ? 'bg-orange-500 text-white'
                                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -685,20 +737,20 @@ export default function GastosPage() {
                                     {movimientosPaginados.map((mov) => (
                                         <div 
                                             key={mov.id + mov.tipo} 
-                                            className={`flex items-center justify-between p-3 rounded-lg transition ${
+                                            className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg transition ${
                                                 mov.tipo === 'ingreso' 
                                                     ? 'bg-green-50 hover:bg-green-100 border border-green-100' 
                                                     : 'bg-red-50 hover:bg-red-100 border border-red-100'
                                             }`}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-lg bg-white/80 flex items-center justify-center text-sm">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-9 h-9 shrink-0 rounded-lg bg-white/80 flex items-center justify-center text-sm">
                                                     {mov.icono}
                                                 </div>
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="font-medium text-sm text-gray-900">{mov.concepto}</p>
-                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                                <div className="min-w-0">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <p className="font-medium text-sm text-gray-900 truncate">{mov.concepto}</p>
+                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${
                                                             mov.tipo === 'ingreso' 
                                                                 ? 'bg-green-200 text-green-700' 
                                                                 : 'bg-red-200 text-red-700'
@@ -706,15 +758,15 @@ export default function GastosPage() {
                                                             {mov.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
+                                                    <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500 mt-0.5">
                                                         <ClientOnly>{mov.fecha ? new Date(mov.fecha).toLocaleDateString('es-AR') : ''}</ClientOnly>
                                                         {mov.descripcion && (
-                                                            <span className="truncate max-w-[120px]">{mov.descripcion}</span>
+                                                            <span className="truncate max-w-[180px] sm:max-w-[240px]">{mov.descripcion}</span>
                                                         )}
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
                                                 <span className={`font-semibold text-sm ${
                                                     mov.tipo === 'ingreso' ? 'text-green-600' : 'text-red-500'
                                                 }`}>
@@ -727,6 +779,7 @@ export default function GastosPage() {
                                                             if (gasto) eliminarGasto(gasto)
                                                         }}
                                                         className="text-gray-400 hover:text-red-500 transition p-1.5 hover:bg-red-100 rounded-lg"
+                                                        aria-label="Eliminar"
                                                     >
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -738,9 +791,9 @@ export default function GastosPage() {
                                     ))}
                                 </div>
 
-                                {/* Paginación */}
+                                {/* Paginación — responsive */}
                                 {totalPaginas > 1 && (
-                                    <div className="flex items-center justify-center gap-2 mt-5 pt-5 border-t border-gray-100">
+                                    <div className="flex flex-wrap items-center justify-center gap-2 mt-5 pt-5 border-t border-gray-100">
                                         <button
                                             onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
                                             disabled={paginaActual === 1}
@@ -752,13 +805,12 @@ export default function GastosPage() {
                                         >
                                             Anterior
                                         </button>
-                                        
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex flex-wrap items-center justify-center gap-1">
                                             {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(num => (
                                                 <button
                                                     key={num}
                                                     onClick={() => setPaginaActual(num)}
-                                                    className={`w-8 h-8 rounded-lg text-xs font-medium transition ${
+                                                    className={`min-w-[2rem] h-8 px-2 rounded-lg text-xs font-medium transition ${
                                                         paginaActual === num
                                                             ? 'bg-orange-500 text-white'
                                                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -768,7 +820,6 @@ export default function GastosPage() {
                                                 </button>
                                             ))}
                                         </div>
-
                                         <button
                                             onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
                                             disabled={paginaActual === totalPaginas}

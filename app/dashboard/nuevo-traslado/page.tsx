@@ -276,7 +276,7 @@ export default function NuevoTraslado() {
             </nav>
 
             {/* Content */}
-            <div className="w-full px-2 py-4 mx-auto" style={{maxWidth: '90vw', background: '#fff', borderRadius: '18px', boxShadow: '0 2px 16px 0 #0001'}}>
+            <div className="w-full min-w-0 max-w-[90vw] sm:max-w-2xl mx-auto px-2 py-4 bg-white rounded-2xl shadow-sm">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Form - Left Column */}
                     <div className="card">
