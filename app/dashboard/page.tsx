@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import ClientOnly from '../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { confirmDelete, confirmAction, showError } from '@/lib/swal'
 
 interface Perfil {
     id: string;
@@ -183,9 +184,12 @@ export default function Dashboard() {
     }
 
     const expulsarChofer = async (choferId: string, nombreChofer: string) => {
-        if (!confirm(`¿Estás seguro de expulsar a ${nombreChofer}? Esta acción no se puede deshacer.`)) {
-            return
-        }
+        const ok = await confirmDelete({
+            title: 'Expulsar chofer',
+            text: `¿Estás seguro de expulsar a ${nombreChofer}? Esta acción no se puede deshacer.`,
+            confirmButtonText: 'Sí, expulsar',
+        })
+        if (!ok) return
 
         // Actualización optimista
         setChoferes(prev => prev.filter(c => c.id !== choferId))
@@ -196,7 +200,7 @@ export default function Dashboard() {
         })
 
         if (error) {
-            alert('Error al expulsar: ' + error.message)
+            showError('Error al expulsar: ' + error.message)
             if (perfil) await cargarChoferes(perfil.empresa_id)
         }
     }
@@ -248,10 +252,13 @@ export default function Dashboard() {
 
     const cambiarEstadoTraslado = async (trasladoId: string, nuevoEstado: string) => {
         if (nuevoEstado === 'completado') {
-            if (typeof window !== 'undefined') {
-                const confirmed = window.confirm('¿Confirmar marcar como completado? Esta acción bloqueará el traslado.');
-                if (!confirmed) return;
-            }
+            const confirmed = await confirmAction({
+                title: 'Confirmar',
+                text: '¿Confirmar marcar como completado? Esta acción bloqueará el traslado.',
+                icon: 'warning',
+                confirmButtonText: 'Sí, completar',
+            })
+            if (!confirmed) return
         }
         // Actualización optimista - cambiar UI inmediatamente
         setTraslados(prev => prev.map(t => 
@@ -265,19 +272,20 @@ export default function Dashboard() {
             .eq('id', trasladoId)
 
         // Si hay error, revertir
-            if (error) {
-            alert('Error al actualizar: ' + error.message)
+        if (error) {
+            showError('Error al actualizar: ' + error.message)
             if (perfil) await cargarTraslados(perfil.empresa_id, trasladosPage)
-        }
-        else {
+        } else {
             if (perfil) await cargarContadoresTraslados(perfil.empresa_id)
         }
     }
 
     const eliminarTraslado = async (trasladoId: string) => {
-        if (!confirm('¿Estás seguro de eliminar este traslado? Esta acción no se puede deshacer.')) {
-            return
-        }
+        const ok = await confirmDelete({
+            title: 'Eliminar traslado',
+            text: '¿Estás seguro de eliminar este traslado? Esta acción no se puede deshacer.',
+        })
+        if (!ok) return
 
         // Actualización optimista - quitar de la lista inmediatamente
         setTraslados(prev => prev.filter(t => t.id !== trasladoId))
@@ -295,15 +303,11 @@ export default function Dashboard() {
             .eq('id', trasladoId)
 
         if (error) {
-            alert('Error al eliminar: ' + error.message)
-            // Recargar si hubo error (para revertir)
+            showError('Error al eliminar: ' + error.message)
             if (perfil) await cargarTraslados(perfil.empresa_id, trasladosPage)
-        }
-        else {
-            // Actualizar contadores después de borrar
+        } else {
             if (perfil) await cargarContadoresTraslados(perfil.empresa_id)
         }
-        // Si no hay error, ya lo quitamos optimistamente - no hace falta recargar
     }
 
     const generarCodigoInvitacion = async () => {
@@ -322,7 +326,7 @@ export default function Dashboard() {
         })
 
         if (error) {
-            alert('Error al generar código: ' + error.message)
+            showError('Error al generar código: ' + error.message)
             setGenerandoCodigo(false)
             return
         }
@@ -354,7 +358,7 @@ export default function Dashboard() {
             setLinkCopiado(true);
             setTimeout(() => setLinkCopiado(false), 2000);
         } catch (err) {
-            alert('No se pudo copiar el link. Copialo manualmente: ' + linkInvitacion);
+            showError('No se pudo copiar el link. Copialo manualmente: ' + linkInvitacion);
         }
     }
 

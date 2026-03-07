@@ -4,6 +4,7 @@ import ClientOnly from '../../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { compressImage, formatFileSize } from '@/lib/compressImage'
+import { confirmDelete, showError } from '@/lib/swal'
 
 interface Chofer {
     id: string
@@ -127,14 +128,20 @@ export default function NuevoTraslado() {
             }))
         } catch (error) {
             console.error('Error al comprimir:', error)
-            alert('Error al procesar la imagen')
+            showError('Error al procesar la imagen')
         }
         
         setComprimiendo(null)
     }
 
-    // Eliminar foto
-    const eliminarFoto = (tipo: string) => {
+    // Eliminar foto (con confirmación)
+    const eliminarFoto = async (tipo: string) => {
+        const ok = await confirmDelete({
+            title: 'Quitar foto',
+            text: `¿Eliminar la foto ${tipo}?`,
+            confirmButtonText: 'Sí, quitar',
+        })
+        if (!ok) return
         if (fotos[tipo]?.preview) {
             URL.revokeObjectURL(fotos[tipo]!.preview)
         }
@@ -155,7 +162,7 @@ export default function NuevoTraslado() {
                 
                 if (error) {
                     console.error(`Error subiendo ${tipo}:`, error)
-                    alert(`Error al subir foto ${tipo}: ${error.message}`)
+                    showError(`Error al subir foto ${tipo}: ${error.message}`)
                 } else {
                     const { data: urlData } = supabase.storage
                         .from('fotos-traslados')
@@ -192,7 +199,7 @@ export default function NuevoTraslado() {
 
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}))
-            alert('No se pudo crear el traslado: ' + (err.error || resp.statusText))
+            showError('No se pudo crear el traslado: ' + (err.error || resp.statusText))
             setLoading(false)
             return
         }
@@ -210,7 +217,7 @@ export default function NuevoTraslado() {
                 if (perfilError) {
                     // Revertir: eliminar el traslado creado
                     await supabase.from('traslados').delete().eq('id', traslado.id)
-                    alert('No se pudo actualizar el contador de traslados: ' + perfilError.message)
+                    showError('No se pudo actualizar el contador de traslados: ' + perfilError.message)
                     setLoading(false)
                     return
                 }
@@ -218,7 +225,7 @@ export default function NuevoTraslado() {
                 // Revertir si algo inesperado falla
                 await supabase.from('traslados').delete().eq('id', traslado.id)
                 console.error('Error actualizando contador de traslados:', err)
-                alert('Error al actualizar contador de traslados')
+                showError('Error al actualizar contador de traslados')
                 setLoading(false)
                 return
             }
@@ -237,7 +244,7 @@ export default function NuevoTraslado() {
 
                 if (updateError) {
                     console.error('Error guardando URLs:', updateError)
-                    alert('Error al guardar URLs de fotos: ' + updateError.message)
+                    showError('Error al guardar URLs de fotos: ' + updateError.message)
                 }
             }
         }

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import ClientOnly from '../../../components/ClientOnly'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { confirmDelete, confirmAction, showError } from '@/lib/swal'
 
 interface Traslado {
     id: string
@@ -94,16 +95,13 @@ export default function DetalleTrasladoAdmin() {
     const cambiarEstado = async (nuevoEstado: string) => {
         if (!traslado) return
         if (nuevoEstado === 'completado') {
-            const Swal = (await import('sweetalert2').catch(() => ({ default: require('sweetalert2') }))).default;
-            const res = await Swal.fire({
+            const ok = await confirmAction({
                 title: 'Confirmar',
                 text: '¿Confirmar marcar como completado? Esta acción bloqueará el traslado.',
                 icon: 'warning',
-                showCancelButton: true,
                 confirmButtonText: 'Sí, completar',
-                cancelButtonText: 'Cancelar'
-            });
-            if (!res.isConfirmed) return;
+            })
+            if (!ok) return
         }
         
         // Actualización optimista - cambiar UI inmediatamente
@@ -116,26 +114,21 @@ export default function DetalleTrasladoAdmin() {
             .eq('id', traslado.id)
 
         if (error) {
-            // Revertir si hay error
             setTraslado({ ...traslado, estado: estadoAnterior })
-            alert('Error: ' + error.message)
+            showError('Error: ' + error.message)
         }
     }
 
     const cambiarEstadoPago = async (nuevoEstadoPago: string) => {
         if (!traslado) return
 
-        // Confirm payment change with SweetAlert2
-        const Swal = (await import('sweetalert2')).default
-        const resPago = await Swal.fire({
+        const ok = await confirmAction({
             title: 'Confirmar método de pago',
             text: `¿Confirmar cambio de método de pago a "${nuevoEstadoPago}"? Asegúrate de elegir el método correcto.`,
             icon: 'question',
-            showCancelButton: true,
             confirmButtonText: 'Sí, confirmar',
-            cancelButtonText: 'Cancelar'
         })
-        if (!resPago.isConfirmed) return
+        if (!ok) return
 
         const estadoPagoAnterior = traslado.estado_pago
         setTraslado({ ...traslado, estado_pago: nuevoEstadoPago })
@@ -147,15 +140,17 @@ export default function DetalleTrasladoAdmin() {
 
         if (error) {
             setTraslado({ ...traslado, estado_pago: estadoPagoAnterior })
-            alert('Error: ' + error.message)
+            showError('Error: ' + error.message)
         }
     }
 
     const eliminarTraslado = async () => {
         if (!traslado) return
-        if (!confirm('¿Estás seguro de eliminar este traslado? Esta acción no se puede deshacer.')) {
-            return
-        }
+        const ok = await confirmDelete({
+            title: 'Eliminar traslado',
+            text: '¿Estás seguro de eliminar este traslado? Esta acción no se puede deshacer.',
+        })
+        if (!ok) return
 
         // Eliminar fotos del storage
         await supabase.storage.from('fotos-traslados').remove([`${traslado.id}/`])
@@ -166,7 +161,7 @@ export default function DetalleTrasladoAdmin() {
             .eq('id', traslado.id)
 
         if (error) {
-            alert('Error al eliminar: ' + error.message)
+            showError('Error al eliminar: ' + error.message)
             return
         }
 

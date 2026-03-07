@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import ClientOnly from '../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { confirmAction } from '@/lib/swal'
 
 interface Traslado {
     id: string
@@ -418,13 +419,18 @@ export default function PanelChofer() {
                             </div>
                             <button
                                 onClick={async () => {
-                                    if (confirm('¿Seguro que quieres salirte de la empresa? Perderás acceso a los traslados activos.')) {
-                                        await supabase.from('perfiles').update({ empresa_id: null }).eq('id', perfil.id)
-                                        setPerfil({ ...perfil, empresa_id: null })
-                                        setNombreEmpresa(null)
-                                        setMensajeExito('Te has salido de la empresa.');
-                                        setTimeout(() => setMensajeExito(null), 5000)
-                                    }
+                                    const ok = await confirmAction({
+                                        title: 'Salirse de la empresa',
+                                        text: '¿Seguro que quieres salirte de la empresa? Perderás acceso a los traslados activos.',
+                                        icon: 'warning',
+                                        confirmButtonText: 'Sí, salirme',
+                                    })
+                                    if (!ok) return
+                                    await supabase.from('perfiles').update({ empresa_id: null }).eq('id', perfil.id)
+                                    setPerfil({ ...perfil, empresa_id: null })
+                                    setNombreEmpresa(null)
+                                    setMensajeExito('Te has salido de la empresa.')
+                                    setTimeout(() => setMensajeExito(null), 5000)
                                 }}
                                 className="bg-red-100 hover:bg-red-200 text-red-700 font-medium text-xs px-4 py-2 rounded-lg transition border border-red-200"
                             >

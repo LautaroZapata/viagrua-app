@@ -4,6 +4,7 @@ import ClientOnly from '../../../components/ClientOnly'
 import { createClient } from '@supabase/supabase-js'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { confirmAction, showError } from '@/lib/swal'
 
 interface Traslado {
     id: string
@@ -95,17 +96,13 @@ export default function DetalleTraslado() {
     const cambiarEstado = async (nuevoEstado: string) => {
         if (!traslado) return
         if (nuevoEstado === 'completado') {
-            // @ts-ignore
-            const Swal = require('sweetalert2')
-            const res = await Swal.fire({
+            const ok = await confirmAction({
                 title: 'Confirmar',
                 text: '¿Confirmar marcar como completado? Esta acción bloqueará el traslado.',
                 icon: 'warning',
-                showCancelButton: true,
                 confirmButtonText: 'Sí, completar',
-                cancelButtonText: 'Cancelar'
             })
-            if (!res.isConfirmed) return
+            if (!ok) return
         }
         
         const { data: { user } } = await supabase.auth.getUser()
@@ -123,27 +120,22 @@ export default function DetalleTraslado() {
             .eq('chofer_id', user.id)  // Doble verificación
 
         if (error) {
-            // Revertir si hay error
             setTraslado({ ...traslado, estado: estadoAnterior })
-            alert('Error: ' + error.message)
+            showError('Error: ' + error.message)
         }
     }
 
     const cambiarEstadoPago = async (nuevoEstadoPago: string) => {
         if (!traslado) return
 
-        // Confirm payment change with SweetAlert2
-        const Swal = (await import('sweetalert2')).default
-        const resPago = await Swal.fire({
+        const ok = await confirmAction({
             title: 'Confirmar método de pago',
             text: `¿Confirmar cambio de método de pago a "${nuevoEstadoPago}"? Asegúrate de elegir el método correcto.`,
             icon: 'question',
-            showCancelButton: true,
             confirmButtonText: 'Sí, confirmar',
-            cancelButtonText: 'Cancelar'
         })
-        if (!resPago.isConfirmed) return
-        
+        if (!ok) return
+
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
@@ -158,7 +150,7 @@ export default function DetalleTraslado() {
 
         if (error) {
             setTraslado({ ...traslado, estado_pago: estadoPagoAnterior })
-            alert('Error: ' + error.message)
+            showError('Error: ' + error.message)
         }
     }
 

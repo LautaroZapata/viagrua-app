@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import ClientOnly from '../../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { confirmDelete, showError } from '@/lib/swal'
 
 interface Gasto {
     id: string
@@ -199,7 +200,7 @@ export default function GastosPage() {
         })
 
         if (error) {
-            alert('Error: ' + error.message)
+            showError('Error: ' + error.message)
         } else {
             setFormData({ tipo: '', importe: '', descripcion: '', fecha: new Date().toISOString().split('T')[0] })
             await cargarGastos(perfil)
@@ -209,24 +210,27 @@ export default function GastosPage() {
     }
 
     const eliminarGasto = async (gasto: Gasto) => {
-        // Solo puede eliminar sus propios gastos (o admin cualquiera)
         if (!isAdmin && gasto.usuario_id !== perfil?.id) {
-            alert('No puedes eliminar gastos de otros usuarios')
+            showError('No puedes eliminar gastos de otros usuarios')
             return
         }
-        
-        if (!confirm('¿Eliminar este gasto?')) return
-        
-        // Optimista
+
+        const ok = await confirmDelete({
+            title: 'Eliminar gasto',
+            text: '¿Eliminar este gasto?',
+            confirmButtonText: 'Sí, eliminar',
+        })
+        if (!ok) return
+
         setGastos(prev => prev.filter(g => g.id !== gasto.id))
-        
+
         const { error } = await supabase
             .from('gastos')
             .delete()
             .eq('id', gasto.id)
 
         if (error) {
-            alert('Error: ' + error.message)
+            showError('Error: ' + error.message)
             if (perfil) await cargarGastos(perfil)
         }
     }
