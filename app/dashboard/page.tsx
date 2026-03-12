@@ -574,6 +574,22 @@ export default function Dashboard() {
                     )}
                 </div>
 
+                {/* Banner Upgrade Premium - Solo para plan Free */}
+                {planKey === 'free' && (
+                    <div className="mb-6 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+                        <div className="text-white text-center sm:text-left">
+                            <p className="font-bold text-sm sm:text-base">Desbloqueá traslados ilimitados y más funciones</p>
+                            <p className="text-white/80 text-xs sm:text-sm mt-0.5">Agregá choferes, sin límites mensuales. Desde $499 UYU/mes.</p>
+                        </div>
+                        <button
+                            onClick={() => router.push('/planes')}
+                            className="shrink-0 px-5 py-2 bg-white text-orange-600 font-bold text-sm rounded-lg hover:bg-orange-50 transition shadow"
+                        >
+                            Ver planes
+                        </button>
+                    </div>
+                )}
+
                 {/* Stats Grid - Dinámico */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-8 sm:mb-10">
                     <div className="card p-4 sm:p-5 lg:p-6">
