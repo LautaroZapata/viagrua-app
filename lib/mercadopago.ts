@@ -1,11 +1,11 @@
 const MP_API = 'https://api.mercadopago.com'
-const ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN
 
 function getHeaders() {
-    if (!ACCESS_TOKEN) throw new Error('MERCADOPAGO_ACCESS_TOKEN no configurado')
+    const token = process.env.MERCADOPAGO_ACCESS_TOKEN
+    if (!token) throw new Error('MERCADOPAGO_ACCESS_TOKEN no configurado')
     return {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${ACCESS_TOKEN}`,
+        'Authorization': `Bearer ${token}`,
     }
 }
 
