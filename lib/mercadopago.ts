@@ -20,8 +20,8 @@ export async function createSubscription(payerEmail: string, backUrl: string) {
             auto_recurring: {
                 frequency: 1,
                 frequency_type: 'months',
-                transaction_amount: 15,
-                currency_id: 'USD',
+                transaction_amount: 199,
+                currency_id: 'UYU',
             },
             status: 'pending',
         }),

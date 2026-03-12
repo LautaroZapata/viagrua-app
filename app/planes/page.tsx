@@ -34,6 +34,8 @@ function PlanesContent() {
     const [perfil, setPerfil] = useState<Perfil | null>(null)
     const [loading, setLoading] = useState(true)
     const [procesando, setProcesando] = useState(false)
+    const [mostrarModalEmail, setMostrarModalEmail] = useState(false)
+    const [mpEmail, setMpEmail] = useState('')
 
     const statusParam = searchParams?.get('status') ?? null
 
@@ -57,9 +59,18 @@ function PlanesContent() {
     }
 
     const handleUpgrade = async () => {
+        if (!mpEmail || !mpEmail.includes('@')) {
+            showError('Ingresá un email válido')
+            return
+        }
         setProcesando(true)
+        setMostrarModalEmail(false)
         try {
-            const res = await fetch('/api/mercadopago/subscribe', { method: 'POST' })
+            const res = await fetch('/api/mercadopago/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payer_email: mpEmail }),
+            })
             const data = await res.json()
 
             if (!res.ok) {
@@ -229,8 +240,8 @@ function PlanesContent() {
                         )}
                         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Premium</h2>
                         <div className="mb-6">
-                            <span className="text-3xl sm:text-4xl font-bold text-orange-600">$15</span>
-                            <span className="text-gray-500 text-sm"> USD/mes</span>
+                            <span className="text-3xl sm:text-4xl font-bold text-orange-600">$199</span>
+                            <span className="text-gray-500 text-sm"> UYU/mes</span>
                         </div>
                         <ul className="space-y-3 mb-8">
                             <li className="flex items-start gap-2 text-sm text-gray-600">
@@ -278,7 +289,7 @@ function PlanesContent() {
                             </div>
                         ) : (
                             <button
-                                onClick={handleUpgrade}
+                                onClick={() => setMostrarModalEmail(true)}
                                 disabled={procesando}
                                 className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition disabled:opacity-50 text-sm sm:text-base"
                             >
@@ -294,6 +305,41 @@ function PlanesContent() {
                     <p className="mt-1">Podés cancelar tu suscripción en cualquier momento.</p>
                 </div>
             </div>
+
+            {/* Modal de email para Mercado Pago */}
+            {mostrarModalEmail && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">Email de Mercado Pago</h3>
+                        <p className="text-sm text-gray-500 mb-4">
+                            Ingresá el email asociado a tu cuenta de Mercado Pago en Uruguay para procesar el pago.
+                        </p>
+                        <input
+                            type="email"
+                            value={mpEmail}
+                            onChange={(e) => setMpEmail(e.target.value)}
+                            placeholder="tu-email@ejemplo.com"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                            autoFocus
+                            onKeyDown={(e) => e.key === 'Enter' && handleUpgrade()}
+                        />
+                        <div className="flex gap-3 mt-5">
+                            <button
+                                onClick={() => { setMostrarModalEmail(false); setMpEmail('') }}
+                                className="flex-1 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleUpgrade}
+                                className="flex-1 py-2.5 text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition"
+                            >
+                                Continuar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

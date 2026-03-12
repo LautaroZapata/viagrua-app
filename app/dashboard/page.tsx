@@ -579,7 +579,7 @@ export default function Dashboard() {
                     <div className="mb-6 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
                         <div className="text-white text-center sm:text-left">
                             <p className="font-bold text-sm sm:text-base">Desbloqueá traslados ilimitados y más funciones</p>
-                            <p className="text-white/80 text-xs sm:text-sm mt-0.5">Agregá choferes, sin límites mensuales. Desde $15 USD/mes.</p>
+                            <p className="text-white/80 text-xs sm:text-sm mt-0.5">Agregá choferes, sin límites mensuales. Desde $199 UYU/mes.</p>
                         </div>
                         <button
                             onClick={() => router.push('/planes')}

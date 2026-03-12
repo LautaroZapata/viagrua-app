@@ -3,8 +3,16 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { createSubscription } from '@/lib/mercadopago'
 
-export async function POST() {
+export async function POST(request: Request) {
     try {
+        // Leer payer_email del body
+        const body = await request.json().catch(() => ({}))
+        const payerEmail = body.payer_email
+
+        if (!payerEmail || !payerEmail.includes('@')) {
+            return NextResponse.json({ error: 'Email de Mercado Pago requerido' }, { status: 400 })
+        }
+
         // Autenticar usuario
         const supabase = await createClient()
         const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -16,7 +24,7 @@ export async function POST() {
         // Obtener perfil
         const { data: perfil, error: perfilError } = await supabase
             .from('perfiles')
-            .select('id, email, plan, mp_subscription_id')
+            .select('id, plan, mp_subscription_id')
             .eq('id', user.id)
             .single()
 
@@ -32,15 +40,7 @@ export async function POST() {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
         const backUrl = `${appUrl}/planes?status=pending`
 
-        const email = perfil.email || user.email
-        if (!email) {
-            return NextResponse.json({ error: 'No se encontró email del usuario' }, { status: 400 })
-        }
-
-        console.log('MP_TOKEN exists:', !!process.env.MERCADOPAGO_ACCESS_TOKEN)
-        console.log('MP_TOKEN prefix:', process.env.MERCADOPAGO_ACCESS_TOKEN?.substring(0, 10))
-
-        const preapproval = await createSubscription(email, backUrl)
+        const preapproval = await createSubscription(payerEmail, backUrl)
 
         // Guardar mp_subscription_id en el perfil
         const { error: updateError } = await supabaseAdmin
