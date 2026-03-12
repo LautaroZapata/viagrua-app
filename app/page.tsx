@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { sanitizeString, isValidEmail, isValidPassword, isValidName, isValidCompanyName, LIMITS } from '@/lib/validation'
 
 export default function RegistroEmpresa() {
     const router = useRouter()
@@ -15,11 +16,22 @@ export default function RegistroEmpresa() {
 
     const handleRegistro = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        const nombreEmpresa = sanitizeString(formData.nombreEmpresa)
+        const nombreDuenio = sanitizeString(formData.nombreDuenio)
+        const email = sanitizeString(formData.email).toLowerCase()
+        const password = formData.password
+
+        if (!isValidCompanyName(nombreEmpresa)) { alert('Nombre de empresa inválido (máx. 150 caracteres)'); return }
+        if (!isValidName(nombreDuenio)) { alert('Nombre inválido (máx. 100 caracteres)'); return }
+        if (!isValidEmail(email)) { alert('Email inválido'); return }
+        if (!isValidPassword(password)) { alert('La contraseña debe tener entre 6 y 128 caracteres'); return }
+
         setLoading(true)
 
         const { data: empresa, error: errorEmpresa } = await supabase
             .from('empresas')
-            .insert([{ nombre: formData.nombreEmpresa }])
+            .insert([{ nombre: nombreEmpresa }])
             .select()
             .single()
 
@@ -30,11 +42,11 @@ export default function RegistroEmpresa() {
         }
 
         const { error: errorAuth } = await supabase.auth.signUp({
-            email: formData.email,
-            password: formData.password,
+            email,
+            password,
             options: {
                 data: {
-                    nombre_completo: formData.nombreDuenio,
+                    nombre_completo: nombreDuenio,
                     empresa_id: empresa.id
                 }
             }
@@ -48,8 +60,8 @@ export default function RegistroEmpresa() {
         }
 
         const { error: errorLogin } = await supabase.auth.signInWithPassword({
-            email: formData.email,
-            password: formData.password
+            email,
+            password,
         })
 
         if (errorLogin) { router.push('/login'); return }
@@ -82,6 +94,7 @@ export default function RegistroEmpresa() {
                                 <input
                                     type="text"
                                     required
+                                    maxLength={LIMITS.empresa}
                                     placeholder="Ej: Transportes ABC"
                                     className="input-field"
                                     value={formData.nombreEmpresa}
@@ -94,6 +107,7 @@ export default function RegistroEmpresa() {
                                 <input
                                     type="text"
                                     required
+                                    maxLength={LIMITS.nombre}
                                     placeholder="Ej: Juan Pérez"
                                     className="input-field"
                                     value={formData.nombreDuenio}
@@ -106,6 +120,7 @@ export default function RegistroEmpresa() {
                                 <input
                                     type="email"
                                     required
+                                    maxLength={LIMITS.email}
                                     placeholder="Ej: juan@empresa.com"
                                     className="input-field"
                                     value={formData.email}
@@ -119,6 +134,7 @@ export default function RegistroEmpresa() {
                                     type="password"
                                     required
                                     minLength={6}
+                                    maxLength={LIMITS.password}
                                     placeholder="Mínimo 6 caracteres"
                                     className="input-field"
                                     value={formData.password}

@@ -16,13 +16,25 @@ interface Perfil {
 }
 interface Chofer { id: string; nombre_completo: string; email: string }
 interface Empresa { id: string; nombre: string }
+interface Traslado {
+    id: string;
+    marca_modelo: string;
+    matricula: string | null;
+    es_0km: boolean;
+    estado: string;
+    estado_pago: string;
+    importe_total: number | null;
+    observaciones: string | null;
+    created_at: string;
+    perfiles?: { nombre_completo: string };
+}
 
 
 export default function Dashboard() {
     const [perfil, setPerfil] = useState<Perfil | null>(null);
     const [empresa, setEmpresa] = useState<Empresa | null>(null);
     const [choferes, setChoferes] = useState<Chofer[]>([]);
-    const [traslados, setTraslados] = useState<any[]>([]);
+    const [traslados, setTraslados] = useState<Traslado[]>([]);
     // --- Lógica de planes y bloqueo traslados ---
     const PLANES: Record<string, { traslados_max: number | null, puede_agregar_personas: boolean }> = {
         free: { traslados_max: 30, puede_agregar_personas: false },
@@ -49,19 +61,19 @@ export default function Dashboard() {
     const [generandoCodigo, setGenerandoCodigo] = useState(false);
     const [linkCopiado, setLinkCopiado] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const [filtroTrasladosPendientes, setFiltroTrasladosPendientes] = useState(false);
+    const [filtroPagosPendientes, setFiltroPagosPendientes] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [checkingSession, setCheckingSession] = useState(true);
     const router = useRouter();
     const [isClient, setIsClient] = useState(false);
 
     // Validar sesión al montar el componente
-    const [userDebug, setUserDebug] = useState<any>(null);
     useEffect(() => {
         let isMounted = true;
         async function checkSession() {
             setCheckingSession(true);
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
-            setUserDebug(user);
+            const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
                 if (isMounted) {
                     setCheckingSession(false);
@@ -76,8 +88,8 @@ export default function Dashboard() {
                     await cargarDatos();
                 } catch (err) {
                     let msg = 'Error al cargar datos';
-                    if (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string') {
-                        msg = msg + ': ' + (err as any).message;
+                    if (err instanceof Error) {
+                        msg = msg + ': ' + err.message;
                     }
                     setError(msg);
                 } finally {
@@ -106,7 +118,7 @@ export default function Dashboard() {
                     schema: 'public',
                     table: 'perfiles'
                 },
-                (payload: any) => {
+                (payload) => {
                     // Recargar cuando alguien se une o sale de nuestra empresa
                     const newRecord = payload.new as { empresa_id?: string };
                     const oldRecord = payload.old as { empresa_id?: string };
@@ -123,12 +135,12 @@ export default function Dashboard() {
         };
     }, [perfil?.empresa_id]);
 
-    // Cuando se navega a la pestaña 'traslados' o cambia la página, recargar lista
+    // Cuando se navega a la pestaña 'traslados', cambia la página o el filtro, recargar lista
     useEffect(() => {
         if (activeTab === 'traslados' && perfil?.empresa_id) {
-            cargarTraslados(perfil.empresa_id, trasladosPage)
+            cargarTraslados(perfil.empresa_id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
         }
-    }, [activeTab, trasladosPage, perfil?.empresa_id])
+    }, [activeTab, trasladosPage, perfil?.empresa_id, filtroTrasladosPendientes, filtroPagosPendientes])
 
     // Hooks y funciones definidos más abajo — el render principal está al final del archivo
 
@@ -153,23 +165,24 @@ export default function Dashboard() {
             if (perfilData?.email && perfilData?.id) {
                 setTimeout(() => {
                     if (typeof window !== 'undefined') {
-                        window.localStorage.setItem('email', perfilData.email);
+                        window.localStorage.setItem('email', perfilData.email!);
                         window.localStorage.setItem('user_id', perfilData.id);
                     }
                 }, 0);
             }
 
-            const { data: empresaData, error: empresaError } = await supabase
-                .from('empresas').select('*').eq('id', perfilData.empresa_id).single();
-            if (empresaError) throw new Error(empresaError.message);
-            setEmpresa(empresaData);
-
-            await cargarChoferes(perfilData.empresa_id);
-            await cargarTraslados(perfilData.empresa_id, 1);
-        } catch (err: any) {
+            // Cargar empresa, choferes y traslados en paralelo
+            const [empresaResult] = await Promise.all([
+                supabase.from('empresas').select('*').eq('id', perfilData.empresa_id).single(),
+                cargarChoferes(perfilData.empresa_id),
+                cargarTraslados(perfilData.empresa_id, 1),
+            ]);
+            if (empresaResult.error) throw new Error(empresaResult.error.message);
+            setEmpresa(empresaResult.data);
+        } catch (err) {
             let msg = 'Error inesperado al cargar datos';
-            if (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string') {
-                msg = (err as any).message;
+            if (err instanceof Error) {
+                msg = err.message;
             }
             setError(msg);
         } finally {
@@ -207,36 +220,50 @@ export default function Dashboard() {
 
     const ITEMS_PER_PAGE = 10
 
-    const cargarTraslados = async (empresaId: string, page: number = 1) => {
+    const cargarTraslados = async (empresaId: string, page: number = 1, soloTrasladosPendientes: boolean = false, soloPagosPendientes: boolean = false) => {
         const from = (page - 1) * ITEMS_PER_PAGE
         const to = page * ITEMS_PER_PAGE - 1
 
-        const { data, count, error } = await supabase
+        let query = supabase
             .from('traslados')
             .select('*, perfiles(nombre_completo)', { count: 'exact' })
             .eq('empresa_id', empresaId)
-            .order('created_at', { ascending: false })
-            .range(from, to)
 
-        if (error) {
-            console.error('Error cargando traslados:', error)
+        if (soloTrasladosPendientes) {
+            query = query.eq('estado', 'pendiente')
+        }
+        if (soloPagosPendientes) {
+            query = query.eq('estado_pago', 'pendiente')
+        }
+
+        // Ejecutar query principal y contadores en paralelo
+        const [mainResult, pend, enCurso, comp] = await Promise.all([
+            query.order('created_at', { ascending: false }).range(from, to),
+            supabase.from('traslados').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId).eq('estado', 'pendiente'),
+            supabase.from('traslados').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId).eq('estado', 'en_curso'),
+            supabase.from('traslados').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId).eq('estado', 'completado'),
+        ])
+
+        if (mainResult.error) {
+            console.error('Error cargando traslados:', mainResult.error)
             setTraslados([])
             setTrasladosTotal(0)
             return
         }
 
-        setTraslados(data || [])
-        setTrasladosTotal(count || 0)
-        // Cargar contadores por estado para mostrar totales en las cards
-        await cargarContadoresTraslados(empresaId)
+        setTraslados(mainResult.data || [])
+        setTrasladosTotal(mainResult.count || 0)
+        setTrasladosPendientesTotal(pend.count || 0)
+        setTrasladosEnCursoTotal(enCurso.count || 0)
+        setTrasladosCompletadosTotal(comp.count || 0)
     }
 
     const cargarContadoresTraslados = async (empresaId: string) => {
         try {
             const [pend, enCurso, comp] = await Promise.all([
-                supabase.from('traslados').select('id', { count: 'exact' }).eq('empresa_id', empresaId).eq('estado', 'pendiente'),
-                supabase.from('traslados').select('id', { count: 'exact' }).eq('empresa_id', empresaId).eq('estado', 'en_curso'),
-                supabase.from('traslados').select('id', { count: 'exact' }).eq('empresa_id', empresaId).eq('estado', 'completado'),
+                supabase.from('traslados').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId).eq('estado', 'pendiente'),
+                supabase.from('traslados').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId).eq('estado', 'en_curso'),
+                supabase.from('traslados').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId).eq('estado', 'completado'),
             ])
 
             setTrasladosPendientesTotal(pend.count || 0)
@@ -244,9 +271,6 @@ export default function Dashboard() {
             setTrasladosCompletadosTotal(comp.count || 0)
         } catch (e) {
             console.error('Error cargando contadores de traslados', e)
-            setTrasladosPendientesTotal(0)
-            setTrasladosEnCursoTotal(0)
-            setTrasladosCompletadosTotal(0)
         }
     }
 
@@ -530,7 +554,7 @@ export default function Dashboard() {
             {/* Tabs Mobile eliminados: navegación solo por drawer en mobile */}
 
             {/* Content - Responsive */}
-            <div className="w-full min-w-0 px-2 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 mx-auto max-w-[90vw] sm:max-w-4xl lg:max-w-5xl bg-white rounded-2xl shadow-sm">
+            <div className="w-full min-w-0 px-3 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 mx-auto max-w-4xl lg:max-w-5xl">
 
                 {/* Header */}
                 <div className="mb-8 sm:mb-10">
@@ -630,8 +654,34 @@ export default function Dashboard() {
                 {activeTab === 'traslados' && (
                     <div className="card p-4 sm:p-6 lg:p-8">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                            <h3 className="font-semibold text-lg sm:text-xl text-gray-900">Lista de Traslados</h3>
-                            <button 
+                            <div>
+                                <h3 className="font-semibold text-lg sm:text-xl text-gray-900">Lista de Traslados</h3>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    <button
+                                        onClick={() => { setFiltroTrasladosPendientes(!filtroTrasladosPendientes); setTrasladosPage(1) }}
+                                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
+                                            filtroTrasladosPendientes
+                                                ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        <span className={`w-2 h-2 rounded-full ${filtroTrasladosPendientes ? 'bg-yellow-500' : 'bg-gray-400'}`}></span>
+                                        Traslados Pendientes
+                                    </button>
+                                    <button
+                                        onClick={() => { setFiltroPagosPendientes(!filtroPagosPendientes); setTrasladosPage(1) }}
+                                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
+                                            filtroPagosPendientes
+                                                ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        <span className={`w-2 h-2 rounded-full ${filtroPagosPendientes ? 'bg-orange-500' : 'bg-gray-400'}`}></span>
+                                        Pagos Pendientes
+                                    </button>
+                                </div>
+                            </div>
+                            <button
                                 onClick={() => { if (!bloqueoTraslados) router.push('/dashboard/nuevo-traslado') }}
                                 className={`btn-primary px-5 py-2.5 text-sm ${bloqueoTraslados ? 'opacity-60 cursor-not-allowed' : ''}`}
                                 title={bloqueoTraslados ? 'Límite de traslados alcanzado' : ''}
@@ -872,7 +922,7 @@ export default function Dashboard() {
                                     <img
                                         src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(linkInvitacion)}`}
                                         alt="QR Code"
-                                        className="w-40 h-40"
+                                        className="w-40 h-40 mx-auto mb-4"
                                     />
                                 )}
 

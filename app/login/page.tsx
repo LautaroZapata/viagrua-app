@@ -1,7 +1,8 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { sanitizeString, isValidEmail, LIMITS } from '@/lib/validation'
 
 export default function Login() {
     const router = useRouter()
@@ -13,12 +14,18 @@ export default function Login() {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        const email = sanitizeString(formData.email).toLowerCase()
+        const password = formData.password
+
+        if (!isValidEmail(email)) { alert('Email inválido'); return }
+        if (!password || password.length > LIMITS.password) { alert('Contraseña inválida'); return }
+
         setLoading(true)
 
-
         const { data, error } = await supabase.auth.signInWithPassword({
-            email: formData.email,
-            password: formData.password
+            email,
+            password,
         })
 
         if (error) {
@@ -35,8 +42,8 @@ export default function Login() {
             if (typeof window !== 'undefined') {
                 window.localStorage.removeItem('email');
                 window.localStorage.removeItem('user_id');
-                if (formData.email) {
-                    window.localStorage.setItem('email', formData.email);
+                if (email) {
+                    window.localStorage.setItem('email', email);
                 }
                 if (perfil?.rol === 'admin') {
                     router.push('/dashboard');
@@ -74,6 +81,7 @@ export default function Login() {
                                 <input
                                     type="email"
                                     required
+                                    maxLength={LIMITS.email}
                                     placeholder="tu@empresa.com"
                                     className="input-field"
                                     value={formData.email}
@@ -86,6 +94,7 @@ export default function Login() {
                                 <input
                                     type="password"
                                     required
+                                    maxLength={LIMITS.password}
                                     placeholder="Tu contraseña"
                                     className="input-field"
                                     value={formData.password}

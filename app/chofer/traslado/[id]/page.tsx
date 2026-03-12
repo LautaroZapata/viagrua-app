@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import ClientOnly from '../../../components/ClientOnly'
-import { createClient } from '@supabase/supabase-js'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmAction, showError } from '@/lib/swal'
@@ -36,9 +35,7 @@ export default function DetalleTraslado() {
     const [loading, setLoading] = useState(true)
     const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null)
     const [actualizando, setActualizando] = useState(false)
-    const [isClient, setIsClient] = useState(false)
 
-    useEffect(() => { setIsClient(true); }, [])
     useEffect(() => { cargarTraslado() }, [id])
 
     useEffect(() => {

@@ -4,6 +4,7 @@ import ClientOnly from '../../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, showError } from '@/lib/swal'
+import { sanitizeString, isValidImporte, isValidTipoGasto, isValidFecha, LIMITS } from '@/lib/validation'
 
 interface Gasto {
     id: string
@@ -57,9 +58,6 @@ const tiposGasto = [
 
 
 export default function GastosPage() {
-    const [isClient, setIsClient] = useState(false);
-    useEffect(() => { setIsClient(true); }, []);
-
     const router = useRouter()
     const [gastos, setGastos] = useState<Gasto[]>([])
     const [misTraslados, setMisTraslados] = useState<TrasladoCompletado[]>([])
@@ -68,6 +66,7 @@ export default function GastosPage() {
     const [perfil, setPerfil] = useState<Perfil | null>(null)
     const [totalIngresos, setTotalIngresos] = useState(0)
     const [verTodos, setVerTodos] = useState(true) // Admin: toggle para ver todos o solo propios
+    const [expandedId, setExpandedId] = useState<string | null>(null) // Card expandida
     const [paginaActual, setPaginaActual] = useState(1)
     const [paginaGastosAdmin, setPaginaGastosAdmin] = useState(1)
     const [filtroMovimientos, setFiltroMovimientos] = useState('fecha_desc')
@@ -102,12 +101,14 @@ export default function GastosPage() {
                     table: 'traslados'
                 },
                 (payload) => {
-                    const updated = payload.new as { estado_pago?: string; chofer_id?: string; empresa_id?: string }
-                    // Recargar si es relevante para este usuario
-                    if (isAdmin && updated.empresa_id === perfil.empresa_id) {
+                    const updated = payload.new as { id?: string; estado_pago?: string; chofer_id?: string; empresa_id?: string; importe_total?: number; marca_modelo?: string; matricula?: string | null; estado?: string; created_at?: string }
+                    // Actualizar estado local en vez de recargar todo
+                    if (!isAdmin && updated.chofer_id === perfil.id && updated.id) {
+                        setMisTraslados(prev => prev.map(t =>
+                            t.id === updated.id ? { ...t, estado_pago: updated.estado_pago || t.estado_pago } : t
+                        ))
+                    } else if (isAdmin && updated.empresa_id === perfil.empresa_id) {
                         cargarIngresos(perfil.empresa_id)
-                    } else if (!isAdmin && updated.chofer_id === perfil.id) {
-                        cargarMisTraslados(perfil.id)
                     }
                 }
             )
@@ -134,16 +135,13 @@ export default function GastosPage() {
         }
 
         setPerfil(perfilData)
-        await cargarGastos(perfilData)
-        
-        // Si es admin, cargar ingresos de traslados de la empresa
-        if (perfilData.rol === 'admin') {
-            await cargarIngresos(perfilData.empresa_id)
-        } else {
-            // Si es chofer, cargar sus traslados completados
-            await cargarMisTraslados(perfilData.id)
-        }
-        
+
+        // Cargar gastos y datos de rol en paralelo
+        const rolePromise = perfilData.rol === 'admin'
+            ? cargarIngresos(perfilData.empresa_id)
+            : cargarMisTraslados(perfilData.id)
+        await Promise.all([cargarGastos(perfilData), rolePromise])
+
         setLoading(false)
     }
 
@@ -189,17 +187,27 @@ export default function GastosPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!formData.tipo || !formData.importe || !perfil) return
-        
+        if (!perfil) return
+
+        const tipo = formData.tipo
+        const importe = formData.importe
+        const descripcion = sanitizeString(formData.descripcion)
+        const fecha = formData.fecha
+
+        if (!tipo || !isValidTipoGasto(tipo)) { showError('Tipo de gasto inválido'); return }
+        if (!importe || !isValidImporte(importe)) { showError('Importe inválido (debe ser un número positivo)'); return }
+        if (descripcion.length > LIMITS.descripcion) { showError('Descripción demasiado larga (máx. 500)'); return }
+        if (!fecha || !isValidFecha(fecha)) { showError('Fecha inválida'); return }
+
         setGuardando(true)
 
         const { error } = await supabase.from('gastos').insert({
             empresa_id: perfil.empresa_id,
             usuario_id: perfil.id,
-            tipo: formData.tipo,
-            importe: parseFloat(formData.importe),
-            descripcion: formData.descripcion || null,
-            fecha: formData.fecha
+            tipo,
+            importe: parseFloat(importe),
+            descripcion: descripcion || null,
+            fecha,
         })
 
         if (error) {
@@ -393,7 +401,7 @@ export default function GastosPage() {
                 </div>
             </nav>
 
-            <div className="w-full min-w-0 px-4 sm:px-6 lg:px-8 py-5 sm:py-8 max-w-3xl mx-auto overflow-x-hidden">
+            <div className="w-full min-w-0 px-3 sm:px-6 lg:px-8 py-5 sm:py-8 max-w-3xl mx-auto">
                 
                 {/* SOLO ADMIN: Resumen de Rentabilidad */}
                 {isAdmin && (
@@ -477,6 +485,7 @@ export default function GastosPage() {
                                 <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wide">Descripción</label>
                                 <input
                                     type="text"
+                                    maxLength={LIMITS.descripcion}
                                     placeholder="Opcional..."
                                     className="input-field"
                                     value={formData.descripcion}
@@ -632,88 +641,85 @@ export default function GastosPage() {
                             <>
                                 <div className="space-y-2">
                                 {gastosPaginados.map((gasto) => (
-                                    <div 
-                                        key={gasto.id} 
-                                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                                    <div
+                                        key={gasto.id}
+                                        className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+                                        onClick={() => setExpandedId(expandedId === gasto.id ? null : gasto.id)}
                                     >
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-9 h-9 shrink-0 rounded-lg bg-gray-200 flex items-center justify-center text-sm">
-                                                {getIconForTipo(gasto.tipo)}
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-9 h-9 shrink-0 rounded-lg bg-gray-200 flex items-center justify-center text-sm">
+                                                    {getIconForTipo(gasto.tipo)}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <p className="font-medium text-sm text-gray-900">{getLabelForTipo(gasto.tipo)}</p>
+                                                        {gasto.perfiles && (
+                                                            <span className="text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded shrink-0">
+                                                                {gasto.usuario_id === perfil?.id ? 'Yo' : gasto.perfiles.nombre_completo}
+                                                            </span>
+                                                        )}
+                                                        {gasto.descripcion && expandedId !== gasto.id && (
+                                                            <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                            </svg>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500 mt-0.5">
+                                                        <ClientOnly>{gasto.fecha ? new Date(gasto.fecha).toLocaleDateString('es-AR') : ''}</ClientOnly>
+                                                        {gasto.descripcion && expandedId !== gasto.id && (
+                                                            <span className="truncate max-w-[180px] sm:max-w-[240px]">{gasto.descripcion}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="min-w-0">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <p className="font-medium text-sm text-gray-900">{getLabelForTipo(gasto.tipo)}</p>
-                                                    {gasto.perfiles && (
-                                                        <span className="text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded shrink-0">
-                                                            {gasto.usuario_id === perfil?.id ? 'Yo' : gasto.perfiles.nombre_completo}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500 mt-0.5">
-                                                    <ClientOnly>{gasto.fecha ? new Date(gasto.fecha).toLocaleDateString('es-AR') : ''}</ClientOnly>
-                                                    {gasto.descripcion && (
-                                                        <span className="truncate max-w-[180px] sm:max-w-[240px]">{gasto.descripcion}</span>
-                                                    )}
-                                                </div>
+                                            <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                                                <span className="font-semibold text-sm text-red-500">
+                                                    -${gasto.importe.toLocaleString('es-AR')}
+                                                </span>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); eliminarGasto(gasto) }}
+                                                    className="text-gray-400 hover:text-red-500 transition p-1.5 hover:bg-red-50 rounded-lg"
+                                                    aria-label="Eliminar gasto"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
                                             </div>
                                         </div>
-                                        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                                            <span className="font-semibold text-sm text-red-500">
-                                                -${gasto.importe.toLocaleString('es-AR')}
-                                            </span>
-                                            <button
-                                                onClick={() => eliminarGasto(gasto)}
-                                                className="text-gray-400 hover:text-red-500 transition p-1.5 hover:bg-red-50 rounded-lg"
-                                                aria-label="Eliminar gasto"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </div>
+                                        {/* Descripción expandida */}
+                                        {expandedId === gasto.id && gasto.descripcion && (
+                                            <div className="mt-2 pt-2 border-t border-gray-200">
+                                                <p className="text-xs text-gray-600 leading-relaxed">{gasto.descripcion}</p>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
-                            {/* Paginación admin — mismo estilo que chofer, responsive */}
+                            {/* Paginación admin */}
                             {totalPaginasGastos > 1 && (
-                                <div className="flex flex-wrap items-center justify-center gap-2 mt-5 pt-5 border-t border-gray-100">
-                                    <button
-                                        onClick={() => setPaginaGastosAdmin(p => Math.max(1, p - 1))}
-                                        disabled={paginaGastosAdmin === 1}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                                            paginaGastosAdmin === 1
-                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
-                                    >
-                                        Anterior
-                                    </button>
-                                    <div className="flex flex-wrap items-center justify-center gap-1">
-                                        {Array.from({ length: totalPaginasGastos }, (_, i) => i + 1).map(num => (
-                                            <button
-                                                key={num}
-                                                onClick={() => setPaginaGastosAdmin(num)}
-                                                className={`min-w-[2rem] h-8 px-2 rounded-lg text-xs font-medium transition ${
-                                                    paginaGastosAdmin === num
-                                                        ? 'bg-orange-500 text-white'
-                                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                }`}
-                                            >
-                                                {num}
-                                            </button>
-                                        ))}
+                                <div className="mt-4 pagination-flex">
+                                    <div className="text-sm text-gray-500">
+                                        Mostrando {gastosPaginados.length > 0 ? ((paginaGastosAdmin - 1) * ITEMS_POR_PAGINA) + 1 : 0} - {Math.min(paginaGastosAdmin * ITEMS_POR_PAGINA, gastosOrdenadosAdmin.length)} de {gastosOrdenadosAdmin.length}
                                     </div>
-                                    <button
-                                        onClick={() => setPaginaGastosAdmin(p => Math.min(totalPaginasGastos, p + 1))}
-                                        disabled={paginaGastosAdmin === totalPaginasGastos}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                                            paginaGastosAdmin === totalPaginasGastos
-                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
-                                    >
-                                        Siguiente
-                                    </button>
+                                    <div className="pagination-controls flex items-center gap-2">
+                                        <button
+                                            onClick={() => setPaginaGastosAdmin(p => Math.max(1, p - 1))}
+                                            disabled={paginaGastosAdmin === 1}
+                                            className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50 btn-sm"
+                                        >
+                                            Anterior
+                                        </button>
+                                        <span className="text-sm text-gray-600">Página {paginaGastosAdmin} / {totalPaginasGastos}</span>
+                                        <button
+                                            onClick={() => setPaginaGastosAdmin(p => Math.min(totalPaginasGastos, p + 1))}
+                                            disabled={paginaGastosAdmin === totalPaginasGastos}
+                                            className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50 btn-sm"
+                                        >
+                                            Siguiente
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                             </>
@@ -735,102 +741,100 @@ export default function GastosPage() {
                             <>
                                 <div className="space-y-2">
                                     {movimientosPaginados.map((mov) => (
-                                        <div 
-                                            key={mov.id + mov.tipo} 
-                                            className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg transition ${
-                                                mov.tipo === 'ingreso' 
-                                                    ? 'bg-green-50 hover:bg-green-100 border border-green-100' 
+                                        <div
+                                            key={mov.id + mov.tipo}
+                                            className={`p-3 rounded-lg transition cursor-pointer ${
+                                                mov.tipo === 'ingreso'
+                                                    ? 'bg-green-50 hover:bg-green-100 border border-green-100'
                                                     : 'bg-red-50 hover:bg-red-100 border border-red-100'
                                             }`}
+                                            onClick={() => setExpandedId(expandedId === mov.id + mov.tipo ? null : mov.id + mov.tipo)}
                                         >
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <div className="w-9 h-9 shrink-0 rounded-lg bg-white/80 flex items-center justify-center text-sm">
-                                                    {mov.icono}
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="w-9 h-9 shrink-0 rounded-lg bg-white/80 flex items-center justify-center text-sm">
+                                                        {mov.icono}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <p className="font-medium text-sm text-gray-900 truncate">{mov.concepto}</p>
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${
+                                                                mov.tipo === 'ingreso'
+                                                                    ? 'bg-green-200 text-green-700'
+                                                                    : 'bg-red-200 text-red-700'
+                                                            }`}>
+                                                                {mov.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}
+                                                            </span>
+                                                            {mov.descripcion && expandedId !== mov.id + mov.tipo && (
+                                                                <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                                </svg>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500 mt-0.5">
+                                                            <ClientOnly>{mov.fecha ? new Date(mov.fecha).toLocaleDateString('es-AR') : ''}</ClientOnly>
+                                                            {mov.descripcion && expandedId !== mov.id + mov.tipo && (
+                                                                <span className="truncate max-w-[180px] sm:max-w-[240px]">{mov.descripcion}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="min-w-0">
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <p className="font-medium text-sm text-gray-900 truncate">{mov.concepto}</p>
-                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${
-                                                            mov.tipo === 'ingreso' 
-                                                                ? 'bg-green-200 text-green-700' 
-                                                                : 'bg-red-200 text-red-700'
-                                                        }`}>
-                                                            {mov.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500 mt-0.5">
-                                                        <ClientOnly>{mov.fecha ? new Date(mov.fecha).toLocaleDateString('es-AR') : ''}</ClientOnly>
-                                                        {mov.descripcion && (
-                                                            <span className="truncate max-w-[180px] sm:max-w-[240px]">{mov.descripcion}</span>
-                                                        )}
-                                                    </div>
+                                                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                                                    <span className={`font-semibold text-sm ${
+                                                        mov.tipo === 'ingreso' ? 'text-green-600' : 'text-red-500'
+                                                    }`}>
+                                                        {mov.tipo === 'ingreso' ? '+' : '-'}${mov.importe.toLocaleString('es-AR')}
+                                                    </span>
+                                                    {!mov.esTraslado && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                const gasto = gastos.find(g => g.id === mov.id)
+                                                                if (gasto) eliminarGasto(gasto)
+                                                            }}
+                                                            className="text-gray-400 hover:text-red-500 transition p-1.5 hover:bg-red-100 rounded-lg"
+                                                            aria-label="Eliminar"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                                                <span className={`font-semibold text-sm ${
-                                                    mov.tipo === 'ingreso' ? 'text-green-600' : 'text-red-500'
-                                                }`}>
-                                                    {mov.tipo === 'ingreso' ? '+' : '-'}${mov.importe.toLocaleString('es-AR')}
-                                                </span>
-                                                {!mov.esTraslado && (
-                                                    <button
-                                                        onClick={() => {
-                                                            const gasto = gastos.find(g => g.id === mov.id)
-                                                            if (gasto) eliminarGasto(gasto)
-                                                        }}
-                                                        className="text-gray-400 hover:text-red-500 transition p-1.5 hover:bg-red-100 rounded-lg"
-                                                        aria-label="Eliminar"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </button>
-                                                )}
-                                            </div>
+                                            {/* Descripción expandida */}
+                                            {expandedId === mov.id + mov.tipo && mov.descripcion && (
+                                                <div className={`mt-2 pt-2 border-t ${mov.tipo === 'ingreso' ? 'border-green-200' : 'border-red-200'}`}>
+                                                    <p className="text-xs text-gray-600 leading-relaxed">{mov.descripcion}</p>
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
 
                                 {/* Paginación — responsive */}
                                 {totalPaginas > 1 && (
-                                    <div className="flex flex-wrap items-center justify-center gap-2 mt-5 pt-5 border-t border-gray-100">
-                                        <button
-                                            onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
-                                            disabled={paginaActual === 1}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                                                paginaActual === 1
-                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                            }`}
-                                        >
-                                            Anterior
-                                        </button>
-                                        <div className="flex flex-wrap items-center justify-center gap-1">
-                                            {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(num => (
-                                                <button
-                                                    key={num}
-                                                    onClick={() => setPaginaActual(num)}
-                                                    className={`min-w-[2rem] h-8 px-2 rounded-lg text-xs font-medium transition ${
-                                                        paginaActual === num
-                                                            ? 'bg-orange-500 text-white'
-                                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                    }`}
-                                                >
-                                                    {num}
-                                                </button>
-                                            ))}
+                                    <div className="mt-4 pagination-flex">
+                                        <div className="text-sm text-gray-500">
+                                            Mostrando {movimientosPaginados.length > 0 ? ((paginaActual - 1) * ITEMS_POR_PAGINA) + 1 : 0} - {Math.min(paginaActual * ITEMS_POR_PAGINA, movimientos.length)} de {movimientos.length}
                                         </div>
-                                        <button
-                                            onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
-                                            disabled={paginaActual === totalPaginas}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                                                paginaActual === totalPaginas
-                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                            }`}
-                                        >
-                                            Siguiente
-                                        </button>
+                                        <div className="pagination-controls flex items-center gap-2">
+                                            <button
+                                                onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                                                disabled={paginaActual === 1}
+                                                className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50 btn-sm"
+                                            >
+                                                Anterior
+                                            </button>
+                                            <span className="text-sm text-gray-600">Página {paginaActual} / {totalPaginas}</span>
+                                            <button
+                                                onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+                                                disabled={paginaActual === totalPaginas}
+                                                className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50 btn-sm"
+                                            >
+                                                Siguiente
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </>

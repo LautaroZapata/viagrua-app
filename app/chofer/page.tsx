@@ -4,6 +4,7 @@ import ClientOnly from '../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmAction } from '@/lib/swal'
+import { sanitizeString, isValidCodigoInvitacion, LIMITS } from '@/lib/validation'
 
 interface Traslado {
     id: string
@@ -42,8 +43,9 @@ export default function PanelChofer() {
     const [trasladosTotal, setTrasladosTotal] = useState(0)
     const [loading, setLoading] = useState(true)
     const [nombreEmpresa, setNombreEmpresa] = useState<string | null>(null)
-    const [isClient, setIsClient] = useState(false)
-    
+    const [filtroTrasladosPendientes, setFiltroTrasladosPendientes] = useState(false)
+    const [filtroPagosPendientes, setFiltroPagosPendientes] = useState(false)
+
     // Estados para unirse a empresa
     const [mostrarFormCodigo, setMostrarFormCodigo] = useState(false)
     const [codigoInvitacion, setCodigoInvitacion] = useState('')
@@ -55,12 +57,12 @@ export default function PanelChofer() {
 
     useEffect(() => { cargarDatos() }, [])
 
-    // Recargar traslados cuando cambie la página
+    // Recargar traslados cuando cambie la página o el filtro
     useEffect(() => {
         if (perfil?.id) {
-            cargarTraslados(perfil.id, trasladosPage)
+            cargarTraslados(perfil.id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
         }
-    }, [trasladosPage, perfil?.id])
+    }, [trasladosPage, perfil?.id, filtroTrasladosPendientes, filtroPagosPendientes])
 
     // Suscripción realtime para inserts y updates de traslados asignados al chofer
     useEffect(() => {
@@ -135,16 +137,17 @@ export default function PanelChofer() {
                 .from('perfiles').select('*').eq('id', user.id).single()
             setPerfil(perfilData)
 
-            // Cargar nombre de empresa si tiene
+            // Cargar empresa y traslados en paralelo
             if (perfilData?.empresa_id) {
-                const { data: empresaData } = await supabase
-                    .from('empresas').select('nombre').eq('id', perfilData.empresa_id).single()
-                setNombreEmpresa(empresaData?.nombre || null)
+                const [, empresaResult] = await Promise.all([
+                    cargarTraslados(user.id, 1),
+                    supabase.from('empresas').select('nombre').eq('id', perfilData.empresa_id).single()
+                ])
+                setNombreEmpresa(empresaResult.data?.nombre || null)
             } else {
                 setNombreEmpresa(null)
+                await cargarTraslados(user.id, 1)
             }
-
-            await cargarTraslados(user.id, 1)
             setLoading(false)
         } catch (err) {
             console.error('Error cargando datos:', err)
@@ -154,14 +157,23 @@ export default function PanelChofer() {
 
     const ITEMS_PER_PAGE = 10
 
-    const cargarTraslados = async (choferId: string, page: number = 1) => {
+    const cargarTraslados = async (choferId: string, page: number = 1, soloTrasladosPendientes: boolean = false, soloPagosPendientes: boolean = false) => {
         const from = (page - 1) * ITEMS_PER_PAGE
         const to = page * ITEMS_PER_PAGE - 1
 
-        const { data, count, error } = await supabase
+        let query = supabase
             .from('traslados')
             .select('id, marca_modelo, matricula, es_0km, estado, estado_pago, importe_total, observaciones, foto_frontal, foto_lateral, foto_trasera, foto_interior, created_at, departamento, direccion, empresas(nombre), desde, hasta', { count: 'exact' })
             .eq('chofer_id', choferId)
+
+        if (soloTrasladosPendientes) {
+            query = query.eq('estado', 'pendiente')
+        }
+        if (soloPagosPendientes) {
+            query = query.eq('estado_pago', 'pendiente')
+        }
+
+        const { data, count, error } = await query
             .order('created_at', { ascending: false })
             .range(from, to)
 
@@ -172,7 +184,7 @@ export default function PanelChofer() {
             return
         }
 
-        const trasladosNorm = (data || []).map((t: any) => ({
+        const trasladosNorm = (data || []).map((t: Record<string, unknown>) => ({
             ...t,
             empresas: t.empresas && Array.isArray(t.empresas) ? t.empresas[0] : t.empresas
         })) as Traslado[];
@@ -187,14 +199,20 @@ export default function PanelChofer() {
 
     // Validar código de invitación
     const validarCodigo = async () => {
-        if (!codigoInvitacion.trim()) return
+        const codigo = sanitizeString(codigoInvitacion)
+        if (!codigo) return
         setErrorCodigo('')
         setEmpresaInvitacion(null)
+
+        if (!isValidCodigoInvitacion(codigo)) {
+            setErrorCodigo('Formato de código inválido')
+            return
+        }
 
         const { data, error } = await supabase
             .from('invitaciones')
             .select('*, empresas(nombre)')
-            .eq('codigo', codigoInvitacion.trim())
+            .eq('codigo', codigo)
             .single()
 
         if (error || !data) {
@@ -217,7 +235,14 @@ export default function PanelChofer() {
 
     // Unirse a la empresa
     const handleUnirseEmpresa = async () => {
-        if (!perfil || !codigoInvitacion.trim()) return
+        const codigo = sanitizeString(codigoInvitacion)
+        if (!perfil || !codigo) return
+
+        if (!isValidCodigoInvitacion(codigo)) {
+            setErrorCodigo('Formato de código inválido')
+            return
+        }
+
         setUniendose(true)
         setErrorCodigo('')
 
@@ -225,7 +250,7 @@ export default function PanelChofer() {
         const { data: invitacion, error: invError } = await supabase
             .from('invitaciones')
             .select('*')
-            .eq('codigo', codigoInvitacion.trim())
+            .eq('codigo', codigo)
             .single()
 
         if (invError || !invitacion) {
@@ -511,6 +536,7 @@ export default function PanelChofer() {
                                             <input
                                                 type="text"
                                                 placeholder="Ej: ABC123XYZ"
+                                                maxLength={LIMITS.codigoInvitacion}
                                                 className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                                                 value={codigoInvitacion}
                                                 onChange={(e) => {
@@ -556,10 +582,38 @@ export default function PanelChofer() {
 
                 {/* Header */}
                 <div className="mb-5 sm:mb-6">
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-0.5">
-                        {perfil?.empresa_id ? 'Mis Traslados' : 'Mi Historial'}
-                    </h2>
-                    <p className="text-xs sm:text-sm text-gray-500">{perfil?.nombre_completo}</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-0.5">
+                                {perfil?.empresa_id ? 'Mis Traslados' : 'Mi Historial'}
+                            </h2>
+                            <p className="text-xs sm:text-sm text-gray-500">{perfil?.nombre_completo}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2 self-start">
+                            <button
+                                onClick={() => { setFiltroTrasladosPendientes(!filtroTrasladosPendientes); setTrasladosPage(1) }}
+                                className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
+                                    filtroTrasladosPendientes
+                                        ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                            >
+                                <span className={`w-2 h-2 rounded-full ${filtroTrasladosPendientes ? 'bg-yellow-500' : 'bg-gray-400'}`}></span>
+                                Traslados Pendientes
+                            </button>
+                            <button
+                                onClick={() => { setFiltroPagosPendientes(!filtroPagosPendientes); setTrasladosPage(1) }}
+                                className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
+                                    filtroPagosPendientes
+                                        ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                            >
+                                <span className={`w-2 h-2 rounded-full ${filtroPagosPendientes ? 'bg-orange-500' : 'bg-gray-400'}`}></span>
+                                Pagos Pendientes
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Traslados List - Responsive */}

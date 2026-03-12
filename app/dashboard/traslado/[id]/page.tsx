@@ -34,9 +34,6 @@ export default function DetalleTrasladoAdmin() {
     const [loading, setLoading] = useState(true)
     const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null)
     const [actualizando, setActualizando] = useState(false)
-    const [isClient, setIsClient] = useState(false)
-
-    useEffect(() => { setIsClient(true); }, []);
 
     useEffect(() => { cargarTraslado() }, [id])
 

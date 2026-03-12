@@ -1,8 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
-import ClientOnly from '../../components/ClientOnly'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { sanitizeString, isValidEmail, isValidPassword, isValidName, isValidCodigoInvitacion, LIMITS } from '@/lib/validation'
 
 interface Invitacion {
     id: string
@@ -16,7 +16,8 @@ interface Invitacion {
 export default function UnirseEmpresa() {
     const router = useRouter()
     const params = useParams()
-    const codigo = params?.codigo ? params.codigo as string : ""
+    const rawCodigo = params?.codigo ? params.codigo as string : ""
+    const codigo = sanitizeString(rawCodigo)
 
     const [invitacion, setInvitacion] = useState<Invitacion | null>(null)
     const [loading, setLoading] = useState(true)
@@ -33,6 +34,12 @@ export default function UnirseEmpresa() {
     }, [codigo])
 
     const validarInvitacion = async () => {
+        if (!codigo || !isValidCodigoInvitacion(codigo)) {
+            setError('Código de invitación inválido')
+            setLoading(false)
+            return
+        }
+
         const { data, error } = await supabase
             .from('invitaciones')
             .select('*, empresas(nombre)')
@@ -64,15 +71,24 @@ export default function UnirseEmpresa() {
     const handleRegistro = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!invitacion) return
+
+        const nombre = sanitizeString(formData.nombre)
+        const email = sanitizeString(formData.email).toLowerCase()
+        const password = formData.password
+
+        if (!isValidName(nombre)) { alert('Nombre inválido (máx. 100 caracteres)'); return }
+        if (!isValidEmail(email)) { alert('Email inválido'); return }
+        if (!isValidPassword(password)) { alert('La contraseña debe tener entre 6 y 128 caracteres'); return }
+
         setRegistrando(true)
 
         // 1. Crear usuario
         const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: formData.email,
-            password: formData.password,
+            email,
+            password,
             options: {
                 data: {
-                    nombre_completo: formData.nombre,
+                    nombre_completo: nombre,
                     empresa_id: invitacion.empresa_id
                 }
             }
@@ -109,13 +125,13 @@ export default function UnirseEmpresa() {
 
         // 4. Login automático
         await supabase.auth.signInWithPassword({
-            email: formData.email,
-            password: formData.password
+            email,
+            password,
         })
 
         // Guardar email en localStorage solo en cliente
-        if (typeof window !== 'undefined' && formData.email) {
-            window.localStorage.setItem('email', formData.email)
+        if (typeof window !== 'undefined' && email) {
+            window.localStorage.setItem('email', email)
         }
 
         router.push('/chofer')
@@ -183,6 +199,7 @@ export default function UnirseEmpresa() {
                             <input
                                 type="text"
                                 required
+                                maxLength={LIMITS.nombre}
                                 placeholder="Juan Pérez"
                                 className="input-field"
                                 value={formData.nombre}
@@ -197,6 +214,7 @@ export default function UnirseEmpresa() {
                             <input
                                 type="email"
                                 required
+                                maxLength={LIMITS.email}
                                 placeholder="tu@email.com"
                                 className="input-field"
                                 value={formData.email}
@@ -212,6 +230,7 @@ export default function UnirseEmpresa() {
                                 type="password"
                                 required
                                 minLength={6}
+                                maxLength={LIMITS.password}
                                 placeholder="Mínimo 6 caracteres"
                                 className="input-field"
                                 value={formData.password}

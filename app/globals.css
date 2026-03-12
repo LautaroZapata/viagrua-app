@@ -296,6 +296,16 @@ html, body {
     text-wrap: balance;
 }
 
+/* Drawer slide-in animation */
+@keyframes slideInLeft {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+}
+
+.animate-slideInLeft {
+    animation: slideInLeft 0.25s ease-out;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
     width: 6px;

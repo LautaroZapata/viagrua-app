@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { compressImage, formatFileSize } from '@/lib/compressImage'
 import { confirmDelete, showError } from '@/lib/swal'
+import { sanitizeString, isValidImporte, isValidMatricula, LIMITS } from '@/lib/validation'
 
 interface Chofer {
     id: string
@@ -39,7 +40,7 @@ export default function NuevoTraslado() {
     const [choferes, setChoferes] = useState<Chofer[]>([])
     const [empresaId, setEmpresaId] = useState<string>('')
     const [userId, setUserId] = useState<string>('')
-    const [perfil, setPerfil] = useState<any | null>(null)
+    const [perfil, setPerfil] = useState<{ plan?: string; traslados_mes_actual?: number; empresa_id: string } | null>(null)
     const [formData, setFormData] = useState({
         marca_modelo: '',
         matricula: '',
@@ -50,14 +51,6 @@ export default function NuevoTraslado() {
         desde: '',
         hasta: ''
     })
-    
-    // Departamentos de Uruguay
-    const departamentos = [
-        'Artigas', 'Canelones', 'Cerro Largo', 'Colonia', 'Durazno',
-        'Flores', 'Florida', 'Lavalleja', 'Maldonado', 'Montevideo',
-        'Paysandú', 'Río Negro', 'Rivera', 'Rocha', 'Salto',
-        'San José', 'Soriano', 'Tacuarembó', 'Treinta y Tres'
-    ]
     
     // Estados para fotos
     const [fotos, setFotos] = useState<{ [key: string]: FotoPreview | null }>({
@@ -177,6 +170,28 @@ export default function NuevoTraslado() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        // Sanitizar inputs
+        const marcaModelo = sanitizeString(formData.marca_modelo)
+        const matricula = sanitizeString(formData.matricula)
+        const observaciones = sanitizeString(formData.observaciones)
+        const desde = sanitizeString(formData.desde)
+        const hasta = sanitizeString(formData.hasta)
+
+        if (!marcaModelo || marcaModelo.length > LIMITS.marcaModelo) {
+            showError('Marca/Modelo es requerido (máx. 100 caracteres)'); return
+        }
+        if (!formData.es_0km && matricula && !isValidMatricula(matricula)) {
+            showError('Matrícula inválida (solo letras, números y guiones, máx. 15)'); return
+        }
+        if (!formData.chofer_id) { showError('Selecciona un chofer'); return }
+        if (formData.importe_total && !isValidImporte(formData.importe_total)) {
+            showError('Importe inválido'); return
+        }
+        if (observaciones.length > LIMITS.observaciones) { showError('Observaciones demasiado largas (máx. 1000)'); return }
+        if (desde.length > LIMITS.ubicacion) { showError('Origen demasiado largo (máx. 200)'); return }
+        if (hasta.length > LIMITS.ubicacion) { showError('Destino demasiado largo (máx. 200)'); return }
+
         setLoading(true)
 
         // 1. Llamar al endpoint server-side que reserva el cupo y crea el traslado
@@ -187,13 +202,13 @@ export default function NuevoTraslado() {
                 user_id: userId,
                 empresa_id: empresaId,
                 chofer_id: formData.chofer_id,
-                marca_modelo: formData.marca_modelo,
-                matricula: formData.es_0km ? null : formData.matricula,
+                marca_modelo: marcaModelo,
+                matricula: formData.es_0km ? null : matricula,
                 es_0km: formData.es_0km,
                 importe_total: formData.importe_total,
-                observaciones: formData.observaciones,
-                desde: formData.desde,
-                hasta: formData.hasta
+                observaciones: observaciones || null,
+                desde: desde || null,
+                hasta: hasta || null,
             })
         })
 
@@ -276,7 +291,7 @@ export default function NuevoTraslado() {
             </nav>
 
             {/* Content */}
-            <div className="w-full min-w-0 max-w-[90vw] sm:max-w-2xl mx-auto px-2 py-4 bg-white rounded-2xl shadow-sm">
+            <div className="w-full min-w-0 max-w-2xl mx-auto px-3 sm:px-4 py-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Form - Left Column */}
                     <div className="card">
@@ -297,6 +312,7 @@ export default function NuevoTraslado() {
                                 <input
                                     type="text"
                                     required
+                                    maxLength={LIMITS.marcaModelo}
                                     placeholder="Ej: Toyota Corolla"
                                     className="input-field"
                                     value={formData.marca_modelo}
@@ -323,6 +339,7 @@ export default function NuevoTraslado() {
                                     <label className="block text-xs font-medium text-gray-700 mb-1.5">Matrícula</label>
                                     <input
                                         type="text"
+                                        maxLength={LIMITS.matricula}
                                         placeholder="Ej: ABC-123"
                                         className="input-field"
                                         value={formData.matricula}
@@ -370,6 +387,7 @@ export default function NuevoTraslado() {
                                     <label className="block text-xs font-medium text-gray-700 mb-1.5">Desde</label>
                                     <input
                                         type="text"
+                                        maxLength={LIMITS.ubicacion}
                                         placeholder="Origen del traslado"
                                         className="input-field"
                                         value={formData.desde}
@@ -380,6 +398,7 @@ export default function NuevoTraslado() {
                                     <label className="block text-xs font-medium text-gray-700 mb-1.5">Hasta</label>
                                     <input
                                         type="text"
+                                        maxLength={LIMITS.ubicacion}
                                         placeholder="Destino del traslado"
                                         className="input-field"
                                         value={formData.hasta}
@@ -467,6 +486,7 @@ export default function NuevoTraslado() {
                             <textarea
                                 className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:border-orange-500"
                                 rows={3}
+                                maxLength={LIMITS.observaciones}
                                 placeholder="Notas adicionales..."
                                 value={formData.observaciones}
                                 onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
