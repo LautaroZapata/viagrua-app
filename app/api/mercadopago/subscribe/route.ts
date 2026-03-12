@@ -37,6 +37,9 @@ export async function POST() {
             return NextResponse.json({ error: 'No se encontró email del usuario' }, { status: 400 })
         }
 
+        console.log('MP_TOKEN exists:', !!process.env.MERCADOPAGO_ACCESS_TOKEN)
+        console.log('MP_TOKEN prefix:', process.env.MERCADOPAGO_ACCESS_TOKEN?.substring(0, 10))
+
         const preapproval = await createSubscription(email, backUrl)
 
         // Guardar mp_subscription_id en el perfil

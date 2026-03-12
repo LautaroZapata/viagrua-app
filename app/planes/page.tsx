@@ -229,8 +229,8 @@ function PlanesContent() {
                         )}
                         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Premium</h2>
                         <div className="mb-6">
-                            <span className="text-3xl sm:text-4xl font-bold text-orange-600">$499</span>
-                            <span className="text-gray-500 text-sm"> UYU/mes</span>
+                            <span className="text-3xl sm:text-4xl font-bold text-orange-600">$15</span>
+                            <span className="text-gray-500 text-sm"> USD/mes</span>
                         </div>
                         <ul className="space-y-3 mb-8">
                             <li className="flex items-start gap-2 text-sm text-gray-600">
