@@ -210,7 +210,7 @@ export default function DetalleTrasladoAdmin() {
             <nav className="navbar sticky top-0 z-50">
                 <div className="flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3">
                     <div className="flex items-center gap-3">
-                        <button aria-label="Volver al dashboard" onClick={() => router.push('/dashboard')} className="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-lg transition">
+                        <button aria-label="Volver al dashboard" onClick={() => router.push('/dashboard')} className="nav-icon-btn text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-lg transition">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
@@ -218,7 +218,7 @@ export default function DetalleTrasladoAdmin() {
                         <h1 className="text-sm sm:text-base font-semibold text-white">Detalle del Traslado</h1>
                         {/* Mostrar nombre del usuario si está disponible */}
                         {traslado?.perfiles?.nombre_completo && (
-                          <span className="ml-2 text-xs text-white/80 font-semibold bg-white/10 px-2 py-0.5 rounded-lg max-w-[120px] truncate" title={traslado.perfiles.nombre_completo}>
+                          <span className="hidden sm:inline ml-2 text-xs text-white/80 font-semibold bg-white/10 px-2 py-0.5 rounded-lg max-w-[120px] truncate" title={traslado.perfiles.nombre_completo}>
                             {traslado.perfiles.nombre_completo}
                           </span>
                         )}
@@ -235,7 +235,7 @@ export default function DetalleTrasladoAdmin() {
                 </div>
             </nav>
 
-            <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-3xl mx-auto">
+            <div className="page-enter w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-3xl mx-auto">
                 {/* Info Principal */}
                 <div className="card p-4 sm:p-6 mb-4">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
@@ -350,7 +350,7 @@ export default function DetalleTrasladoAdmin() {
                         <button
                             onClick={() => cambiarEstado('pendiente')}
                             disabled={actualizando || estadoBloqueado}
-                            className={`py-2.5 px-3 rounded-lg font-medium text-xs transition ${
+                            className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
                                 traslado.estado === 'pendiente'
                                     ? 'bg-yellow-500 text-white'
                                     : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
@@ -361,7 +361,7 @@ export default function DetalleTrasladoAdmin() {
                         <button
                             onClick={() => cambiarEstado('en_curso')}
                             disabled={actualizando || estadoBloqueado}
-                            className={`py-2.5 px-3 rounded-lg font-medium text-xs transition ${
+                            className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
                                 traslado.estado === 'en_curso'
                                     ? 'bg-blue-500 text-white'
                                     : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
@@ -372,7 +372,7 @@ export default function DetalleTrasladoAdmin() {
                         <button
                             onClick={() => cambiarEstado('completado')}
                             disabled={actualizando || estadoBloqueado}
-                            className={`py-2.5 px-3 rounded-lg font-medium text-xs transition ${
+                            className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
                                 traslado.estado === 'completado'
                                     ? 'bg-green-500 text-white'
                                     : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
@@ -396,7 +396,7 @@ export default function DetalleTrasladoAdmin() {
                             <button
                                 onClick={() => cambiarEstadoPago('pendiente')}
                                 disabled={actualizando || pagoBloqueado}
-                                className={`py-2.5 px-3 rounded-lg font-medium text-xs transition ${
+                                className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
                                     traslado.estado_pago === 'pendiente'
                                         ? 'bg-yellow-500 text-white'
                                         : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
@@ -407,7 +407,7 @@ export default function DetalleTrasladoAdmin() {
                             <button
                                 onClick={() => cambiarEstadoPago('efectivo')}
                                 disabled={actualizando || pagoBloqueado}
-                                className={`py-2.5 px-3 rounded-lg font-medium text-xs transition ${
+                                className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
                                     traslado.estado_pago === 'efectivo'
                                         ? 'bg-green-500 text-white'
                                         : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
@@ -418,7 +418,7 @@ export default function DetalleTrasladoAdmin() {
                             <button
                                 onClick={() => cambiarEstadoPago('transferencia')}
                                 disabled={actualizando || pagoBloqueado}
-                                className={`py-2.5 px-3 rounded-lg font-medium text-xs transition ${
+                                className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
                                     traslado.estado_pago === 'transferencia'
                                         ? 'bg-blue-500 text-white'
                                         : 'bg-gray-100 text-gray-400 hover:bg-gray-200'

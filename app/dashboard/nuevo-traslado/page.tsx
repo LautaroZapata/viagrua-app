@@ -273,7 +273,7 @@ export default function NuevoTraslado() {
             {/* Navbar */}
             <nav className="bg-white border-b border-gray-100 px-2 py-3 sticky top-0 z-30">
                 <div className="max-w-7xl mx-auto flex items-center gap-3">
-                    <button onClick={() => router.push('/dashboard')} className="p-2 -ml-2 text-gray-500 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition">
+                    <button onClick={() => router.push('/dashboard')} className="nav-icon-btn p-2 -ml-2 text-gray-500 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
@@ -283,8 +283,8 @@ export default function NuevoTraslado() {
             </nav>
 
             {/* Content */}
-            <div className="w-full min-w-0 max-w-2xl mx-auto px-3 sm:px-4 py-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="page-enter w-full min-w-0 max-w-2xl mx-auto px-3 sm:px-4 py-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Form - Left Column */}
                     <div className="card">
                         <h2 className="text-lg font-semibold text-gray-900 mb-4">Detalles del Traslado</h2>
@@ -368,13 +368,13 @@ export default function NuevoTraslado() {
                                         name="importe"
                                         value={formData.importe_total}
                                         onChange={(e) => setFormData({ ...formData, importe_total: e.target.value })}
-                                        className="w-full border rounded px-3 py-2 input-field"
+                                        className="input-field"
                                         required
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-xs font-medium text-gray-700 mb-1.5">Desde</label>
                                     <input
@@ -457,23 +457,23 @@ export default function NuevoTraslado() {
                                     />
                                     
                                     {fotos[tipo] ? (
-                                        <div className="relative group">
+                                        <div className="relative">
                                             <img
                                                 src={fotos[tipo]!.preview}
                                                 alt={tipo}
                                                 className="w-full h-24 object-cover rounded-lg border-2 border-green-500"
                                             />
-                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition rounded-lg flex items-center justify-center">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => eliminarFoto(tipo)}
-                                                    className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition"
-                                                >
-                                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </button>
-                                            </div>
+                                            {/* Botón eliminar siempre visible — accesible en touch */}
+                                            <button
+                                                type="button"
+                                                onClick={() => eliminarFoto(tipo)}
+                                                className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-md transition touch-manipulation"
+                                                aria-label={`Eliminar foto ${tipo}`}
+                                            >
+                                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
                                             <p className="text-[10px] text-center text-gray-500 mt-1">
                                                 {formatFileSize(fotos[tipo]!.compressedSize || 0)}
                                             </p>

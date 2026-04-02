@@ -330,7 +330,7 @@ export default function DetalleTraslado() {
                         <button
                             onClick={() => cambiarEstado('pendiente')}
                             disabled={actualizando || estadoBloqueado}
-                            className={`py-2 px-3 rounded-lg font-medium text-xs transition ${
+                            className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
                                 traslado.estado === 'pendiente'
                                     ? 'bg-yellow-500 text-white'
                                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -341,7 +341,7 @@ export default function DetalleTraslado() {
                         <button
                             onClick={() => cambiarEstado('en_curso')}
                             disabled={actualizando || estadoBloqueado}
-                            className={`py-2 px-3 rounded-lg font-medium text-xs transition ${
+                            className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
                                 traslado.estado === 'en_curso'
                                     ? 'bg-blue-500 text-white'
                                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -352,7 +352,7 @@ export default function DetalleTraslado() {
                         <button
                             onClick={() => cambiarEstado('completado')}
                             disabled={actualizando || estadoBloqueado}
-                            className={`py-2 px-3 rounded-lg font-medium text-xs transition ${
+                            className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
                                 traslado.estado === 'completado'
                                     ? 'bg-green-500 text-white'
                                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -376,7 +376,7 @@ export default function DetalleTraslado() {
                             <button
                                 onClick={() => cambiarEstadoPago('pendiente')}
                                 disabled={actualizando || pagoBloqueado}
-                                className={`py-2 px-3 rounded-lg font-medium text-xs transition ${
+                                className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
                                     traslado.estado_pago === 'pendiente'
                                         ? 'bg-yellow-500 text-white'
                                         : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -387,7 +387,7 @@ export default function DetalleTraslado() {
                             <button
                                 onClick={() => cambiarEstadoPago('efectivo')}
                                 disabled={actualizando || pagoBloqueado}
-                                className={`py-2 px-3 rounded-lg font-medium text-xs transition ${
+                                className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
                                     traslado.estado_pago === 'efectivo'
                                         ? 'bg-green-500 text-white'
                                         : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -398,7 +398,7 @@ export default function DetalleTraslado() {
                             <button
                                 onClick={() => cambiarEstadoPago('transferencia')}
                                 disabled={actualizando || pagoBloqueado}
-                                className={`py-2 px-3 rounded-lg font-medium text-xs transition ${
+                                className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
                                     traslado.estado_pago === 'transferencia'
                                         ? 'bg-blue-500 text-white'
                                         : 'bg-gray-100 text-gray-500 hover:bg-gray-200'

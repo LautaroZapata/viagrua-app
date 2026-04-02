@@ -538,7 +538,7 @@ export default function PanelChofer() {
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={validarCodigo}
-                                                    className="btn-primary text-xs px-4 py-2"
+                                                    className="btn-primary text-xs px-4 py-2.5 min-h-[40px]"
                                                 >
                                                     Validar
                                                 </button>
@@ -548,7 +548,7 @@ export default function PanelChofer() {
                                                         setCodigoInvitacion('')
                                                         setErrorCodigo('')
                                                     }}
-                                                    className="text-gray-500 hover:text-gray-700 text-xs px-3 py-2"
+                                                    className="text-gray-500 hover:text-gray-700 text-xs px-3 py-2.5 min-h-[40px]"
                                                 >
                                                     Cancelar
                                                 </button>
@@ -583,24 +583,24 @@ export default function PanelChofer() {
                         <div className="flex flex-wrap gap-2 self-start">
                             <button
                                 onClick={() => { setFiltroTrasladosPendientes(!filtroTrasladosPendientes); setTrasladosPage(1) }}
-                                className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
+                                className={`filter-btn inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2.5 min-h-[40px] rounded-lg transition ${
                                     filtroTrasladosPendientes
-                                        ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                        ? 'bg-yellow-100 text-yellow-700 border border-yellow-200 shadow-sm'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
                             >
-                                <span className={`w-2 h-2 rounded-full ${filtroTrasladosPendientes ? 'bg-yellow-500' : 'bg-gray-400'}`}></span>
+                                <span className={`status-dot ${filtroTrasladosPendientes ? 'bg-yellow-500 status-dot-pulse' : 'bg-gray-400'}`}></span>
                                 Traslados Pendientes
                             </button>
                             <button
                                 onClick={() => { setFiltroPagosPendientes(!filtroPagosPendientes); setTrasladosPage(1) }}
-                                className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
+                                className={`filter-btn inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2.5 min-h-[40px] rounded-lg transition ${
                                     filtroPagosPendientes
-                                        ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                                        ? 'bg-orange-100 text-orange-700 border border-orange-200 shadow-sm'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
                             >
-                                <span className={`w-2 h-2 rounded-full ${filtroPagosPendientes ? 'bg-orange-500' : 'bg-gray-400'}`}></span>
+                                <span className={`status-dot ${filtroPagosPendientes ? 'bg-orange-500 status-dot-pulse' : 'bg-gray-400'}`}></span>
                                 Pagos Pendientes
                             </button>
                         </div>
@@ -618,11 +618,11 @@ export default function PanelChofer() {
                         <p className="text-sm text-gray-500">No hay traslados asignados</p>
                     </div>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-3 animate-stagger">
                         {traslados.map((traslado) => (
-                            <div 
-                                key={traslado.id} 
-                                className="card p-4 cursor-pointer hover:shadow-md hover:border-orange-200 transition-all group"
+                            <div
+                                key={traslado.id}
+                                className="card card-interactive p-4 group"
                                 onClick={() => router.push(`/chofer/traslado/${traslado.id}`)}
                             >
                                 <div className="flex items-start sm:items-center justify-between gap-3">
@@ -699,7 +699,7 @@ export default function PanelChofer() {
                             disabled={trasladosPage <= 1}
                             className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50 btn-sm"
                         >Anterior</button>
-                        <span className="text-sm text-gray-600">Página {trasladosPage} / {Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}</span>
+                        <span className="text-sm text-gray-600 whitespace-nowrap">Página {trasladosPage} / {Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}</span>
                         <button
                             onClick={() => setTrasladosPage(p => Math.min(Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE)), p + 1))}
                             disabled={trasladosPage >= Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}

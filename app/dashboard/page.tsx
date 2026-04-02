@@ -567,7 +567,7 @@ export default function Dashboard() {
             {/* Tabs Mobile eliminados: navegación solo por drawer en mobile */}
 
             {/* Content - Responsive */}
-            <div className="w-full min-w-0 px-3 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 mx-auto max-w-4xl lg:max-w-5xl">
+            <div className="page-enter w-full min-w-0 px-3 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 mx-auto max-w-4xl lg:max-w-5xl">
 
                 {/* Header */}
                 <div className="mb-8 sm:mb-10">
@@ -654,7 +654,7 @@ export default function Dashboard() {
                 {activeTab === 'inicio' && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-10">
                         <button onClick={() => { if (!bloqueoTraslados) router.push('/dashboard/nuevo-traslado') }}
-                            className={`card p-5 sm:p-6 lg:p-8 text-left transition-all group ${bloqueoTraslados ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-lg active:shadow-md cursor-pointer'}`}>
+                            className={`card card-interactive p-5 sm:p-6 lg:p-8 text-left group ${bloqueoTraslados ? 'opacity-60 cursor-not-allowed' : ''}`}>
                             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-orange-100 group-hover:bg-orange-200 flex items-center justify-center mb-4 transition">
                                 <svg className="w-6 h-6 sm:w-7 sm:h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -665,7 +665,7 @@ export default function Dashboard() {
                         </button>
                         
                         <button onClick={() => abrirModalInvitacion()}
-                            className={`card p-5 sm:p-6 lg:p-8 text-left transition-all group ${planKey === 'free' ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-lg active:shadow-md cursor-pointer'}`}
+                            className={`card card-interactive p-5 sm:p-6 lg:p-8 text-left group ${planKey === 'free' ? 'opacity-60 cursor-not-allowed' : ''}`}
                             disabled={planKey === 'free'}
                             title={planKey === 'free' ? 'Disponible solo en planes pagos (Premium/Admin)' : ''}>
                             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center mb-4 transition">
@@ -688,24 +688,24 @@ export default function Dashboard() {
                                 <div className="flex flex-wrap gap-2 mt-2">
                                     <button
                                         onClick={() => { setFiltroTrasladosPendientes(!filtroTrasladosPendientes); setTrasladosPage(1) }}
-                                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
+                                        className={`filter-btn inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
                                             filtroTrasladosPendientes
-                                                ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                                ? 'bg-yellow-100 text-yellow-700 border border-yellow-200 shadow-sm'
                                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                     >
-                                        <span className={`w-2 h-2 rounded-full ${filtroTrasladosPendientes ? 'bg-yellow-500' : 'bg-gray-400'}`}></span>
+                                        <span className={`status-dot ${filtroTrasladosPendientes ? 'bg-yellow-500 status-dot-pulse' : 'bg-gray-400'}`}></span>
                                         Traslados Pendientes
                                     </button>
                                     <button
                                         onClick={() => { setFiltroPagosPendientes(!filtroPagosPendientes); setTrasladosPage(1) }}
-                                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
+                                        className={`filter-btn inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
                                             filtroPagosPendientes
-                                                ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                                                ? 'bg-orange-100 text-orange-700 border border-orange-200 shadow-sm'
                                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                     >
-                                        <span className={`w-2 h-2 rounded-full ${filtroPagosPendientes ? 'bg-orange-500' : 'bg-gray-400'}`}></span>
+                                        <span className={`status-dot ${filtroPagosPendientes ? 'bg-orange-500 status-dot-pulse' : 'bg-gray-400'}`}></span>
                                         Pagos Pendientes
                                     </button>
                                 </div>
@@ -729,13 +729,13 @@ export default function Dashboard() {
                                 <p className="text-gray-500 text-sm sm:text-base">No hay traslados registrados</p>
                             </div>
                         ) : (
-                            <div className="space-y-3">
+                            <div className="space-y-3 animate-stagger">
                                 {traslados.map((traslado) => (
-                                    <div key={traslado.id} className="border border-gray-100 rounded-xl p-4 hover:shadow-md hover:border-gray-200 transition">
+                                    <div key={traslado.id} className="border border-gray-100 rounded-xl p-4 card-interactive transition">
                                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                             {/* Info del traslado - Clickeable */}
-                                            <div 
-                                                className="flex-1 cursor-pointer hover:opacity-80"
+                                            <div
+                                                className="flex-1 cursor-pointer"
                                                 onClick={() => router.push(`/dashboard/traslado/${traslado.id}`)}
                                             >
                                                 <div className="flex items-center gap-2 mb-2">
@@ -817,7 +817,7 @@ export default function Dashboard() {
                                 >
                                     Anterior
                                 </button>
-                                <span className="text-sm text-gray-600">Página {trasladosPage} / {Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}</span>
+                                <span className="text-sm text-gray-600 whitespace-nowrap">Página {trasladosPage} / {Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}</span>
                                 <button
                                     onClick={() => {
                                         const maxPage = Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))
@@ -855,7 +855,7 @@ export default function Dashboard() {
                                 <p className="text-gray-500 text-sm sm:text-base">No hay choferes registrados</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto -mx-4 sm:mx-0">
+                            <div className="overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8">
                                 <table className="w-full text-sm">
                                     <thead className="border-b border-gray-100 bg-gray-50/50">
                                         <tr>
@@ -904,7 +904,7 @@ export default function Dashboard() {
 
             {/* Modal Invitación */}
             {modalAbierto && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" style={{ padding: '16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
                     <div className="card w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 sm:p-8">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Invitar Chofer</h3>
