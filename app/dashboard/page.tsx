@@ -304,7 +304,7 @@ export default function Dashboard() {
         // Si hay error, revertir
         if (error) {
             showError('Error al actualizar: ' + error.message)
-            if (perfil) await cargarTraslados(perfil.empresa_id, trasladosPage)
+            if (perfil) await cargarTraslados(perfil.empresa_id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
         } else {
             if (perfil) await cargarContadoresTraslados(perfil.empresa_id)
         }
@@ -339,7 +339,7 @@ export default function Dashboard() {
 
         if (error) {
             showError('Error al eliminar: ' + error.message)
-            if (perfil) await cargarTraslados(perfil.empresa_id, trasladosPage)
+            if (perfil) await cargarTraslados(perfil.empresa_id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
         } else {
             if (perfil) await cargarContadoresTraslados(perfil.empresa_id)
         }
