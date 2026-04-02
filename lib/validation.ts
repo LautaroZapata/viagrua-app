@@ -92,6 +92,7 @@ export interface TrasladoInput {
   observaciones?: string | null
   desde?: string | null
   hasta?: string | null
+  fecha?: string | null
 }
 
 export function validateTrasladoInput(body: Record<string, unknown>): { valid: true; data: TrasladoInput } | { valid: false; error: string } {
@@ -132,6 +133,22 @@ export function validateTrasladoInput(body: Record<string, unknown>): { valid: t
   const desde = body.desde ? sanitizeAndLimit(body.desde, LIMITS.ubicacion) : null
   const hasta = body.hasta ? sanitizeAndLimit(body.hasta, LIMITS.ubicacion) : null
 
+  // Fecha opcional: debe ser YYYY-MM-DD y no puede ser futura
+  let fecha: string | null = null
+  if (body.fecha) {
+    const fechaStr = sanitizeString(body.fecha)
+    if (!isValidFecha(fechaStr)) {
+      return { valid: false, error: 'Formato de fecha inválido (se esperaba YYYY-MM-DD)' }
+    }
+    const fechaDate = new Date(fechaStr)
+    const hoy = new Date()
+    hoy.setHours(23, 59, 59, 999)
+    if (fechaDate > hoy) {
+      return { valid: false, error: 'La fecha no puede ser futura' }
+    }
+    fecha = fechaStr
+  }
+
   return {
     valid: true,
     data: {
@@ -145,6 +162,7 @@ export function validateTrasladoInput(body: Record<string, unknown>): { valid: t
       observaciones,
       desde,
       hasta,
+      fecha,
     },
   }
 }
