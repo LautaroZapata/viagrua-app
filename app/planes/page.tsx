@@ -282,7 +282,7 @@ function PlanesContent() {
                                 <button
                                     onClick={handleCancel}
                                     disabled={procesando}
-                                    className="w-full py-2 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
+                                    className="w-full py-3 min-h-[44px] text-sm text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
                                 >
                                     {procesando ? 'Cancelando...' : 'Cancelar suscripción'}
                                 </button>
@@ -308,8 +308,8 @@ function PlanesContent() {
 
             {/* Modal de email para Mercado Pago */}
             {mostrarModalEmail && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" style={{ padding: '16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-md p-6">
                         <h3 className="text-lg font-bold text-gray-900 mb-2">Email de Mercado Pago</h3>
                         <p className="text-sm text-gray-500 mb-4">
                             Ingresá el email asociado a tu cuenta de Mercado Pago en Uruguay para procesar el pago.

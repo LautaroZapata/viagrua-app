@@ -817,7 +817,7 @@ export default function Dashboard() {
                                 >
                                     Anterior
                                 </button>
-                                <span className="text-sm text-gray-600">Página {trasladosPage} / {Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}</span>
+                                <span className="text-sm text-gray-600 whitespace-nowrap">Página {trasladosPage} / {Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}</span>
                                 <button
                                     onClick={() => {
                                         const maxPage = Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))
@@ -855,7 +855,7 @@ export default function Dashboard() {
                                 <p className="text-gray-500 text-sm sm:text-base">No hay choferes registrados</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto -mx-4 sm:mx-0">
+                            <div className="overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8">
                                 <table className="w-full text-sm">
                                     <thead className="border-b border-gray-100 bg-gray-50/50">
                                         <tr>
@@ -904,7 +904,7 @@ export default function Dashboard() {
 
             {/* Modal Invitación */}
             {modalAbierto && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" style={{ padding: '16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
                     <div className="card w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 sm:p-8">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Invitar Chofer</h3>

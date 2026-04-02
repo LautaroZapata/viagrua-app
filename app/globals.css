@@ -313,9 +313,12 @@ body {
     .currency-input .currency-symbol { left: 10px; font-size: 13px; }
 }
 
-/* Responsive: evitar overflow horizontal en toda la app */
-html, body {
-    overflow-x: hidden;
+/* Responsive: evitar overflow horizontal en toda la app.
+   Nota: overflow-x:hidden en html/body puede romper position:sticky en Safari.
+   Se aplica solo a body y se usa clip en vez de hidden para no crear
+   un nuevo stacking context que interfiera con sticky. */
+body {
+    overflow-x: clip;
 }
 
 /* Contenedores de listas/tablas que puedan hacer scroll horizontal */
@@ -337,6 +340,15 @@ html, body {
 
 .animate-slideInLeft {
     animation: slideInLeft 0.25s ease-out;
+}
+
+/* Touch-action: elimina el delay de 300ms en móviles */
+.btn-primary,
+.btn-secondary,
+.card-interactive,
+.nav-icon-btn,
+.filter-btn {
+    touch-action: manipulation;
 }
 
 /* =============================================
