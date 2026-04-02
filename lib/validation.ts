@@ -149,6 +149,12 @@ export function validateTrasladoInput(body: Record<string, unknown>): { valid: t
   }
 }
 
+// --- Validación de preapprovalId (Mercado Pago) ---
+
+export function isValidPreapprovalId(id: unknown): boolean {
+  return typeof id === 'string' && id.length > 0 && id.length < 100 && /^[a-zA-Z0-9_-]+$/.test(id)
+}
+
 // --- Validación para gastos ---
 
 const TIPOS_GASTO_VALIDOS = ['combustible', 'seguro', 'mantenimiento', 'peaje', 'patente', 'multa', 'otro']

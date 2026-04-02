@@ -16,12 +16,17 @@ export async function POST() {
         // Obtener perfil
         const { data: perfil, error: perfilError } = await supabase
             .from('perfiles')
-            .select('id, plan, mp_subscription_id')
+            .select('id, plan, mp_subscription_id, rol')
             .eq('id', user.id)
             .single()
 
         if (perfilError || !perfil) {
             return NextResponse.json({ error: 'No se pudo obtener el perfil' }, { status: 403 })
+        }
+
+        // Solo administradores pueden gestionar suscripciones
+        if (perfil.rol !== 'admin') {
+            return NextResponse.json({ error: 'Solo administradores pueden gestionar suscripciones' }, { status: 403 })
         }
 
         if (!perfil.mp_subscription_id) {

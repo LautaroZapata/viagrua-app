@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { sanitizeString, isValidEmail, isValidPassword, isValidName, isValidCodigoInvitacion, LIMITS } from '@/lib/validation'
+import { showError } from '@/lib/swal'
 
 interface Invitacion {
     id: string
@@ -76,9 +77,9 @@ export default function UnirseEmpresa() {
         const email = sanitizeString(formData.email).toLowerCase()
         const password = formData.password
 
-        if (!isValidName(nombre)) { alert('Nombre inválido (máx. 100 caracteres)'); return }
-        if (!isValidEmail(email)) { alert('Email inválido'); return }
-        if (!isValidPassword(password)) { alert('La contraseña debe tener entre 6 y 128 caracteres'); return }
+        if (!isValidName(nombre)) { showError('Nombre inválido (máx. 100 caracteres)'); return }
+        if (!isValidEmail(email)) { showError('Email inválido'); return }
+        if (!isValidPassword(password)) { showError('La contraseña debe tener entre 6 y 128 caracteres'); return }
 
         setRegistrando(true)
 
@@ -95,7 +96,7 @@ export default function UnirseEmpresa() {
         })
 
         if (authError || !authData.user) {
-            alert('Error: ' + authError?.message)
+            showError('Error: ' + authError?.message)
             setRegistrando(false)
             return
         }
@@ -107,20 +108,20 @@ export default function UnirseEmpresa() {
             .eq('id', authData.user.id)
 
         if (rolError) {
-            alert('Error al configurar rol. Contacta al administrador.')
+            showError('Error al configurar rol. Contacta al administrador.')
             setRegistrando(false)
             return
         }
 
-        // 3. Marcar invitación como usada - CON MANEJO DE ERROR
+        // 3. Marcar invitación como usada - Atomic: solo marca si usado=false (previene race condition)
         const { error: invError } = await supabase
             .from('invitaciones')
             .update({ usado: true })
             .eq('id', invitacion.id)
+            .eq('usado', false)
 
         if (invError) {
             console.error('Error marcando invitación:', invError)
-            // Continuar aunque falle - no es crítico para el usuario
         }
 
         // 4. Login automático
@@ -128,11 +129,6 @@ export default function UnirseEmpresa() {
             email,
             password,
         })
-
-        // Guardar email en localStorage solo en cliente
-        if (typeof window !== 'undefined' && email) {
-            window.localStorage.setItem('email', email)
-        }
 
         router.push('/chofer')
     }

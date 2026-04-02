@@ -1,9 +1,9 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import ClientOnly from '../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { confirmAction } from '@/lib/swal'
+import { confirmAction, showError } from '@/lib/swal'
 import { sanitizeString, isValidCodigoInvitacion, LIMITS } from '@/lib/validation'
 
 interface Traslado {
@@ -54,6 +54,8 @@ export default function PanelChofer() {
     const [empresaInvitacion, setEmpresaInvitacion] = useState<string | null>(null)
     const [mensajeExito, setMensajeExito] = useState<string | null>(null)
 
+    const timersRef = useRef<NodeJS.Timeout[]>([])
+    useEffect(() => () => timersRef.current.forEach(clearTimeout), [])
 
     useEffect(() => { cargarDatos() }, [])
 
@@ -76,8 +78,10 @@ export default function PanelChofer() {
             }, (payload) => {
                 setTraslados((prev) => {
                     if (payload.eventType === 'INSERT') {
-                        // Nuevo traslado asignado
-                        return [payload.new as Traslado, ...prev]
+                        // Nuevo traslado asignado (dedup check)
+                        return prev.some(t => t.id === (payload.new as any).id)
+                            ? prev
+                            : [payload.new as Traslado, ...prev]
                     } else if (payload.eventType === 'UPDATE') {
                         // Actualización de traslado
                         return prev.map(t => t.id === payload.new.id ? { ...t, ...payload.new } as Traslado : t)
@@ -246,27 +250,18 @@ export default function PanelChofer() {
         setUniendose(true)
         setErrorCodigo('')
 
-        // 1. Obtener la invitación
+        // 1. Atomic: only succeeds if usado is still false and not expired
         const { data: invitacion, error: invError } = await supabase
             .from('invitaciones')
-            .select('*')
-            .eq('codigo', codigo)
+            .update({ usado: true })
+            .eq('codigo', codigo.trim())
+            .eq('usado', false)
+            .gte('expires_at', new Date().toISOString())
+            .select()
             .single()
 
-        if (invError || !invitacion) {
-            setErrorCodigo('Código inválido')
-            setUniendose(false)
-            return
-        }
-
-        if (invitacion.usado) {
-            setErrorCodigo('Este código ya fue utilizado')
-            setUniendose(false)
-            return
-        }
-
-        if (new Date(invitacion.expires_at) < new Date()) {
-            setErrorCodigo('Este código ha expirado')
+        if (!invitacion || invError) {
+            setErrorCodigo('Código inválido, expirado o ya utilizado')
             setUniendose(false)
             return
         }
@@ -278,16 +273,12 @@ export default function PanelChofer() {
             .eq('id', perfil.id)
 
         if (updateError) {
+            // Rollback: unmark invitation
+            await supabase.from('invitaciones').update({ usado: false }).eq('id', invitacion.id)
             setErrorCodigo('Error al unirse a la empresa')
             setUniendose(false)
             return
         }
-
-        // 3. Marcar invitación como usada
-        await supabase
-            .from('invitaciones')
-            .update({ usado: true })
-            .eq('id', invitacion.id)
 
         // 4. Mostrar mensaje de éxito y recargar
         const empresaNombre = empresaInvitacion
@@ -299,7 +290,7 @@ export default function PanelChofer() {
         cargarDatos()
         
         // Ocultar mensaje después de 5 segundos
-        setTimeout(() => setMensajeExito(null), 5000)
+        const t = setTimeout(() => setMensajeExito(null), 5000); timersRef.current.push(t)
     }
 
     if (loading) {
@@ -455,7 +446,7 @@ export default function PanelChofer() {
                                     setPerfil({ ...perfil, empresa_id: null })
                                     setNombreEmpresa(null)
                                     setMensajeExito('Te has salido de la empresa.')
-                                    setTimeout(() => setMensajeExito(null), 5000)
+                                    const t = setTimeout(() => setMensajeExito(null), 5000); timersRef.current.push(t)
                                 }}
                                 className="bg-red-100 hover:bg-red-200 text-red-700 font-medium text-xs px-4 py-2 rounded-lg transition border border-red-200"
                             >

@@ -1,10 +1,45 @@
+import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getSubscription } from '@/lib/mercadopago'
+import { isValidPreapprovalId } from '@/lib/validation'
 
 export async function POST(request: Request) {
     try {
         const body = await request.json()
+
+        // --- HMAC signature verification ---
+        const xSignature = request.headers.get('x-signature')
+        const requestId = request.headers.get('x-request-id')
+        const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET
+
+        if (!webhookSecret) {
+            console.warn('MERCADOPAGO_WEBHOOK_SECRET no configurado, omitiendo verificación de firma')
+        } else {
+            if (!xSignature || !requestId) {
+                return new Response(JSON.stringify({ error: 'Firma ausente' }), { status: 401 })
+            }
+
+            // Parse x-signature format: "ts=...,v1=..."
+            const parts: Record<string, string> = {}
+            xSignature.split(',').forEach((part) => {
+                const [key, value] = part.split('=', 2)
+                if (key && value) parts[key.trim()] = value.trim()
+            })
+            const ts = parts['ts']
+            const v1 = parts['v1']
+
+            if (!ts || !v1) {
+                return new Response(JSON.stringify({ error: 'Formato de firma inválido' }), { status: 401 })
+            }
+
+            const manifest = `id:${body.data?.id};request-id:${requestId};ts:${ts};`
+            const computed = crypto.createHmac('sha256', webhookSecret).update(manifest).digest('hex')
+
+            if (computed !== v1) {
+                return new Response(JSON.stringify({ error: 'Firma inválida' }), { status: 401 })
+            }
+        }
 
         // Solo procesar notificaciones de suscripciones
         if (body.type !== 'subscription_preapproval') {
@@ -12,8 +47,8 @@ export async function POST(request: Request) {
         }
 
         const preapprovalId = body.data?.id
-        if (!preapprovalId) {
-            return NextResponse.json({ ok: true })
+        if (!preapprovalId || !isValidPreapprovalId(preapprovalId)) {
+            return new Response(JSON.stringify({ error: 'preapprovalId inválido' }), { status: 400 })
         }
 
         // Verificar estado real consultando a MP directamente

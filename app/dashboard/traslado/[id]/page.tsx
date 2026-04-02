@@ -100,19 +100,24 @@ export default function DetalleTrasladoAdmin() {
             })
             if (!ok) return
         }
-        
+
         // Actualización optimista - cambiar UI inmediatamente
         const estadoAnterior = traslado.estado
-        setTraslado({ ...traslado, estado: nuevoEstado })
+        setActualizando(true)
+        setTraslado(prev => prev ? { ...prev, estado: nuevoEstado } : prev)
 
-        const { error } = await supabase
-            .from('traslados')
-            .update({ estado: nuevoEstado })
-            .eq('id', traslado.id)
+        try {
+            const { error } = await supabase
+                .from('traslados')
+                .update({ estado: nuevoEstado })
+                .eq('id', traslado.id)
 
-        if (error) {
-            setTraslado({ ...traslado, estado: estadoAnterior })
-            showError('Error: ' + error.message)
+            if (error) {
+                setTraslado(prev => prev ? { ...prev, estado: estadoAnterior } : prev)
+                showError('Error: ' + error.message)
+            }
+        } finally {
+            setActualizando(false)
         }
     }
 
@@ -128,16 +133,21 @@ export default function DetalleTrasladoAdmin() {
         if (!ok) return
 
         const estadoPagoAnterior = traslado.estado_pago
-        setTraslado({ ...traslado, estado_pago: nuevoEstadoPago })
+        setActualizando(true)
+        setTraslado(prev => prev ? { ...prev, estado_pago: nuevoEstadoPago } : prev)
 
-        const { error } = await supabase
-            .from('traslados')
-            .update({ estado_pago: nuevoEstadoPago })
-            .eq('id', traslado.id)
+        try {
+            const { error } = await supabase
+                .from('traslados')
+                .update({ estado_pago: nuevoEstadoPago })
+                .eq('id', traslado.id)
 
-        if (error) {
-            setTraslado({ ...traslado, estado_pago: estadoPagoAnterior })
-            showError('Error: ' + error.message)
+            if (error) {
+                setTraslado(prev => prev ? { ...prev, estado_pago: estadoPagoAnterior } : prev)
+                showError('Error: ' + error.message)
+            }
+        } finally {
+            setActualizando(false)
         }
     }
 
@@ -149,8 +159,11 @@ export default function DetalleTrasladoAdmin() {
         })
         if (!ok) return
 
-        // Eliminar fotos del storage
-        await supabase.storage.from('fotos-traslados').remove([`${traslado.id}/`])
+        // Eliminar fotos del storage (listar primero, luego eliminar)
+        const { data: storageFiles } = await supabase.storage.from('fotos-traslados').list(traslado.id)
+        if (storageFiles && storageFiles.length > 0) {
+            await supabase.storage.from('fotos-traslados').remove(storageFiles.map(f => `${traslado.id}/${f.name}`))
+        }
 
         const { error } = await supabase
             .from('traslados')
@@ -197,7 +210,7 @@ export default function DetalleTrasladoAdmin() {
             <nav className="navbar sticky top-0 z-50">
                 <div className="flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3">
                     <div className="flex items-center gap-3">
-                        <button onClick={() => router.push('/dashboard')} className="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-lg transition">
+                        <button aria-label="Volver al dashboard" onClick={() => router.push('/dashboard')} className="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-lg transition">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
@@ -260,7 +273,7 @@ export default function DetalleTrasladoAdmin() {
                                 <p className="text-base font-semibold text-gray-900">{traslado.matricula}</p>
                             </div>
                         )}
-                        {traslado.importe_total && (
+                        {traslado.importe_total != null && (
                             <div className="bg-gray-50 p-3 rounded-lg">
                                 <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Importe</p>
                                 <p className="text-base font-semibold text-green-600">${traslado.importe_total}</p>
@@ -371,7 +384,7 @@ export default function DetalleTrasladoAdmin() {
                 </div>
 
                 {/* Estado de Pago */}
-                                {traslado.importe_total && (
+                                {traslado.importe_total != null && (
                                         <div className="card p-4 sm:p-6">
                                                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Estado de Pago</h3>
                                                 {pagoBloqueado && (
@@ -421,10 +434,16 @@ export default function DetalleTrasladoAdmin() {
             {/* Modal foto ampliada */}
             {fotoAmpliada && (
                 <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Foto ampliada"
+                    tabIndex={0}
                     className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
                     onClick={() => setFotoAmpliada(null)}
+                    onKeyDown={(e) => e.key === 'Escape' && setFotoAmpliada(null)}
                 >
                     <button
+                        aria-label="Cerrar foto"
                         className="absolute top-4 right-4 text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition"
                         onClick={() => setFotoAmpliada(null)}
                     >

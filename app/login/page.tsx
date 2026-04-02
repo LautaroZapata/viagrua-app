@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { sanitizeString, isValidEmail, LIMITS } from '@/lib/validation'
+import { showError } from '@/lib/swal'
 
 export default function Login() {
     const router = useRouter()
@@ -18,8 +19,8 @@ export default function Login() {
         const email = sanitizeString(formData.email).toLowerCase()
         const password = formData.password
 
-        if (!isValidEmail(email)) { alert('Email inválido'); return }
-        if (!password || password.length > LIMITS.password) { alert('Contraseña inválida'); return }
+        if (!isValidEmail(email)) { showError('Email inválido'); return }
+        if (!password || password.length > LIMITS.password) { showError('Contraseña inválida'); return }
 
         setLoading(true)
 
@@ -29,7 +30,7 @@ export default function Login() {
         })
 
         if (error) {
-            alert('Error: ' + error.message)
+            showError('Error: ' + error.message)
             setLoading(false)
             return
         }
@@ -37,14 +38,9 @@ export default function Login() {
         const { data: perfil } = await supabase
             .from('perfiles').select('rol').eq('id', data.user.id).single()
 
-        // Guardar email en localStorage y navegar SOLO en cliente
+        // Navegar según rol (Supabase gestiona la sesión)
         setTimeout(() => {
             if (typeof window !== 'undefined') {
-                window.localStorage.removeItem('email');
-                window.localStorage.removeItem('user_id');
-                if (email) {
-                    window.localStorage.setItem('email', email);
-                }
                 if (perfil?.rol === 'admin') {
                     router.push('/dashboard');
                 } else {

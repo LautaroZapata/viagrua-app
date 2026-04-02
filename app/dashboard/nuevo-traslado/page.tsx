@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import ClientOnly from '../../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { compressImage, formatFileSize } from '@/lib/compressImage'
@@ -69,30 +68,40 @@ export default function NuevoTraslado() {
         interior: useRef<HTMLInputElement>(null)
     }
 
-    useEffect(() => { cargarDatos() }, [])
+    // Clean up all object URLs on unmount
+    useEffect(() => {
+        return () => {
+            Object.values(fotos).forEach(fotoData => {
+                if (fotoData) URL.revokeObjectURL(fotoData.preview);
+            });
+        };
+    }, []);
 
-    const cargarDatos = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) { router.push('/login'); return }
+    useEffect(() => {
+        const cargarDatos = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) { router.push('/login'); return }
 
-        setUserId(user.id)
+            setUserId(user.id)
 
-        // Traer perfil completo para saber plan y traslados
-        const { data: perfilData } = await supabase
-            .from('perfiles')
-            .select('*, plan, plan_renovacion, traslados_mes_actual')
-            .eq('id', user.id).single()
-        if (!perfilData) return
-        setPerfil(perfilData)
-        setEmpresaId(perfilData.empresa_id)
+            // Traer perfil completo para saber plan y traslados
+            const { data: perfilData } = await supabase
+                .from('perfiles')
+                .select('*, plan, plan_renovacion, traslados_mes_actual')
+                .eq('id', user.id).single()
+            if (!perfilData) return
+            setPerfil(perfilData)
+            setEmpresaId(perfilData.empresa_id)
 
-        // Traer choferes Y al admin (para que pueda asignarse a sí mismo)
-        const { data } = await supabase
-            .from('perfiles').select('id, nombre_completo, rol')
-            .eq('empresa_id', perfilData.empresa_id)
-            .in('rol', ['chofer', 'admin'])
-        setChoferes(data || [])
-    }
+            // Traer choferes Y al admin (para que pueda asignarse a sí mismo)
+            const { data } = await supabase
+                .from('perfiles').select('id, nombre_completo, rol')
+                .eq('empresa_id', perfilData.empresa_id)
+                .in('rol', ['chofer', 'admin'])
+            setChoferes(data || [])
+        }
+        cargarDatos()
+    }, [])
 
     // Manejar selección de foto
     const handleFotoChange = async (tipo: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -221,37 +230,12 @@ export default function NuevoTraslado() {
 
         const { traslado } = await resp.json()
 
-        // 2. Incrementar contador de traslados en el perfil (si aplica)
-        if (planKey === 'free') {
-            try {
-                const nuevoContador = (perfil?.traslados_mes_actual || 0) + 1
-                const { error: perfilError } = await supabase.from('perfiles')
-                    .update({ traslados_mes_actual: nuevoContador })
-                    .eq('id', userId)
-
-                if (perfilError) {
-                    // Revertir: eliminar el traslado creado
-                    await supabase.from('traslados').delete().eq('id', traslado.id)
-                    showError('No se pudo actualizar el contador de traslados: ' + perfilError.message)
-                    setLoading(false)
-                    return
-                }
-            } catch (err) {
-                // Revertir si algo inesperado falla
-                await supabase.from('traslados').delete().eq('id', traslado.id)
-                console.error('Error actualizando contador de traslados:', err)
-                showError('Error al actualizar contador de traslados')
-                setLoading(false)
-                return
-            }
-        }
-
-        // 3. Subir fotos si hay alguna
+        // 2. Subir fotos si hay alguna
         const hayFotos = Object.values(fotos).some(f => f !== null)
         if (hayFotos) {
             const fotoUrls = await subirFotos(traslado.id)
-            
-            // 3. Actualizar traslado con URLs de fotos
+
+            // Actualizar traslado con URLs de fotos
             if (Object.keys(fotoUrls).length > 0) {
                 const { error: updateError } = await supabase.from('traslados')
                     .update(fotoUrls)
@@ -269,7 +253,7 @@ export default function NuevoTraslado() {
 
     // --- Lógica de restricción de traslados ---
     const planKey = perfil?.plan || 'free';
-    const planInfo = PLANES[planKey];
+    const planInfo = PLANES[planKey] || PLANES['free'];
     const trasladosMax = planInfo.traslados_max;
     const trasladosUsados = perfil?.traslados_mes_actual || 0;
     const trasladosRestantes = trasladosMax !== null ? Math.max(trasladosMax - trasladosUsados, 0) : null;

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { sanitizeString, isValidEmail, isValidPassword, isValidName, isValidCompanyName, LIMITS } from '@/lib/validation'
+import { showError } from '@/lib/swal'
 
 export default function RegistroEmpresa() {
     const router = useRouter()
@@ -22,10 +23,10 @@ export default function RegistroEmpresa() {
         const email = sanitizeString(formData.email).toLowerCase()
         const password = formData.password
 
-        if (!isValidCompanyName(nombreEmpresa)) { alert('Nombre de empresa inválido (máx. 150 caracteres)'); return }
-        if (!isValidName(nombreDuenio)) { alert('Nombre inválido (máx. 100 caracteres)'); return }
-        if (!isValidEmail(email)) { alert('Email inválido'); return }
-        if (!isValidPassword(password)) { alert('La contraseña debe tener entre 6 y 128 caracteres'); return }
+        if (!isValidCompanyName(nombreEmpresa)) { showError('Nombre de empresa inválido (máx. 150 caracteres)'); return }
+        if (!isValidName(nombreDuenio)) { showError('Nombre inválido (máx. 100 caracteres)'); return }
+        if (!isValidEmail(email)) { showError('Email inválido'); return }
+        if (!isValidPassword(password)) { showError('La contraseña debe tener entre 6 y 128 caracteres'); return }
 
         setLoading(true)
 
@@ -36,25 +37,37 @@ export default function RegistroEmpresa() {
             .single()
 
         if (errorEmpresa || !empresa) {
-            alert('Error al crear empresa: ' + errorEmpresa?.message)
+            showError('Error al crear empresa: ' + errorEmpresa?.message)
             setLoading(false)
             return
         }
 
-        const { error: errorAuth } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    nombre_completo: nombreDuenio,
-                    empresa_id: empresa.id
+        let empresaCreada = true
+        try {
+            const { error: errorAuth } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        nombre_completo: nombreDuenio,
+                        empresa_id: empresa.id
+                    }
                 }
-            }
-        })
+            })
 
-        if (errorAuth) {
-            await supabase.from('empresas').delete().eq('id', empresa.id)
-            alert('Error en el registro: ' + errorAuth.message)
+            if (errorAuth) {
+                showError('Error en el registro: ' + errorAuth.message)
+                setLoading(false)
+                // Cleanup empresa
+                await supabase.from('empresas').delete().eq('id', empresa.id)
+                empresaCreada = false
+                return
+            }
+        } catch {
+            if (empresaCreada) {
+                await supabase.from('empresas').delete().eq('id', empresa.id)
+            }
+            showError('Error inesperado al registrar')
             setLoading(false)
             return
         }

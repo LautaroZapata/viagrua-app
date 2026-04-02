@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import ClientOnly from '../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -42,7 +42,7 @@ export default function Dashboard() {
         admin: { traslados_max: null, puede_agregar_personas: true },
     };
     const planKey = perfil?.plan || 'free';
-    const planInfo = PLANES[planKey];
+    const planInfo = PLANES[planKey] || PLANES['free'];
     const trasladosMax = planInfo.traslados_max;
     const trasladosUsados = perfil?.traslados_mes_actual || 0;
     const trasladosRestantes = trasladosMax !== null ? Math.max(trasladosMax - trasladosUsados, 0) : null;
@@ -67,6 +67,10 @@ export default function Dashboard() {
     const [checkingSession, setCheckingSession] = useState(true);
     const router = useRouter();
     const [isClient, setIsClient] = useState(false);
+    const timersRef = useRef<NodeJS.Timeout[]>([]);
+
+    // Cleanup all timers on unmount
+    useEffect(() => () => timersRef.current.forEach(clearTimeout), []);
 
     // Validar sesión al montar el componente
     useEffect(() => {
@@ -78,7 +82,7 @@ export default function Dashboard() {
                 if (isMounted) {
                     setCheckingSession(false);
                     setError('No hay sesión activa. Redirigiendo a login...');
-                    setTimeout(() => router.replace('/login'), 1000);
+                    timersRef.current.push(setTimeout(() => router.replace('/login'), 1000));
                 }
                 return;
             }
@@ -163,12 +167,12 @@ export default function Dashboard() {
             // Guardar email y user_id en localStorage para el flujo de pago SOLO en cliente
             // Guardar email y user_id en localStorage SOLO en cliente después del render
             if (perfilData?.email && perfilData?.id) {
-                setTimeout(() => {
+                timersRef.current.push(setTimeout(() => {
                     if (typeof window !== 'undefined') {
                         window.localStorage.setItem('email', perfilData.email!);
                         window.localStorage.setItem('user_id', perfilData.id);
                     }
-                }, 0);
+                }, 0));
             }
 
             // Cargar empresa, choferes y traslados en paralelo
@@ -275,6 +279,7 @@ export default function Dashboard() {
     }
 
     const cambiarEstadoTraslado = async (trasladoId: string, nuevoEstado: string) => {
+        if (!perfil) return
         if (nuevoEstado === 'completado') {
             const confirmed = await confirmAction({
                 title: 'Confirmar',
@@ -294,6 +299,7 @@ export default function Dashboard() {
             .from('traslados')
             .update({ estado: nuevoEstado })
             .eq('id', trasladoId)
+            .eq('empresa_id', perfil.empresa_id)
 
         // Si hay error, revertir
         if (error) {
@@ -305,6 +311,7 @@ export default function Dashboard() {
     }
 
     const eliminarTraslado = async (trasladoId: string) => {
+        if (!perfil) return
         const ok = await confirmDelete({
             title: 'Eliminar traslado',
             text: '¿Estás seguro de eliminar este traslado? Esta acción no se puede deshacer.',
@@ -317,14 +324,18 @@ export default function Dashboard() {
         // Primero eliminar fotos del storage si existen
         const traslado = traslados.find(t => t.id === trasladoId)
         if (traslado) {
-            // Intentar eliminar carpeta de fotos
-            await supabase.storage.from('fotos-traslados').remove([`${trasladoId}/`])
+            // Listar archivos en la carpeta y eliminarlos
+            const { data: storageFiles } = await supabase.storage.from('fotos-traslados').list(trasladoId)
+            if (storageFiles && storageFiles.length > 0) {
+                await supabase.storage.from('fotos-traslados').remove(storageFiles.map(f => `${trasladoId}/${f.name}`))
+            }
         }
 
         const { error } = await supabase
             .from('traslados')
             .delete()
             .eq('id', trasladoId)
+            .eq('empresa_id', perfil.empresa_id)
 
         if (error) {
             showError('Error al eliminar: ' + error.message)
@@ -338,10 +349,12 @@ export default function Dashboard() {
         if (!perfil?.empresa_id) return
         setGenerandoCodigo(true)
         
-        // Generar código solo en cliente
+        // Generar código solo en cliente (crypto-secure)
         let codigo = '';
         if (isClient) {
-            codigo = Math.random().toString(36).substring(2, 10).toUpperCase();
+            const arr = new Uint8Array(5);
+            crypto.getRandomValues(arr);
+            codigo = Array.from(arr, b => b.toString(36).padStart(2, '0')).join('').substring(0, 8).toUpperCase();
         }
         
         const { error } = await supabase.from('invitaciones').insert({
@@ -380,7 +393,7 @@ export default function Dashboard() {
                 document.body.removeChild(textArea);
             }
             setLinkCopiado(true);
-            setTimeout(() => setLinkCopiado(false), 2000);
+            timersRef.current.push(setTimeout(() => setLinkCopiado(false), 2000));
         } catch (err) {
             showError('No se pudo copiar el link. Copialo manualmente: ' + linkInvitacion);
         }
@@ -395,12 +408,12 @@ export default function Dashboard() {
 
     const handleCerrarSesion = async () => {
         // Limpiar email y user_id de localStorage al cerrar sesión SOLO en cliente
-        setTimeout(() => {
+        timersRef.current.push(setTimeout(() => {
             if (typeof window !== 'undefined') {
                 window.localStorage.removeItem('email');
                 window.localStorage.removeItem('user_id');
             }
-        }, 0);
+        }, 0));
         await supabase.auth.signOut();
         router.push('/login');
     }
@@ -934,6 +947,7 @@ export default function Dashboard() {
                                 <p className="text-2xl font-bold text-orange-600 mb-5 tracking-widest font-mono">{codigoInvitacion}</p>
                                 
                                 {/* QR Code */}
+                                {/* TODO: Reemplazar con librería client-side (qrcode.react) para evitar leak de URL a terceros */}
                                 {isClient && linkInvitacion && (
                                     <img
                                         src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(linkInvitacion)}`}
