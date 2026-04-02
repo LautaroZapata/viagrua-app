@@ -618,11 +618,11 @@ export default function PanelChofer() {
                         <p className="text-sm text-gray-500">No hay traslados asignados</p>
                     </div>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-3 animate-stagger">
                         {traslados.map((traslado) => (
-                            <div 
-                                key={traslado.id} 
-                                className="card p-4 cursor-pointer hover:shadow-md hover:border-orange-200 transition-all group"
+                            <div
+                                key={traslado.id}
+                                className="card card-interactive p-4 group"
                                 onClick={() => router.push(`/chofer/traslado/${traslado.id}`)}
                             >
                                 <div className="flex items-start sm:items-center justify-between gap-3">

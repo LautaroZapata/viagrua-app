@@ -60,6 +60,23 @@ body {
     border-radius: 16px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
     padding: 20px;
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+/* Clickable card variant */
+.card-interactive {
+    cursor: pointer;
+}
+
+.card-interactive:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 12px 32px rgba(0, 0, 0, 0.07);
+    transform: translateY(-2px);
+}
+
+.card-interactive:active {
+    transform: translateY(0px);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+    transition-duration: 0.08s;
 }
 
 @media (min-width: 640px) {
@@ -108,7 +125,12 @@ body {
 .input-field:focus {
     outline: none;
     border-color: var(--orange-600);
-    box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.1);
+    box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.12);
+    background: #FFFCFA;
+}
+
+.input-field:hover:not(:focus) {
+    border-color: var(--gray-400);
 }
 
 /* Button Primary - Responsive */
@@ -139,12 +161,15 @@ body {
 }
 
 .btn-primary:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(255, 122, 0, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(255, 122, 0, 0.45);
+    background: linear-gradient(135deg, #FF9A55 0%, #FF8C00 100%);
 }
 
 .btn-primary:active:not(:disabled) {
-    transform: translateY(0);
+    transform: translateY(1px) scale(0.97);
+    box-shadow: 0 2px 8px rgba(255, 122, 0, 0.3);
+    transition-duration: 0.08s;
 }
 
 .btn-primary:disabled {
@@ -176,9 +201,17 @@ body {
     }
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
     background: var(--gray-50);
-    border-color: var(--gray-300);
+    border-color: var(--gray-400);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.btn-secondary:active:not(:disabled) {
+    transform: translateY(1px) scale(0.97);
+    box-shadow: none;
+    transition-duration: 0.08s;
 }
 
 /* Navbar - Responsive */
@@ -304,6 +337,189 @@ html, body {
 
 .animate-slideInLeft {
     animation: slideInLeft 0.25s ease-out;
+}
+
+/* =============================================
+   ANIMATIONS & MICRO-INTERACTIONS
+   ============================================= */
+
+/* --- Keyframes --- */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position:  400px 0; }
+}
+
+@keyframes pulse-soft {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.6; transform: scale(0.88); }
+}
+
+@keyframes spin-smooth {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* --- Animation utilities --- */
+
+.animate-fadeInUp {
+    animation: fadeInUp 0.3s ease-out both;
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.25s ease-out both;
+}
+
+.animate-scaleIn {
+    animation: scaleIn 0.2s ease-out both;
+}
+
+/* Staggered children: apply to parent, children get delay */
+.animate-stagger > * {
+    animation: fadeInUp 0.3s ease-out both;
+}
+.animate-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.animate-stagger > *:nth-child(2) { animation-delay: 60ms; }
+.animate-stagger > *:nth-child(3) { animation-delay: 120ms; }
+.animate-stagger > *:nth-child(4) { animation-delay: 180ms; }
+.animate-stagger > *:nth-child(5) { animation-delay: 240ms; }
+.animate-stagger > *:nth-child(6) { animation-delay: 300ms; }
+
+/* --- Skeleton loader --- */
+
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--gray-100) 25%,
+        var(--gray-50)  50%,
+        var(--gray-100) 75%
+    );
+    background-size: 800px 100%;
+    animation: shimmer 1.4s infinite linear;
+    border-radius: 8px;
+}
+
+/* --- Status dot (pulsing indicator for "pendiente") --- */
+
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.status-dot-pulse {
+    animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* --- Spinner --- */
+
+.spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin-smooth 0.7s linear infinite;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.spinner-orange {
+    border-color: rgba(255, 122, 0, 0.2);
+    border-top-color: var(--orange-600);
+}
+
+/* --- Page entrance: wrap main content to trigger --- */
+
+.page-enter {
+    animation: fadeInUp 0.35s ease-out both;
+}
+
+/* --- Navbar icon buttons (back arrow, etc.) --- */
+
+.nav-icon-btn {
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.nav-icon-btn:hover {
+    transform: scale(1.08);
+}
+
+.nav-icon-btn:active {
+    transform: scale(0.93);
+    transition-duration: 0.07s;
+}
+
+/* --- Filter / toggle buttons (e.g. "Pendientes de pago") --- */
+
+.filter-btn {
+    transition: background 0.18s ease, border-color 0.18s ease,
+                color 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
+}
+
+.filter-btn:active {
+    transform: scale(0.96);
+    transition-duration: 0.07s;
+}
+
+/* --- Row hover for traslado list items --- */
+
+.row-hover {
+    transition: background 0.15s ease;
+}
+
+.row-hover:hover {
+    background: #FFFAF6;
+}
+
+/* --- Focus ring visible for keyboard nav --- */
+
+.focus-ring:focus-visible {
+    outline: 2px solid var(--orange-500);
+    outline-offset: 2px;
+}
+
+/* =============================================
+   REDUCED MOTION — disable all animations
+   ============================================= */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
 /* Custom scrollbar */

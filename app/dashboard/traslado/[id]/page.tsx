@@ -210,7 +210,7 @@ export default function DetalleTrasladoAdmin() {
             <nav className="navbar sticky top-0 z-50">
                 <div className="flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3">
                     <div className="flex items-center gap-3">
-                        <button aria-label="Volver al dashboard" onClick={() => router.push('/dashboard')} className="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-lg transition">
+                        <button aria-label="Volver al dashboard" onClick={() => router.push('/dashboard')} className="nav-icon-btn text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-lg transition">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
@@ -235,7 +235,7 @@ export default function DetalleTrasladoAdmin() {
                 </div>
             </nav>
 
-            <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-3xl mx-auto">
+            <div className="page-enter w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-3xl mx-auto">
                 {/* Info Principal */}
                 <div className="card p-4 sm:p-6 mb-4">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">

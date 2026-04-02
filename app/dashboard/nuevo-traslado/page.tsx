@@ -273,7 +273,7 @@ export default function NuevoTraslado() {
             {/* Navbar */}
             <nav className="bg-white border-b border-gray-100 px-2 py-3 sticky top-0 z-30">
                 <div className="max-w-7xl mx-auto flex items-center gap-3">
-                    <button onClick={() => router.push('/dashboard')} className="p-2 -ml-2 text-gray-500 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition">
+                    <button onClick={() => router.push('/dashboard')} className="nav-icon-btn p-2 -ml-2 text-gray-500 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
@@ -283,7 +283,7 @@ export default function NuevoTraslado() {
             </nav>
 
             {/* Content */}
-            <div className="w-full min-w-0 max-w-2xl mx-auto px-3 sm:px-4 py-4">
+            <div className="page-enter w-full min-w-0 max-w-2xl mx-auto px-3 sm:px-4 py-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Form - Left Column */}
                     <div className="card">
