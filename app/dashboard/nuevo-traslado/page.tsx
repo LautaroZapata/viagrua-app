@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { compressImage, formatFileSize } from '@/lib/compressImage'
 import { confirmDelete, showError } from '@/lib/swal'
-import { sanitizeString, isValidImporte, isValidMatricula, LIMITS } from '@/lib/validation'
+import { sanitizeString, isValidImporte, isValidMatricula, isValidFecha, LIMITS } from '@/lib/validation'
 
 interface Chofer {
     id: string
@@ -50,6 +50,9 @@ export default function NuevoTraslado() {
         desde: '',
         hasta: ''
     })
+    const [fechaPersonalizada, setFechaPersonalizada] = useState(false)
+    const [fechaValor, setFechaValor] = useState('')
+    const today = new Date().toISOString().split('T')[0]
     
     // Estados para fotos
     const [fotos, setFotos] = useState<{ [key: string]: FotoPreview | null }>({
@@ -200,6 +203,10 @@ export default function NuevoTraslado() {
         if (observaciones.length > LIMITS.observaciones) { showError('Observaciones demasiado largas (máx. 1000)'); return }
         if (desde.length > LIMITS.ubicacion) { showError('Origen demasiado largo (máx. 200)'); return }
         if (hasta.length > LIMITS.ubicacion) { showError('Destino demasiado largo (máx. 200)'); return }
+        if (fechaPersonalizada) {
+            if (!fechaValor || !isValidFecha(fechaValor)) { showError('Fecha inválida'); return }
+            if (fechaValor > today) { showError('La fecha no puede ser futura'); return }
+        }
 
         setLoading(true)
 
@@ -218,6 +225,7 @@ export default function NuevoTraslado() {
                 observaciones: observaciones || null,
                 desde: desde || null,
                 hasta: hasta || null,
+                fecha: fechaPersonalizada ? fechaValor : null,
             })
         })
 
@@ -389,6 +397,35 @@ export default function NuevoTraslado() {
                                         onChange={(e) => setFormData({ ...formData, hasta: e.target.value })}
                                     />
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="flex items-center gap-3 cursor-pointer p-3 border border-gray-200 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition">
+                                    <input
+                                        type="checkbox"
+                                        checked={fechaPersonalizada}
+                                        onChange={(e) => {
+                                            setFechaPersonalizada(e.target.checked)
+                                            if (e.target.checked && !fechaValor) setFechaValor(today)
+                                        }}
+                                        className="w-4 h-4 cursor-pointer accent-orange-500 shrink-0"
+                                    />
+                                    <span className="font-medium text-sm text-gray-900">Registrar en fecha anterior</span>
+                                </label>
+                                {fechaPersonalizada && (
+                                    <div className="mt-2">
+                                        <label className="block text-xs font-medium text-gray-700 mb-1.5">Fecha del traslado</label>
+                                        <input
+                                            type="date"
+                                            required
+                                            max={today}
+                                            value={fechaValor}
+                                            onChange={(e) => setFechaValor(e.target.value)}
+                                            className="input-field w-full"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Solo fechas anteriores o de hoy.</p>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex gap-2 pt-2">

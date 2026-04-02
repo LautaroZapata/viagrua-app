@@ -98,21 +98,28 @@ export async function POST(request: Request) {
     }
 
     // Insertar con datos ya sanitizados
+    const insertData: Record<string, unknown> = {
+      empresa_id: input.empresa_id,
+      chofer_id: input.chofer_id,
+      marca_modelo: input.marca_modelo,
+      matricula: input.matricula,
+      es_0km: !!input.es_0km,
+      importe_total: input.importe_total ? Number(input.importe_total) : null,
+      observaciones: input.observaciones,
+      desde: input.desde,
+      hasta: input.hasta,
+      estado: 'pendiente',
+      estado_pago: 'pendiente',
+    }
+
+    // Si se especificó una fecha pasada, sobrescribir created_at
+    if (input.fecha) {
+      insertData.created_at = `${input.fecha}T12:00:00.000Z`
+    }
+
     const { data: traslado, error: insertError } = await supabaseAdmin
       .from('traslados')
-      .insert({
-        empresa_id: input.empresa_id,
-        chofer_id: input.chofer_id,
-        marca_modelo: input.marca_modelo,
-        matricula: input.matricula,
-        es_0km: !!input.es_0km,
-        importe_total: input.importe_total ? Number(input.importe_total) : null,
-        observaciones: input.observaciones,
-        desde: input.desde,
-        hasta: input.hasta,
-        estado: 'pendiente',
-        estado_pago: 'pendiente',
-      })
+      .insert(insertData)
       .select()
       .single()
 
