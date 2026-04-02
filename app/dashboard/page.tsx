@@ -811,11 +811,7 @@ export default function Dashboard() {
                             </div>
                             <div className="pagination-controls flex flex-wrap items-center justify-center sm:justify-end gap-2 order-1 sm:order-2">
                                 <button
-                                    onClick={async () => {
-                                        const newPage = Math.max(1, trasladosPage - 1)
-                                        setTrasladosPage(newPage)
-                                        if (perfil) await cargarTraslados(perfil.empresa_id, newPage)
-                                    }}
+                                    onClick={() => setTrasladosPage(p => Math.max(1, p - 1))}
                                     disabled={trasladosPage <= 1}
                                     className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50 btn-sm"
                                 >
@@ -823,11 +819,9 @@ export default function Dashboard() {
                                 </button>
                                 <span className="text-sm text-gray-600">Página {trasladosPage} / {Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}</span>
                                 <button
-                                    onClick={async () => {
+                                    onClick={() => {
                                         const maxPage = Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))
-                                        const newPage = Math.min(maxPage, trasladosPage + 1)
-                                        setTrasladosPage(newPage)
-                                        if (perfil) await cargarTraslados(perfil.empresa_id, newPage)
+                                        setTrasladosPage(p => Math.min(maxPage, p + 1))
                                     }}
                                     disabled={trasladosPage >= Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}
                                     className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50 btn-sm"
