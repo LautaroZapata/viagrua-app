@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import ClientOnly from '../../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -125,7 +125,7 @@ export default function GastosPage() {
 
         const { data: perfilData } = await supabase
             .from('perfiles')
-            .select('*')
+            .select('id, empresa_id, rol, nombre_completo')
             .eq('id', user.id)
             .single()
 
@@ -153,16 +153,17 @@ export default function GastosPage() {
             .eq('estado', 'completado')
             .neq('estado_pago', 'pendiente')
             .order('created_at', { ascending: false })
+            .limit(500)
         setMisTraslados(data || [])
     }
 
     const cargarGastos = async (perfilActual: Perfil) => {
         let query = supabase
             .from('gastos')
-            .select('*, perfiles(nombre_completo)')
+            .select('id, tipo, importe, descripcion, fecha, created_at, usuario_id, perfiles(nombre_completo)')
             .order('fecha', { ascending: false })
+            .limit(500)
 
-        // Admin ve todos los de la empresa, chofer solo los suyos
         if (perfilActual.rol === 'admin') {
             query = query.eq('empresa_id', perfilActual.empresa_id)
         } else {
@@ -180,7 +181,8 @@ export default function GastosPage() {
             .eq('empresa_id', empresaId)
             .eq('estado', 'completado')
             .neq('estado_pago', 'pendiente')
-        
+            .limit(1000)
+
         const total = data?.reduce((sum, t) => sum + (t.importe_total || 0), 0) || 0
         setTotalIngresos(total)
     }
@@ -254,106 +256,95 @@ export default function GastosPage() {
         return tiposGasto.find(t => t.value === tipo)?.label || tipo
     }
 
-    // Filtrar gastos según toggle (solo para admin)
-    const gastosFiltrados = isAdmin && !verTodos 
-        ? gastos.filter(g => g.usuario_id === perfil?.id)
-        : gastos
+    // ── Computaciones derivadas — memoizadas para evitar re-sort/filter en cada render ──
 
-    // Admin: filtrar por tipo de gasto (igual que chofer)
-    const gastosPorTipoAdmin = filtroTipoGastoAdmin === 'todos'
-        ? gastosFiltrados
-        : gastosFiltrados.filter(g => g.tipo === filtroTipoGastoAdmin)
-
-    // Admin: ordenar (igual que chofer)
-    const gastosOrdenadosAdmin = [...gastosPorTipoAdmin].sort((a, b) => {
-        switch (filtroOrdenAdmin) {
-            case 'fecha_desc':
-                return new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-            case 'fecha_asc':
-                return new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
-            case 'mayor_importe':
-                return b.importe - a.importe
-            case 'menor_importe':
-                return a.importe - b.importe
-            default:
-                return new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-        }
-    })
-
-    // Calcular totales
-    const totalGastos = gastosFiltrados.reduce((sum, g) => sum + g.importe, 0)
-    const misGastos = gastos.filter(g => g.usuario_id === perfil?.id).reduce((sum, g) => sum + g.importe, 0)
-    const rentabilidad = totalIngresos - gastos.reduce((sum, g) => sum + g.importe, 0)
-
-    // CHOFER: Crear lista de movimientos combinando gastos e ingresos (traslados)
-    const misIngresosTotal = misTraslados.reduce((sum, t) => sum + (t.importe_total || 0), 0)
-    const miBalance = misIngresosTotal - totalGastos
-
-    // Crear movimientos base
-    const movimientosBase: Movimiento[] = !isAdmin ? [
-        // Traslados como ingresos
-        ...misTraslados.map(t => ({
-            id: t.id,
-            tipo: 'ingreso' as const,
-            concepto: t.marca_modelo + (t.matricula ? ` (${t.matricula})` : ''),
-            importe: t.importe_total || 0,
-            fecha: t.created_at,
-            icono: t.estado_pago === 'efectivo' ? '$' : '→',
-            descripcion: t.estado_pago === 'efectivo' ? 'Pago en efectivo' : 'Pago por transferencia',
-            esTraslado: true,
-            tipoGasto: 'traslado'
-        })),
-        // Gastos como egresos
-        ...gastos.map(g => ({
-            id: g.id,
-            tipo: 'gasto' as const,
-            concepto: getLabelForTipo(g.tipo),
-            importe: g.importe,
-            fecha: g.fecha,
-            icono: getIconForTipo(g.tipo),
-            descripcion: g.descripcion || undefined,
-            esTraslado: false,
-            tipoGasto: g.tipo
-        }))
-    ] : []
-
-    // Aplicar filtro por tipo
-    const movimientosFiltrados = filtroTipoGasto === 'todos' 
-        ? movimientosBase
-        : filtroTipoGasto === 'solo_ingresos'
-            ? movimientosBase.filter(m => m.tipo === 'ingreso')
-            : filtroTipoGasto === 'solo_gastos'
-                ? movimientosBase.filter(m => m.tipo === 'gasto')
-                : movimientosBase.filter(m => m.tipoGasto === filtroTipoGasto)
-
-    // Aplicar ordenamiento
-    const movimientos = [...movimientosFiltrados].sort((a, b) => {
-        switch (filtroMovimientos) {
-            case 'fecha_desc':
-                return new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-            case 'fecha_asc':
-                return new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
-            case 'mayor_importe':
-                return b.importe - a.importe
-            case 'menor_importe':
-                return a.importe - b.importe
-            default:
-                return new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-        }
-    })
-
-    // Paginación de movimientos (chofer)
-    const totalPaginas = Math.ceil(movimientos.length / ITEMS_POR_PAGINA)
-    const movimientosPaginados = movimientos.slice(
-        (paginaActual - 1) * ITEMS_POR_PAGINA,
-        paginaActual * ITEMS_POR_PAGINA
+    const gastosFiltrados = useMemo(() =>
+        isAdmin && !verTodos ? gastos.filter(g => g.usuario_id === perfil?.id) : gastos,
+        [gastos, isAdmin, verTodos, perfil?.id]
     )
 
-    // Paginación de gastos (admin) — sobre lista filtrada y ordenada
+    const gastosOrdenadosAdmin = useMemo(() => {
+        const porTipo = filtroTipoGastoAdmin === 'todos'
+            ? gastosFiltrados
+            : gastosFiltrados.filter(g => g.tipo === filtroTipoGastoAdmin)
+
+        return [...porTipo].sort((a, b) => {
+            switch (filtroOrdenAdmin) {
+                case 'fecha_asc':   return new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+                case 'mayor_importe': return b.importe - a.importe
+                case 'menor_importe': return a.importe - b.importe
+                default:            return new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+            }
+        })
+    }, [gastosFiltrados, filtroTipoGastoAdmin, filtroOrdenAdmin])
+
+    const { totalGastos, misGastos, rentabilidad } = useMemo(() => ({
+        totalGastos: gastosFiltrados.reduce((sum, g) => sum + g.importe, 0),
+        misGastos: gastos.filter(g => g.usuario_id === perfil?.id).reduce((sum, g) => sum + g.importe, 0),
+        rentabilidad: totalIngresos - gastos.reduce((sum, g) => sum + g.importe, 0),
+    }), [gastosFiltrados, gastos, perfil?.id, totalIngresos])
+
+    const misIngresosTotal = useMemo(() =>
+        misTraslados.reduce((sum, t) => sum + (t.importe_total || 0), 0),
+        [misTraslados]
+    )
+    const miBalance = misIngresosTotal - totalGastos
+
+    const movimientos = useMemo(() => {
+        if (isAdmin) return []
+
+        const base: Movimiento[] = [
+            ...misTraslados.map(t => ({
+                id: t.id,
+                tipo: 'ingreso' as const,
+                concepto: t.marca_modelo + (t.matricula ? ` (${t.matricula})` : ''),
+                importe: t.importe_total || 0,
+                fecha: t.created_at,
+                icono: t.estado_pago === 'efectivo' ? '$' : '→',
+                descripcion: t.estado_pago === 'efectivo' ? 'Pago en efectivo' : 'Pago por transferencia',
+                esTraslado: true,
+                tipoGasto: 'traslado'
+            })),
+            ...gastos.map(g => ({
+                id: g.id,
+                tipo: 'gasto' as const,
+                concepto: getLabelForTipo(g.tipo),
+                importe: g.importe,
+                fecha: g.fecha,
+                icono: getIconForTipo(g.tipo),
+                descripcion: g.descripcion || undefined,
+                esTraslado: false,
+                tipoGasto: g.tipo
+            }))
+        ]
+
+        const filtered = filtroTipoGasto === 'todos' ? base
+            : filtroTipoGasto === 'solo_ingresos' ? base.filter(m => m.tipo === 'ingreso')
+            : filtroTipoGasto === 'solo_gastos' ? base.filter(m => m.tipo === 'gasto')
+            : base.filter(m => m.tipoGasto === filtroTipoGasto)
+
+        return [...filtered].sort((a, b) => {
+            switch (filtroMovimientos) {
+                case 'fecha_asc':   return new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+                case 'mayor_importe': return b.importe - a.importe
+                case 'menor_importe': return a.importe - b.importe
+                default:            return new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+            }
+        })
+    }, [isAdmin, misTraslados, gastos, filtroTipoGasto, filtroMovimientos])
+
+    // Paginación (chofer)
+    const totalPaginas = Math.ceil(movimientos.length / ITEMS_POR_PAGINA)
+    const movimientosPaginados = useMemo(() =>
+        movimientos.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA),
+        [movimientos, paginaActual]
+    )
+
+    // Paginación (admin)
     const totalPaginasGastos = Math.ceil(gastosOrdenadosAdmin.length / ITEMS_POR_PAGINA)
-    const gastosPaginados = gastosOrdenadosAdmin.slice(
-        (paginaGastosAdmin - 1) * ITEMS_POR_PAGINA,
-        paginaGastosAdmin * ITEMS_POR_PAGINA
+    const gastosPaginados = useMemo(() =>
+        gastosOrdenadosAdmin.slice((paginaGastosAdmin - 1) * ITEMS_POR_PAGINA, paginaGastosAdmin * ITEMS_POR_PAGINA),
+        [gastosOrdenadosAdmin, paginaGastosAdmin]
     )
 
     if (loading) {

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import ClientOnly from '../components/ClientOnly'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, confirmAction, showError } from '@/lib/swal'
 
@@ -493,14 +494,14 @@ export default function Dashboard() {
                         ))}
                     </div>
                     <div className="hidden md:flex items-center gap-1.5 sm:gap-2">
-                        <button onClick={() => router.push('/dashboard/gastos')} 
+                        <Link href="/dashboard/gastos" prefetch={true}
                             className="text-white/90 hover:text-white text-sm font-medium px-3 py-2 hover:bg-white/10 rounded-lg transition flex items-center gap-1.5"
                             title="Gastos de la empresa">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                             </svg>
                             Gastos
-                        </button>
+                        </Link>
                         <button onClick={() => router.push('/chofer')} 
                             className="text-white/90 hover:text-white text-sm font-medium px-3 py-2 hover:bg-white/10 rounded-lg transition flex items-center gap-1.5"
                             title="Ver mis traslados como chofer">
@@ -540,12 +541,12 @@ export default function Dashboard() {
                                     <button onClick={() => { setActiveTab('inicio'); setDrawerOpen(false); }} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${activeTab==='inicio'?'bg-orange-50 text-orange-600':'text-gray-700 hover:bg-gray-50'}`}>🏠 Inicio</button>
                                     <button onClick={() => { setActiveTab('traslados'); setDrawerOpen(false); }} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${activeTab==='traslados'?'bg-orange-50 text-orange-600':'text-gray-700 hover:bg-gray-50'}`}>🚗 Traslados</button>
                                     <button onClick={() => { setActiveTab('choferes'); setDrawerOpen(false); }} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${activeTab==='choferes'?'bg-orange-50 text-orange-600':'text-gray-700 hover:bg-gray-50'}`}>👥 Choferes</button>
-                                    <button onClick={() => { router.push('/dashboard/gastos'); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">💸 Gastos</button>
+                                    <Link href="/dashboard/gastos" prefetch={true} onClick={() => setDrawerOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">💸 Gastos</Link>
                                     <button onClick={() => { router.push('/chofer'); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">🧑‍✈️ Modo Chofer</button>
                                 </>
                             ) : (
                                 <>
-                                    <button onClick={() => { router.push('/dashboard/gastos'); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">💸 Gastos</button>
+                                    <Link href="/dashboard/gastos" prefetch={true} onClick={() => setDrawerOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">💸 Gastos</Link>
                                     <button onClick={() => { router.push('/chofer'); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">🧑‍✈️ Modo Chofer</button>
                                 </>
                             )}
