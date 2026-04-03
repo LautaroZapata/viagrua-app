@@ -14,7 +14,7 @@ interface Gasto {
     fecha: string
     created_at: string
     usuario_id: string
-    perfiles?: { nombre_completo: string }
+    perfiles?: { nombre_completo: string } | { nombre_completo: string }[]
 }
 
 interface TrasladoCompletado {
@@ -647,7 +647,7 @@ export default function GastosPage() {
                                                         <p className="font-medium text-sm text-gray-900">{getLabelForTipo(gasto.tipo)}</p>
                                                         {gasto.perfiles && (
                                                             <span className="text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded shrink-0">
-                                                                {gasto.usuario_id === perfil?.id ? 'Yo' : gasto.perfiles.nombre_completo}
+                                                                {gasto.usuario_id === perfil?.id ? 'Yo' : (Array.isArray(gasto.perfiles) ? gasto.perfiles[0]?.nombre_completo : gasto.perfiles.nombre_completo)}
                                                             </span>
                                                         )}
                                                         {gasto.descripcion && expandedId !== gasto.id && (
