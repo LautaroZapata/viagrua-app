@@ -525,7 +525,7 @@ export default function Dashboard() {
                     {/* Fondo oscuro */}
                     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
                     {/* Drawer */}
-                    <div className="relative bg-white w-64 max-w-[80vw] h-full shadow-xl animate-slideInLeft p-6 flex flex-col">
+                    <div className="relative bg-white w-64 max-w-[80vw] h-full shadow-xl animate-slideInLeft px-6 pb-6 drawer-safe-top flex flex-col">
                         <div className="flex items-center mb-8">
                             <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-2">
                                 <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

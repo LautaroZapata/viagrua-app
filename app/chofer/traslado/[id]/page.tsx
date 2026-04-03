@@ -189,7 +189,7 @@ export default function DetalleTraslado() {
     return (
         <div className="page-bg min-h-screen pb-8">
             {/* Navbar */}
-            <nav className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-30">
+            <nav className="nav-fullbleed bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-30">
                 <div className="max-w-4xl mx-auto flex items-center gap-3">
                     <button aria-label="Volver a mis traslados" onClick={() => router.push('/chofer')} className="p-2 -ml-2 text-gray-500 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
