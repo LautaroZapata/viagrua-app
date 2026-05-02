@@ -35,8 +35,13 @@ export async function POST(request: Request) {
 
             const manifest = `id:${body.data?.id};request-id:${requestId};ts:${ts};`
             const computed = crypto.createHmac('sha256', webhookSecret).update(manifest).digest('hex')
+            const received = v1.toLowerCase()
 
-            if (computed !== v1) {
+            const isValidSignature =
+                computed.length === received.length &&
+                crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(received))
+
+            if (!isValidSignature) {
                 return new Response(JSON.stringify({ error: 'Firma inválida' }), { status: 401 })
             }
         }

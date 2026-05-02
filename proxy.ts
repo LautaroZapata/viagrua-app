@@ -6,7 +6,7 @@ export const config = {
   matcher: ['/((?!api/).*)'],
 };
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   // Respuesta base, se actualizará si Supabase necesita refrescar cookies
   let res = NextResponse.next({ request: req });
 
