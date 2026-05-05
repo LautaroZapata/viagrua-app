@@ -711,13 +711,21 @@ export default function Dashboard() {
                                     </button>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => { if (!bloqueoTraslados) router.push('/dashboard/nuevo-traslado') }}
-                                className={`btn-primary px-5 py-2.5 text-sm ${bloqueoTraslados ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                title={bloqueoTraslados ? 'Límite de traslados alcanzado' : ''}
-                            >
-                                + Nuevo Traslado
-                            </button>
+                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                <a
+                                    href="/api/export/empresa"
+                                    className="btn-secondary px-5 py-2.5 text-sm text-center whitespace-nowrap"
+                                >
+                                    Exportar CSV
+                                </a>
+                                <button
+                                    onClick={() => { if (!bloqueoTraslados) router.push('/dashboard/nuevo-traslado') }}
+                                    className={`btn-primary px-5 py-2.5 text-sm ${bloqueoTraslados ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                    title={bloqueoTraslados ? 'Límite de traslados alcanzado' : ''}
+                                >
+                                    + Nuevo Traslado
+                                </button>
+                            </div>
                         </div>
                         
                         {traslados.length === 0 ? (
