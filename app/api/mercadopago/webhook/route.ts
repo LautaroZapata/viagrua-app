@@ -3,8 +3,27 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getSubscription } from '@/lib/mercadopago'
 import { isValidPreapprovalId } from '@/lib/validation'
+import { checkRateLimit } from '@/lib/rateLimit'
 
 export async function POST(request: Request) {
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const rateLimitKey = `webhook:${ip}`
+    const { allowed, retryAfterMs } = checkRateLimit(rateLimitKey, 30, 60_000) // 30 req/min per IP
+
+    if (!allowed) {
+        return NextResponse.json(
+            { error: 'Too many requests' },
+            {
+                status: 429,
+                headers: {
+                    'Retry-After': String(Math.ceil(retryAfterMs / 1000)),
+                    'X-RateLimit-Limit': '30',
+                    'X-RateLimit-Remaining': '0',
+                },
+            }
+        )
+    }
+
     try {
         const body = await request.json()
 
@@ -14,7 +33,11 @@ export async function POST(request: Request) {
         const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET
 
         if (!webhookSecret) {
-            console.warn('MERCADOPAGO_WEBHOOK_SECRET no configurado, omitiendo verificación de firma')
+            if (process.env.NODE_ENV === 'production') {
+                console.error('CRITICAL: MERCADOPAGO_WEBHOOK_SECRET is not configured. Rejecting request in production.')
+                return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+            }
+            console.warn('MERCADOPAGO_WEBHOOK_SECRET not configured. Skipping verification (dev mode).')
         } else {
             if (!xSignature || !requestId) {
                 return new Response(JSON.stringify({ error: 'Firma ausente' }), { status: 401 })
