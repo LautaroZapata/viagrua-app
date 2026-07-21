@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { auditLog } from '@/lib/audit'
 import {
   sanitizeString,
   sanitizeAndLimit,
@@ -120,6 +121,8 @@ export async function POST(request: Request) {
       )
     }
 
+    auditLog({ userId: user.id, empresaId, action: 'create_gasto', details: { tipo, importe: Number(importe) } })
+
     return NextResponse.json({ gasto })
   } catch (e) {
     console.error('Error en gastos POST:', e)
@@ -198,6 +201,8 @@ export async function DELETE(request: Request) {
         { status: 500 },
       )
     }
+
+    auditLog({ userId: user.id, empresaId: perfil.empresa_id, action: 'delete_gasto', details: { gastoId } })
 
     return NextResponse.json({ ok: true })
   } catch (e) {

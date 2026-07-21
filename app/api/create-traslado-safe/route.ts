@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { auditLog } from '@/lib/audit'
 import { validateTrasladoInput } from '@/lib/validation'
 
 const MAX_BODY_SIZE = 10_000 // 10KB máximo para el body JSON
@@ -135,6 +136,8 @@ export async function POST(request: Request) {
       .from('perfiles')
       .update({ traslados_mes_actual: (perfilPlan.traslados_mes_actual || 0) + 1 })
       .eq('id', user.id)
+
+    auditLog({ userId: user.id, empresaId: input.empresa_id, action: 'create_traslado', details: { marca_modelo: input.marca_modelo } })
 
     return NextResponse.json({ traslado })
   } catch (e) {

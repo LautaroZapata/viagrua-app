@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase'
 import { confirmAction, showError } from '@/lib/swal'
 import ThemeToggle from '../components/ThemeToggle'
 import { sanitizeString, isValidCodigoInvitacion, LIMITS } from '@/lib/validation'
+import ErrorBoundary from '../components/ErrorBoundary'
+import { PageSkeleton } from '../components/skeletons'
 
 interface Traslado {
     id: string
@@ -295,23 +297,11 @@ export default function PanelChofer() {
     }
 
     if (loading) {
-        return (
-            <div className="page-bg flex items-center justify-center min-h-screen">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="relative">
-                        <div className="w-16 h-16 border-4 border-orange-200 rounded-full"></div>
-                        <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full absolute top-0 left-0 animate-spin"></div>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-gray-700 font-semibold">Cargando</p>
-                        <p className="text-gray-400 text-sm">Obteniendo datos...</p>
-                    </div>
-                </div>
-            </div>
-        )
+        return <PageSkeleton />
     }
 
     return (
+        <ErrorBoundary>
         <div className="page-bg min-h-screen pb-8">
             {/* Navbar - Responsive */}
             <nav className="navbar sticky top-0 z-50">
@@ -712,5 +702,6 @@ export default function PanelChofer() {
 
             </div>
         </div>
+        </ErrorBoundary>
     )
 }

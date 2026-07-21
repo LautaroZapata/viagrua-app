@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { cancelSubscription } from '@/lib/mercadopago'
+import { auditLog } from '@/lib/audit'
 
 export async function POST() {
     try {
@@ -16,7 +17,7 @@ export async function POST() {
         // Obtener perfil
         const { data: perfil, error: perfilError } = await supabase
             .from('perfiles')
-            .select('id, plan, mp_subscription_id, rol')
+            .select('id, empresa_id, plan, mp_subscription_id, rol')
             .eq('id', user.id)
             .single()
 
@@ -45,6 +46,8 @@ export async function POST() {
                 plan_renovacion: null,
             })
             .eq('id', user.id)
+
+        auditLog({ userId: user.id, empresaId: perfil.empresa_id, action: 'cancel_plan' })
 
         return NextResponse.json({ ok: true })
     } catch (e) {

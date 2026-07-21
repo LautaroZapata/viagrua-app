@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { createSubscription } from '@/lib/mercadopago'
+import { auditLog } from '@/lib/audit'
 import { isValidEmail } from '@/lib/validation'
 
 export async function POST(request: Request) {
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
         // Obtener perfil
         const { data: perfil, error: perfilError } = await supabase
             .from('perfiles')
-            .select('id, plan, mp_subscription_id, rol')
+            .select('id, empresa_id, plan, mp_subscription_id, rol')
             .eq('id', user.id)
             .single()
 
@@ -57,6 +58,8 @@ export async function POST(request: Request) {
         if (updateError) {
             console.error('Error guardando subscription_id:', updateError)
         }
+
+        auditLog({ userId: user.id, empresaId: perfil.empresa_id, action: 'subscribe_plan' })
 
         return NextResponse.json({ init_point: preapproval.init_point })
     } catch (e) {

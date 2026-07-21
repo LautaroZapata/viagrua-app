@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { auditLog } from '@/lib/audit'
 import {
   sanitizeString,
   sanitizeAndLimit,
@@ -132,6 +133,8 @@ export async function POST(request: Request) {
       console.error('Error marcando invitación:', markError)
       // Non-critical: profile is already created
     }
+
+    auditLog({ userId: authData.user.id, empresaId: invitacion.empresa_id, action: 'join_company', details: { codigo } })
 
     return NextResponse.json({ ok: true, userId: authData.user.id })
   } catch (e) {

@@ -1,10 +1,13 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
+import { useGastos } from '@/lib/useSupabaseQuery'
 import ClientOnly from '../../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, showError } from '@/lib/swal'
 import { sanitizeString, isValidImporte, isValidTipoGasto, isValidFecha, LIMITS } from '@/lib/validation'
+import ErrorBoundary from '../../components/ErrorBoundary'
+import { PageSkeleton } from '../../components/skeletons'
 
 interface Gasto {
     id: string
@@ -59,7 +62,6 @@ const tiposGasto = [
 
 export default function GastosPage() {
     const router = useRouter()
-    const [gastos, setGastos] = useState<Gasto[]>([])
     const [misTraslados, setMisTraslados] = useState<TrasladoCompletado[]>([])
     const [loading, setLoading] = useState(true)
     const [guardando, setGuardando] = useState(false)
@@ -84,6 +86,9 @@ export default function GastosPage() {
     })
 
     const isAdmin = perfil?.rol === 'admin'
+
+    const { data: gastosData, mutate: mutateGastos } = useGastos(perfil?.empresa_id ?? null, perfil?.id ?? null, isAdmin)
+    const gastos = gastosData || []
 
     useEffect(() => { cargarDatos() }, [])
 
@@ -136,11 +141,12 @@ export default function GastosPage() {
 
         setPerfil(perfilData)
 
-        // Cargar gastos y datos de rol en paralelo
-        const rolePromise = perfilData.rol === 'admin'
-            ? cargarIngresos(perfilData.empresa_id)
-            : cargarMisTraslados(perfilData.id)
-        await Promise.all([cargarGastos(perfilData), rolePromise])
+        // Cargar datos de rol
+        if (perfilData.rol === 'admin') {
+            cargarIngresos(perfilData.empresa_id)
+        } else {
+            cargarMisTraslados(perfilData.id)
+        }
 
         setLoading(false)
     }
@@ -155,23 +161,6 @@ export default function GastosPage() {
             .order('created_at', { ascending: false })
             .limit(500)
         setMisTraslados(data || [])
-    }
-
-    const cargarGastos = async (perfilActual: Perfil) => {
-        let query = supabase
-            .from('gastos')
-            .select('id, tipo, importe, descripcion, fecha, created_at, usuario_id, perfiles(nombre_completo)')
-            .order('fecha', { ascending: false })
-            .limit(500)
-
-        if (perfilActual.rol === 'admin') {
-            query = query.eq('empresa_id', perfilActual.empresa_id)
-        } else {
-            query = query.eq('usuario_id', perfilActual.id)
-        }
-
-        const { data } = await query
-        setGastos(data || [])
     }
 
     const cargarIngresos = async (empresaId: string) => {
@@ -223,7 +212,7 @@ export default function GastosPage() {
                 showError(data.error || 'Error al registrar el gasto')
             } else {
                 setFormData({ tipo: '', importe: '', descripcion: '', fecha: new Date().toISOString().split('T')[0] })
-                await cargarGastos(perfil)
+                mutateGastos()
             }
         } catch {
             showError('Error de conexión')
@@ -240,7 +229,11 @@ export default function GastosPage() {
         })
         if (!ok) return
 
-        setGastos(prev => prev.filter(g => g.id !== gasto.id))
+        // Optimistic update
+        mutateGastos(
+            (prev: Gasto[] | undefined) => (prev || []).filter(g => g.id !== gasto.id),
+            { revalidate: false }
+        )
 
         try {
             const res = await fetch(`/api/gastos?id=${gasto.id}`, {
@@ -251,11 +244,11 @@ export default function GastosPage() {
 
             if (!res.ok) {
                 showError(data.error || 'Error al eliminar el gasto')
-                if (perfil) await cargarGastos(perfil)
+                mutateGastos()
             }
         } catch {
             showError('Error de conexión')
-            if (perfil) await cargarGastos(perfil)
+            mutateGastos()
         }
     }
 
@@ -359,23 +352,11 @@ export default function GastosPage() {
     )
 
     if (loading) {
-        return (
-            <div className="page-bg flex items-center justify-center min-h-screen">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="relative">
-                        <div className="w-16 h-16 border-4 border-orange-200 rounded-full"></div>
-                        <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full absolute top-0 left-0 animate-spin"></div>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-gray-700 font-semibold">Cargando</p>
-                        <p className="text-gray-400 text-sm">Obteniendo datos...</p>
-                    </div>
-                </div>
-            </div>
-        )
+        return <PageSkeleton />
     }
 
     return (
+        <ErrorBoundary>
         <div className="page-bg min-h-screen pb-12">
             {/* Navbar */}
             <nav className="navbar sticky top-0 z-50">
@@ -845,5 +826,6 @@ export default function GastosPage() {
                 </div>
             </div>
         </div>
+        </ErrorBoundary>
     )
 }

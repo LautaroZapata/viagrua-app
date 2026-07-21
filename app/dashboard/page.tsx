@@ -8,7 +8,11 @@ import MobileDrawer from '../components/MobileDrawer'
 import Pagination from '../components/Pagination'
 import EmptyState from '../components/EmptyState'
 import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorBoundary from '../components/ErrorBoundary'
+import { PageSkeleton } from '../components/skeletons'
+import DashboardCharts from '../components/DashboardCharts'
 import { supabase } from '@/lib/supabase'
+import { usePlanConfig } from '@/lib/useSupabaseQuery'
 import { confirmDelete, confirmAction, showError } from '@/lib/swal'
 import { getPlanConfig, canAddPeople, getTrasladosRestantes, isTrasladosLimitReached } from '@/lib/plans'
 
@@ -42,6 +46,8 @@ export default function Dashboard() {
     const [empresa, setEmpresa] = useState<Empresa | null>(null);
     const [choferes, setChoferes] = useState<Chofer[]>([]);
     const [traslados, setTraslados] = useState<Traslado[]>([]);
+    const [gastos, setGastos] = useState<{ importe: number; fecha: string }[]>([]);
+    const [chartTraslados, setChartTraslados] = useState<{ importe_total: number | null; created_at: string }[]>([]);
     // --- Lógica de planes y bloqueo traslados ---
     const planKey = perfil?.plan || 'free';
     const trasladosUsados = perfil?.traslados_mes_actual || 0;
@@ -68,6 +74,8 @@ export default function Dashboard() {
     const router = useRouter();
     const [isClient, setIsClient] = useState(false);
     const timersRef = useRef<NodeJS.Timeout[]>([]);
+
+    const { data: empresaPlanData } = usePlanConfig(perfil?.empresa_id ?? null);
 
     // Cleanup all timers on unmount
     useEffect(() => () => timersRef.current.forEach(clearTimeout), []);
@@ -175,11 +183,12 @@ export default function Dashboard() {
                 }, 0));
             }
 
-            // Cargar empresa, choferes y traslados en paralelo
+            // Cargar empresa, choferes, traslados y datos del gráfico en paralelo
             const [empresaResult] = await Promise.all([
                 supabase.from('empresas').select('*').eq('id', perfilData.empresa_id).single(),
                 cargarChoferes(perfilData.empresa_id),
                 cargarTraslados(perfilData.empresa_id, 1),
+                cargarDatosGrafico(perfilData.empresa_id),
             ]);
             if (empresaResult.error) throw new Error(empresaResult.error.message);
             setEmpresa(empresaResult.data);
@@ -198,6 +207,15 @@ export default function Dashboard() {
         const { data } = await supabase
             .from('perfiles').select('*').eq('empresa_id', empresaId).eq('rol', 'chofer')
         setChoferes(data || [])
+    }
+
+    const cargarDatosGrafico = async (empresaId: string) => {
+        const [gastosRes, trasladosRes] = await Promise.all([
+            supabase.from('gastos').select('importe, fecha').eq('empresa_id', empresaId).limit(1000),
+            supabase.from('traslados').select('importe_total, created_at').eq('empresa_id', empresaId).eq('estado', 'completado').neq('estado_pago', 'pendiente').limit(1000),
+        ])
+        setGastos(gastosRes.data || [])
+        setChartTraslados(trasladosRes.data || [])
     }
 
     const expulsarChofer = async (choferId: string, nombreChofer: string) => {
@@ -419,7 +437,7 @@ export default function Dashboard() {
     }
 
     if (checkingSession || loading) {
-        return <LoadingSpinner />
+        return <PageSkeleton />
     }
     if (error) {
         return (
@@ -454,6 +472,7 @@ export default function Dashboard() {
         ]
 
     return (
+        <ErrorBoundary>
         <div className="min-h-screen bg-gray-50">
         {/* ...resto del dashboard... */}
             {/* Navbar con menú hamburger en mobile */}
@@ -613,6 +632,12 @@ export default function Dashboard() {
 
                 {/* Botones Acción - Solo en Inicio */}
                 {activeTab === 'inicio' && (
+                    <>
+                    {perfil?.rol === 'admin' && (
+                        <div className="mb-8 sm:mb-10">
+                            <DashboardCharts traslados={chartTraslados} gastos={gastos} />
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-10">
                         <button onClick={() => { if (!bloqueoTraslados) router.push('/dashboard/nuevo-traslado') }}
                             className={`card card-interactive p-5 sm:p-6 lg:p-8 text-left group ${bloqueoTraslados ? 'opacity-60 cursor-not-allowed' : ''}`}>
@@ -638,9 +663,8 @@ export default function Dashboard() {
                             <p className="text-sm text-gray-500 mt-1">Generar link de invitación</p>
                         </button>
                     </div>
+                    </>
                 )}
-
-                {/* Vista Traslados */}
                 {activeTab === 'traslados' && (
                     <div className="card p-4 sm:p-6 lg:p-8">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -913,5 +937,6 @@ export default function Dashboard() {
                 </div>
             )}
         </div>
+        </ErrorBoundary>
     )
 }

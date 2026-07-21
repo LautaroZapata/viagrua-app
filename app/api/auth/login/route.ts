@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rateLimit'
+import { auditLog } from '@/lib/audit'
 
 const MAX_BODY_SIZE = 2_000
 
@@ -64,6 +65,8 @@ export async function POST(request: Request) {
     if (!data.session) {
       return NextResponse.json({ error: 'Error al crear la sesión' }, { status: 500 })
     }
+
+    auditLog({ userId: data.user.id, empresaId: null, action: 'login' })
 
     return NextResponse.json({
       ok: true,
