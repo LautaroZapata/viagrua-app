@@ -1,33 +1,38 @@
-import Swal from 'sweetalert2'
-
-const defaultConfirmButtonColor = '#ea580c' // orange-600
-const dangerConfirmButtonColor = '#dc2626' // red-600
+import { toast } from 'sonner'
 
 /**
  * Confirmación para acciones destructivas (eliminar, expulsar).
- * Botón rojo. Retorna true si el usuario confirma.
+ * Retorna true si el usuario confirma.
  */
 export async function confirmDelete(options: {
   title?: string
   text: string
   confirmButtonText?: string
 }): Promise<boolean> {
-  const result = await Swal.fire({
-    title: options.title ?? '¿Estás seguro?',
-    text: options.text,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: dangerConfirmButtonColor,
-    cancelButtonColor: '#6b7280',
-    confirmButtonText: options.confirmButtonText ?? 'Sí, eliminar',
-    cancelButtonText: 'Cancelar',
+  return new Promise((resolve) => {
+    toast(options.title ?? '¿Estás seguro?', {
+      description: options.text,
+      action: {
+        label: options.confirmButtonText ?? 'Sí, eliminar',
+        onClick: () => resolve(true),
+      },
+      cancel: {
+        label: 'Cancelar',
+        onClick: () => resolve(false),
+      },
+      duration: Infinity,
+      style: {
+        '--normal-bg': 'white',
+        '--normal-text': '#111827',
+        '--normal-border': '#e5e7eb',
+      } as React.CSSProperties,
+    })
   })
-  return result.isConfirmed === true
 }
 
 /**
- * Confirmación genérica para acciones que requieren confirmar (completar, cambiar método de pago, etc.).
- * Botón naranja. Retorna true si el usuario confirma.
+ * Confirmación genérica para acciones que requieren confirmar.
+ * Retorna true si el usuario confirma.
  */
 export async function confirmAction(options: {
   title: string
@@ -35,40 +40,37 @@ export async function confirmAction(options: {
   icon?: 'question' | 'warning' | 'info'
   confirmButtonText?: string
 }): Promise<boolean> {
-  const result = await Swal.fire({
-    title: options.title,
-    text: options.text,
-    icon: options.icon ?? 'question',
-    showCancelButton: true,
-    confirmButtonColor: defaultConfirmButtonColor,
-    cancelButtonColor: '#6b7280',
-    confirmButtonText: options.confirmButtonText ?? 'Sí, confirmar',
-    cancelButtonText: 'Cancelar',
+  return new Promise((resolve) => {
+    toast(options.title, {
+      description: options.text,
+      action: {
+        label: options.confirmButtonText ?? 'Sí, confirmar',
+        onClick: () => resolve(true),
+      },
+      cancel: {
+        label: 'Cancelar',
+        onClick: () => resolve(false),
+      },
+      duration: Infinity,
+      style: {
+        '--normal-bg': 'white',
+        '--normal-text': '#111827',
+        '--normal-border': '#e5e7eb',
+      } as React.CSSProperties,
+    })
   })
-  return result.isConfirmed === true
 }
 
 /**
  * Muestra un mensaje de error.
  */
 export function showError(message: string): void {
-  Swal.fire({
-    icon: 'error',
-    title: 'Error',
-    text: message,
-    confirmButtonColor: defaultConfirmButtonColor,
-  })
+  toast.error('Error', { description: message })
 }
 
 /**
- * Muestra un mensaje de éxito (opcional).
+ * Muestra un mensaje de éxito.
  */
 export function showSuccess(message: string): void {
-  Swal.fire({
-    icon: 'success',
-    title: 'Listo',
-    text: message,
-    timer: 2000,
-    showConfirmButton: false,
-  })
+  toast.success('Listo', { description: message })
 }

@@ -47,23 +47,13 @@ type ExportRow = {
 }
 
 const CSV_FIELDS: (keyof ExportRow)[] = [
-  'tipo_movimiento',
-  'fecha',
-  'concepto',
-  'vehiculo',
-  'matricula',
-  'chofer_usuario',
-  'estado',
-  'estado_pago',
-  'ingreso',
-  'gasto',
-  'origen',
-  'destino',
-  'observaciones',
-  'id',
+  'tipo_movimiento', 'fecha', 'concepto', 'vehiculo', 'matricula',
+  'chofer_usuario', 'estado', 'estado_pago', 'ingreso', 'gasto',
+  'origen', 'destino', 'observaciones', 'id',
 ]
 
 const PAGE_SIZE = 1000
+const encoder = new TextEncoder()
 
 export async function GET() {
   try {
@@ -92,59 +82,32 @@ export async function GET() {
       return NextResponse.json({ error: 'Solo administradores pueden exportar datos' }, { status: 403 })
     }
 
-    const [traslados, gastos] = await Promise.all([
-      fetchTraslados(supabase, perfil.empresa_id),
-      fetchGastos(supabase, perfil.empresa_id),
-    ])
-
-    const trasladoRows: ExportRow[] = traslados.map((traslado) => ({
-      tipo_movimiento: 'traslado',
-      fecha: formatDate(traslado.created_at),
-      concepto: traslado.marca_modelo || '',
-      vehiculo: traslado.marca_modelo || '',
-      matricula: traslado.matricula || '',
-      chofer_usuario: getNombrePerfil(traslado.perfiles),
-      estado: traslado.estado || '',
-      estado_pago: traslado.estado_pago || '',
-      ingreso: normalizeNumber(traslado.importe_total),
-      gasto: 0,
-      origen: traslado.desde || '',
-      destino: traslado.hasta || '',
-      observaciones: traslado.observaciones || '',
-      id: traslado.id,
-    }))
-
-    const gastoRows: ExportRow[] = gastos.map((gasto) => ({
-      tipo_movimiento: 'gasto',
-      fecha: gasto.fecha || formatDate(gasto.created_at),
-      concepto: getTipoGastoLabel(gasto.tipo),
-      vehiculo: '',
-      matricula: '',
-      chofer_usuario: getNombrePerfil(gasto.perfiles),
-      estado: '',
-      estado_pago: '',
-      ingreso: 0,
-      gasto: normalizeNumber(gasto.importe),
-      origen: '',
-      destino: '',
-      observaciones: gasto.descripcion || '',
-      id: gasto.id,
-    }))
-
-    const rows = [...trasladoRows, ...gastoRows].sort(
-      (a, b) => getDateTime(b.fecha) - getDateTime(a.fecha)
-    )
-
-    const csv = buildCsv(rows)
-    const csvWithBom = `\uFEFF${csv}`
+    const empresaId = perfil.empresa_id
     const today = new Date().toISOString().split('T')[0]
     const fileName = `viagrua-respaldo-empresa-${today}.csv`
 
-    return new Response(csvWithBom, {
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          const header = CSV_FIELDS.join(';') + '\r\n'
+          controller.enqueue(encoder.encode('\uFEFF' + header))
+
+          await streamFetchTraslados(supabase, empresaId, controller)
+          await streamFetchGastos(supabase, empresaId, controller)
+
+          controller.close()
+        } catch (err) {
+          controller.error(err)
+        }
+      },
+    })
+
+    return new Response(stream, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename="${fileName}"`,
         'Cache-Control': 'no-store',
+        'Transfer-Encoding': 'chunked',
       },
     })
   } catch (error) {
@@ -153,24 +116,18 @@ export async function GET() {
   }
 }
 
-async function fetchTraslados(supabase: Awaited<ReturnType<typeof createClient>>, empresaId: string): Promise<TrasladoRecord[]> {
-  const rows: TrasladoRecord[] = []
+async function streamFetchTraslados(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  empresaId: string,
+  controller: ReadableStreamDefaultController<Uint8Array>
+) {
   let from = 0
-
   while (true) {
     const { data, error } = await supabase
       .from('traslados')
       .select(`
-        id,
-        marca_modelo,
-        matricula,
-        estado,
-        estado_pago,
-        importe_total,
-        observaciones,
-        created_at,
-        desde,
-        hasta,
+        id, marca_modelo, matricula, estado, estado_pago,
+        importe_total, observaciones, created_at, desde, hasta,
         perfiles(nombre_completo)
       `)
       .eq('empresa_id', empresaId)
@@ -180,29 +137,43 @@ async function fetchTraslados(supabase: Awaited<ReturnType<typeof createClient>>
     if (error) throw error
     if (!data || data.length === 0) break
 
-    rows.push(...(data as TrasladoRecord[]))
+    for (const t of data as TrasladoRecord[]) {
+      const row: ExportRow = {
+        tipo_movimiento: 'traslado',
+        fecha: formatDate(t.created_at),
+        concepto: t.marca_modelo || '',
+        vehiculo: t.marca_modelo || '',
+        matricula: t.matricula || '',
+        chofer_usuario: getNombrePerfil(t.perfiles),
+        estado: t.estado || '',
+        estado_pago: t.estado_pago || '',
+        ingreso: normalizeNumber(t.importe_total),
+        gasto: 0,
+        origen: t.desde || '',
+        destino: t.hasta || '',
+        observaciones: t.observaciones || '',
+        id: t.id,
+      }
+      const line = CSV_FIELDS.map((f) => escapeCsvValue(row[f])).join(';') + '\r\n'
+      controller.enqueue(encoder.encode(line))
+    }
 
     if (data.length < PAGE_SIZE) break
     from += PAGE_SIZE
   }
-
-  return rows
 }
 
-async function fetchGastos(supabase: Awaited<ReturnType<typeof createClient>>, empresaId: string): Promise<GastoRecord[]> {
-  const rows: GastoRecord[] = []
+async function streamFetchGastos(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  empresaId: string,
+  controller: ReadableStreamDefaultController<Uint8Array>
+) {
   let from = 0
-
   while (true) {
     const { data, error } = await supabase
       .from('gastos')
       .select(`
-        id,
-        tipo,
-        importe,
-        descripcion,
-        fecha,
-        created_at,
+        id, tipo, importe, descripcion, fecha, created_at,
         perfiles(nombre_completo)
       `)
       .eq('empresa_id', empresaId)
@@ -212,19 +183,30 @@ async function fetchGastos(supabase: Awaited<ReturnType<typeof createClient>>, e
     if (error) throw error
     if (!data || data.length === 0) break
 
-    rows.push(...(data as GastoRecord[]))
+    for (const g of data as GastoRecord[]) {
+      const row: ExportRow = {
+        tipo_movimiento: 'gasto',
+        fecha: g.fecha || formatDate(g.created_at),
+        concepto: getTipoGastoLabel(g.tipo),
+        vehiculo: '',
+        matricula: '',
+        chofer_usuario: getNombrePerfil(g.perfiles),
+        estado: '',
+        estado_pago: '',
+        ingreso: 0,
+        gasto: normalizeNumber(g.importe),
+        origen: '',
+        destino: '',
+        observaciones: g.descripcion || '',
+        id: g.id,
+      }
+      const line = CSV_FIELDS.map((f) => escapeCsvValue(row[f])).join(';') + '\r\n'
+      controller.enqueue(encoder.encode(line))
+    }
 
     if (data.length < PAGE_SIZE) break
     from += PAGE_SIZE
   }
-
-  return rows
-}
-
-function buildCsv(rows: ExportRow[]): string {
-  const header = CSV_FIELDS.join(';')
-  const body = rows.map((row) => CSV_FIELDS.map((field) => escapeCsvValue(row[field])).join(';'))
-  return [header, ...body].join('\r\n')
 }
 
 function escapeCsvValue(value: string | number): string {
@@ -238,11 +220,6 @@ function escapeCsvValue(value: string | number): string {
 function formatDate(value: string | null | undefined): string {
   if (!value) return ''
   return value.split('T')[0] || ''
-}
-
-function getDateTime(value: string): number {
-  const time = new Date(value).getTime()
-  return Number.isNaN(time) ? 0 : time
 }
 
 function normalizeNumber(value: number | string | null | undefined): number {
@@ -260,16 +237,13 @@ function getTipoGastoLabel(tipo: string | null | undefined): string {
     multa: 'Multa',
     otro: 'Otro',
   }
-
   return tipo ? labels[tipo] || tipo : ''
 }
 
 function getNombrePerfil(perfiles: PerfilRelacion | undefined): string {
   if (!perfiles) return ''
-
   if (Array.isArray(perfiles)) {
     return perfiles[0]?.nombre_completo || ''
   }
-
   return perfiles.nombre_completo || ''
 }

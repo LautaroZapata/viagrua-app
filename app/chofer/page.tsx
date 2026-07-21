@@ -4,6 +4,7 @@ import ClientOnly from '../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmAction, showError } from '@/lib/swal'
+import ThemeToggle from '../components/ThemeToggle'
 import { sanitizeString, isValidCodigoInvitacion, LIMITS } from '@/lib/validation'
 
 interface Traslado {
@@ -359,6 +360,7 @@ export default function PanelChofer() {
                         <button onClick={handleCerrarSesion} className="text-white text-xs sm:text-sm font-medium px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-lg transition">
                             Salir
                         </button>
+                        <ThemeToggle />
                     </div>
                 </div>
             </nav>

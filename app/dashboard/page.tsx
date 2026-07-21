@@ -3,8 +3,14 @@ import { useState, useEffect, useRef } from 'react'
 import ClientOnly from '../components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import ThemeToggle from '../components/ThemeToggle'
+import MobileDrawer from '../components/MobileDrawer'
+import Pagination from '../components/Pagination'
+import EmptyState from '../components/EmptyState'
+import LoadingSpinner from '../components/LoadingSpinner'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, confirmAction, showError } from '@/lib/swal'
+import { getPlanConfig, canAddPeople, getTrasladosRestantes, isTrasladosLimitReached } from '@/lib/plans'
 
 interface Perfil {
     id: string;
@@ -37,18 +43,11 @@ export default function Dashboard() {
     const [choferes, setChoferes] = useState<Chofer[]>([]);
     const [traslados, setTraslados] = useState<Traslado[]>([]);
     // --- Lógica de planes y bloqueo traslados ---
-    const PLANES: Record<string, { traslados_max: number | null, puede_agregar_personas: boolean }> = {
-        free: { traslados_max: 30, puede_agregar_personas: false },
-        premium: { traslados_max: null, puede_agregar_personas: true },
-        admin: { traslados_max: null, puede_agregar_personas: true },
-    };
     const planKey = perfil?.plan || 'free';
-    const planInfo = PLANES[planKey] || PLANES['free'];
-    const trasladosMax = planInfo.traslados_max;
     const trasladosUsados = perfil?.traslados_mes_actual || 0;
-    const trasladosRestantes = trasladosMax !== null ? Math.max(trasladosMax - trasladosUsados, 0) : null;
-    // Solo bloquear traslados si es free y llegó al límite
-    const bloqueoTraslados = planKey === 'free' && trasladosRestantes === 0;
+    const trasladosMax = getPlanConfig(planKey).traslados_max;
+    const trasladosRestantes = getTrasladosRestantes(planKey, trasladosUsados);
+    const bloqueoTraslados = isTrasladosLimitReached(planKey, trasladosUsados);
     const [trasladosPage, setTrasladosPage] = useState(1);
     const [trasladosTotal, setTrasladosTotal] = useState(0);
     const [trasladosPendientesTotal, setTrasladosPendientesTotal] = useState(0);
@@ -420,20 +419,7 @@ export default function Dashboard() {
     }
 
     if (checkingSession || loading) {
-        return (
-            <div className="page-bg flex items-center justify-center min-h-screen">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="relative">
-                        <div className="w-16 h-16 border-4 border-orange-200 rounded-full"></div>
-                        <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full absolute top-0 left-0 animate-spin"></div>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-gray-700 font-semibold">Cargando</p>
-                        <p className="text-gray-400 text-sm">Verificando sesión y cargando datos...</p>
-                    </div>
-                </div>
-            </div>
-        )
+        return <LoadingSpinner />
     }
     if (error) {
         return (
@@ -454,10 +440,22 @@ export default function Dashboard() {
         );
     }
 
+    const drawerItems = perfil?.rol === 'admin'
+        ? [
+            { icon: '🏠', label: 'Inicio', isActive: activeTab === 'inicio', onClick: () => setActiveTab('inicio') },
+            { icon: '🚗', label: 'Traslados', isActive: activeTab === 'traslados', onClick: () => setActiveTab('traslados') },
+            { icon: '👥', label: 'Choferes', isActive: activeTab === 'choferes', onClick: () => setActiveTab('choferes') },
+            { icon: '💸', label: 'Gastos', isLink: true, href: '/dashboard/gastos', onClick: () => {} },
+            { icon: '🧑‍✈️', label: 'Modo Chofer', isLink: true, href: '/chofer', onClick: () => router.push('/chofer') },
+        ]
+        : [
+            { icon: '💸', label: 'Gastos', isLink: true, href: '/dashboard/gastos', onClick: () => {} },
+            { icon: '🧑‍✈️', label: 'Modo Chofer', isLink: true, href: '/chofer', onClick: () => router.push('/chofer') },
+        ]
+
     return (
         <div className="min-h-screen bg-gray-50">
         {/* ...resto del dashboard... */}
-            {/* Navbar - Responsive */}
             {/* Navbar con menú hamburger en mobile */}
             <nav className="navbar sticky top-0 z-50">
                 <div className="flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
@@ -514,56 +512,18 @@ export default function Dashboard() {
                             className="text-white text-sm font-medium px-3 sm:px-4 py-2 bg-white/15 hover:bg-white/25 rounded-lg transition">
                             Salir
                         </button>
+                        <ThemeToggle />
                     </div>
                 </div>
             </nav>
 
             {/* Drawer lateral para mobile */}
-            {/* Drawer solo visible en mobile (md:hidden) */}
-            {drawerOpen && (
-                <div className="fixed inset-0 z-[100] flex md:hidden">
-                    {/* Fondo oscuro */}
-                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
-                    {/* Drawer */}
-                    <div className="relative bg-white w-64 max-w-[80vw] h-full shadow-xl animate-slideInLeft px-6 pb-6 drawer-safe-top flex flex-col">
-                        <div className="flex items-center mb-8">
-                            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-2">
-                                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-                                </svg>
-                            </div>
-                            <span className="font-bold text-lg text-orange-600">ViaGrua</span>
-                        </div>
-                        <nav className="flex flex-col gap-2">
-                            {/* Si es admin, muestra todas las opciones; si es chofer solo Gastos y Modo Chofer */}
-                            {perfil?.rol === 'admin' ? (
-                                <>
-                                    <button onClick={() => { setActiveTab('inicio'); setDrawerOpen(false); }} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${activeTab==='inicio'?'bg-orange-50 text-orange-600':'text-gray-700 hover:bg-gray-50'}`}>🏠 Inicio</button>
-                                    <button onClick={() => { setActiveTab('traslados'); setDrawerOpen(false); }} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${activeTab==='traslados'?'bg-orange-50 text-orange-600':'text-gray-700 hover:bg-gray-50'}`}>🚗 Traslados</button>
-                                    <button onClick={() => { setActiveTab('choferes'); setDrawerOpen(false); }} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${activeTab==='choferes'?'bg-orange-50 text-orange-600':'text-gray-700 hover:bg-gray-50'}`}>👥 Choferes</button>
-                                    <Link href="/dashboard/gastos" prefetch={true} onClick={() => setDrawerOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">💸 Gastos</Link>
-                                    <button onClick={() => { router.push('/chofer'); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">🧑‍✈️ Modo Chofer</button>
-                                </>
-                            ) : (
-                                <>
-                                    <Link href="/dashboard/gastos" prefetch={true} onClick={() => setDrawerOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">💸 Gastos</Link>
-                                    <button onClick={() => { router.push('/chofer'); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-gray-700 hover:bg-gray-50">🧑‍✈️ Modo Chofer</button>
-                                </>
-                            )}
-                            <button onClick={() => { handleCerrarSesion(); setDrawerOpen(false); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition text-red-600 hover:bg-red-50">🚪 Salir</button>
-                        </nav>
-                        {perfil?.nombre_completo && (
-                            <div className="mt-8 text-xs text-gray-400">
-                                <span className="font-semibold">{perfil.nombre_completo}</span>
-                            </div>
-                        )}
-
-                        
-
-                        
-                    </div>
-                </div>
-            )}
+            <MobileDrawer
+                isOpen={drawerOpen}
+                onClose={() => setDrawerOpen(false)}
+                items={[...drawerItems, { icon: '🚪', label: 'Salir', isDanger: true, onClick: handleCerrarSesion }]}
+                userName={perfil?.nombre_completo}
+            />
 
             {/* Tabs Mobile eliminados: navegación solo por drawer en mobile */}
 
@@ -729,14 +689,7 @@ export default function Dashboard() {
                         </div>
                         
                         {traslados.length === 0 ? (
-                            <div className="text-center py-12 sm:py-16">
-                                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                    </svg>
-                                </div>
-                                <p className="text-gray-500 text-sm sm:text-base">No hay traslados registrados</p>
-                            </div>
+                            <EmptyState message="No hay traslados registrados" />
                         ) : (
                             <div className="space-y-3 animate-stagger">
                                 {traslados.map((traslado) => (
@@ -814,31 +767,12 @@ export default function Dashboard() {
                         )}
 
                         {/* Paginación — responsive */}
-                        <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <div className="text-sm text-gray-500 order-2 sm:order-1">
-                                Mostrando {traslados.length > 0 ? ((trasladosPage - 1) * ITEMS_PER_PAGE) + 1 : 0} - {Math.min(trasladosPage * ITEMS_PER_PAGE, trasladosTotal)} de {trasladosTotal}
-                            </div>
-                            <div className="pagination-controls flex flex-wrap items-center justify-center sm:justify-end gap-2 order-1 sm:order-2">
-                                <button
-                                    onClick={() => setTrasladosPage(p => Math.max(1, p - 1))}
-                                    disabled={trasladosPage <= 1}
-                                    className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50 btn-sm"
-                                >
-                                    Anterior
-                                </button>
-                                <span className="text-sm text-gray-600 whitespace-nowrap">Página {trasladosPage} / {Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}</span>
-                                <button
-                                    onClick={() => {
-                                        const maxPage = Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))
-                                        setTrasladosPage(p => Math.min(maxPage, p + 1))
-                                    }}
-                                    disabled={trasladosPage >= Math.max(1, Math.ceil(trasladosTotal / ITEMS_PER_PAGE))}
-                                    className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50 btn-sm"
-                                >
-                                    Siguiente
-                                </button>
-                            </div>
-                        </div>
+                        <Pagination
+                            currentPage={trasladosPage}
+                            totalItems={trasladosTotal}
+                            itemsPerPage={ITEMS_PER_PAGE}
+                            onPageChange={setTrasladosPage}
+                        />
                     </div>
                 )}
 
@@ -847,22 +781,15 @@ export default function Dashboard() {
                     <div className="card p-4 sm:p-6 lg:p-8">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                             <h3 className="font-semibold text-lg sm:text-xl text-gray-900">Equipo de Choferes</h3>
-                            <button onClick={() => { if (planInfo.puede_agregar_personas) abrirModalInvitacion() }}
-                                className={`btn-secondary px-5 py-2.5 text-sm ${!planInfo.puede_agregar_personas ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                disabled={!planInfo.puede_agregar_personas}
-                                title={!planInfo.puede_agregar_personas ? 'Disponible solo en planes pagos' : ''}>
+                            <button onClick={() => { if (canAddPeople(planKey)) abrirModalInvitacion() }}
+                                className={`btn-secondary px-5 py-2.5 text-sm ${!canAddPeople(planKey) ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                disabled={!canAddPeople(planKey)}
+                                title={!canAddPeople(planKey) ? 'Disponible solo en planes pagos' : ''}>
                                 + Invitar Chofer
                             </button>
                         </div>
                         {choferes.length === 0 ? (
-                            <div className="text-center py-12 sm:py-16">
-                                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
-                                </div>
-                                <p className="text-gray-500 text-sm sm:text-base">No hay choferes registrados</p>
-                            </div>
+                            <EmptyState message="No hay choferes registrados" />
                         ) : (
                             <div className="overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8">
                                 <table className="w-full text-sm">

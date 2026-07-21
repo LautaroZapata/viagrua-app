@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import PwaRegister from '@/components/PwaRegister'
+import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
     title: 'ViaGrua — Gestión de Traslados',
@@ -29,9 +30,20 @@ export default function RootLayout({
     children: React.ReactNode
 }) {
     return (
-        <html lang="es">
+        <html lang="es" suppressHydrationWarning>
             <body className="antialiased">
+                <script dangerouslySetInnerHTML={{ __html: `
+                  (function() {
+                    try {
+                      var theme = localStorage.getItem('theme');
+                      if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                        document.documentElement.classList.add('dark');
+                      }
+                    } catch(e) {}
+                  })()
+                `}} />
                 <PwaRegister />
+                <Toaster position="top-center" richColors closeButton />
                 <div className="app-container">
                     {children}
                 </div>
