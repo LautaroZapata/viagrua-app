@@ -4,6 +4,8 @@ import ClientOnly from '../../../components/ClientOnly'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, confirmAction, showError } from '@/lib/swal'
+import { ArrowLeft, Trash2, X, Truck, Camera } from 'lucide-react'
+import LoadingSpinner from '../../../components/LoadingSpinner'
 
 interface Traslado {
     id: string
@@ -39,7 +41,6 @@ export default function DetalleTrasladoAdmin() {
 
     useEffect(() => {
         if (!id) return;
-        // Suscripción Realtime para updates de traslado
         const channel = supabase.channel('traslado-' + id)
             .on('postgres_changes', {
                 event: 'UPDATE',
@@ -56,7 +57,6 @@ export default function DetalleTrasladoAdmin() {
         };
     }, [id]);
 
-    // Bloqueo de cambio de estado si está completado
     const estadoBloqueado = traslado?.estado === 'completado';
     const pagoBloqueado = traslado?.estado_pago !== 'pendiente';
 
@@ -64,7 +64,6 @@ export default function DetalleTrasladoAdmin() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { router.push('/login'); return }
 
-        // Obtener perfil
         const { data: perfil } = await supabase
             .from('perfiles')
             .select('empresa_id, rol')
@@ -72,7 +71,6 @@ export default function DetalleTrasladoAdmin() {
             .single()
         if (!perfil) { router.push('/login'); return }
 
-        // Permitir acceso tanto a admin como chofer
         const { data, error } = await supabase
             .from('traslados')
             .select('*, perfiles(nombre_completo)')
@@ -94,14 +92,13 @@ export default function DetalleTrasladoAdmin() {
         if (nuevoEstado === 'completado') {
             const ok = await confirmAction({
                 title: 'Confirmar',
-                text: '¿Confirmar marcar como completado? Esta acción bloqueará el traslado.',
+                text: '¿Confirmar marcar como completado? Esta accion bloqueara el traslado.',
                 icon: 'warning',
-                confirmButtonText: 'Sí, completar',
+                confirmButtonText: 'Si, completar',
             })
             if (!ok) return
         }
 
-        // Actualización optimista - cambiar UI inmediatamente
         const estadoAnterior = traslado.estado
         setActualizando(true)
         setTraslado(prev => prev ? { ...prev, estado: nuevoEstado } : prev)
@@ -125,10 +122,10 @@ export default function DetalleTrasladoAdmin() {
         if (!traslado) return
 
         const ok = await confirmAction({
-            title: 'Confirmar método de pago',
-            text: `¿Confirmar cambio de método de pago a "${nuevoEstadoPago}"? Asegúrate de elegir el método correcto.`,
+            title: 'Confirmar metodo de pago',
+            text: `¿Confirmar cambio de metodo de pago a "${nuevoEstadoPago}"? Asegurate de elegir el metodo correcto.`,
             icon: 'question',
-            confirmButtonText: 'Sí, confirmar',
+            confirmButtonText: 'Si, confirmar',
         })
         if (!ok) return
 
@@ -155,11 +152,10 @@ export default function DetalleTrasladoAdmin() {
         if (!traslado) return
         const ok = await confirmDelete({
             title: 'Eliminar traslado',
-            text: '¿Estás seguro de eliminar este traslado? Esta acción no se puede deshacer.',
+            text: '¿Estas seguro de eliminar este traslado? Esta accion no se puede deshacer.',
         })
         if (!ok) return
 
-        // Eliminar fotos del storage (listar primero, luego eliminar)
         const { data: storageFiles } = await supabase.storage.from('fotos-traslados').list(traslado.id)
         if (storageFiles && storageFiles.length > 0) {
             await supabase.storage.from('fotos-traslados').remove(storageFiles.map(f => `${traslado.id}/${f.name}`))
@@ -185,19 +181,22 @@ export default function DetalleTrasladoAdmin() {
         { tipo: 'Interior', url: traslado.foto_interior }
     ].filter(f => f.url) : []
 
+    const estadoConfig: Record<string, { active: string; inactive: string; label: string }> = {
+        pendiente: { active: 'bg-yellow-500 text-white', inactive: 'bg-muted text-muted-foreground hover:bg-accent', label: 'Pendiente' },
+        en_curso: { active: 'bg-blue-500 text-white', inactive: 'bg-muted text-muted-foreground hover:bg-accent', label: 'En Curso' },
+        completado: { active: 'bg-emerald-500 text-white', inactive: 'bg-muted text-muted-foreground hover:bg-accent', label: 'Completado' },
+    }
+
+    const pagoConfig: Record<string, { active: string; inactive: string; label: string }> = {
+        pendiente: { active: 'bg-yellow-500 text-white', inactive: 'bg-muted text-muted-foreground hover:bg-accent', label: 'Pendiente' },
+        efectivo: { active: 'bg-emerald-500 text-white', inactive: 'bg-muted text-muted-foreground hover:bg-accent', label: 'Efectivo' },
+        transferencia: { active: 'bg-blue-500 text-white', inactive: 'bg-muted text-muted-foreground hover:bg-accent', label: 'Transferencia' },
+    }
+
     if (loading) {
         return (
-            <div className="page-bg flex items-center justify-center min-h-screen">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="relative">
-                        <div className="w-16 h-16 border-4 border-orange-200 rounded-full"></div>
-                        <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full absolute top-0 left-0 animate-spin"></div>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-gray-700 font-semibold">Cargando</p>
-                        <p className="text-gray-400 text-sm">Obteniendo traslado...</p>
-                    </div>
-                </div>
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <LoadingSpinner />
             </div>
         )
     }
@@ -205,47 +204,40 @@ export default function DetalleTrasladoAdmin() {
     if (!traslado) return null
 
     return (
-        <div className="page-bg min-h-screen pb-8">
+        <div className="min-h-screen bg-background pb-8">
             {/* Navbar */}
             <nav className="navbar sticky top-0 z-50">
                 <div className="flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3">
                     <div className="flex items-center gap-3">
-                        <button aria-label="Volver al dashboard" onClick={() => router.push('/dashboard')} className="nav-icon-btn text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-lg transition">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
+                        <button aria-label="Volver al dashboard" onClick={() => router.push('/dashboard')} className="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-lg transition">
+                            <ArrowLeft className="w-5 h-5" />
                         </button>
+                        <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
+                            <Truck className="w-4 h-4 text-white" />
+                        </div>
                         <h1 className="text-sm sm:text-base font-semibold text-white">Detalle del Traslado</h1>
-                        {/* Mostrar nombre del usuario si está disponible */}
-                        {traslado?.perfiles?.nombre_completo && (
-                          <span className="hidden sm:inline ml-2 text-xs text-white/80 font-semibold bg-white/10 px-2 py-0.5 rounded-lg max-w-[120px] truncate" title={traslado.perfiles.nombre_completo}>
-                            {traslado.perfiles.nombre_completo}
-                          </span>
-                        )}
                     </div>
                     <button
                         onClick={eliminarTraslado}
                         className="bg-red-500/20 hover:bg-red-500 text-red-100 hover:text-white text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        <Trash2 className="w-3.5 h-3.5" />
                         Eliminar
                     </button>
                 </div>
             </nav>
 
-            <div className="page-enter w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-3xl mx-auto">
+            <div className="page-enter w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-3xl mx-auto space-y-4">
                 {/* Info Principal */}
-                <div className="card p-4 sm:p-6 mb-4">
+                <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
                         <div>
-                            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                            <h2 className="text-xl sm:text-2xl font-bold text-foreground">
                                 {traslado.marca_modelo}
                             </h2>
-                            <div className="flex items-center gap-2 mt-1.5 text-sm text-gray-500">
+                            <div className="flex items-center gap-2 mt-1.5 text-sm text-muted-foreground">
                                 {traslado.es_0km && (
-                                    <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">
+                                    <span className="text-[10px] bg-blue-500/10 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-medium">
                                         0 KM
                                     </span>
                                 )}
@@ -253,53 +245,52 @@ export default function DetalleTrasladoAdmin() {
                             </div>
                         </div>
                         <span
-                            className={`text-xs font-medium px-3 py-1.5 rounded ${
+                            className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${
                                 traslado.estado === 'pendiente'
-                                    ? 'bg-yellow-100 text-yellow-700'
+                                    ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-700 dark:text-yellow-400'
                                     : traslado.estado === 'en_curso'
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : 'bg-green-100 text-green-700'
+                                    ? 'bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400'
+                                    : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400'
                             }`}
                         >
-                            {traslado.estado === 'pendiente' ? 'Pendiente' : 
+                            {traslado.estado === 'pendiente' ? 'Pendiente' :
                              traslado.estado === 'en_curso' ? 'En Curso' : 'Completado'}
                         </span>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                         {traslado.matricula && (
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                                <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Matrícula</p>
-                                <p className="text-base font-semibold text-gray-900">{traslado.matricula}</p>
+                            <div className="bg-muted/50 p-3 rounded-lg">
+                                <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Matricula</p>
+                                <p className="text-base font-semibold text-foreground">{traslado.matricula}</p>
                             </div>
                         )}
                         {traslado.importe_total != null && (
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                                <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Importe</p>
-                                <p className="text-base font-semibold text-green-600">${traslado.importe_total}</p>
+                            <div className="bg-muted/50 p-3 rounded-lg">
+                                <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Importe</p>
+                                <p className="text-base font-semibold text-emerald-600 dark:text-emerald-400">${traslado.importe_total.toLocaleString('es-AR')}</p>
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded mt-1 inline-block font-medium ${
-                                    traslado.estado_pago === 'pendiente' ? 'bg-yellow-100 text-yellow-700' :
-                                    traslado.estado_pago === 'efectivo' ? 'bg-green-100 text-green-700' :
-                                    'bg-blue-100 text-blue-700'
+                                    traslado.estado_pago === 'pendiente' ? 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400' :
+                                    traslado.estado_pago === 'efectivo' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' :
+                                    'bg-blue-500/10 text-blue-700 dark:text-blue-400'
                                 }`}>
                                     {traslado.estado_pago === 'pendiente' ? 'Pago pendiente' :
                                      traslado.estado_pago === 'efectivo' ? 'Efectivo' : 'Transferencia'}
                                 </span>
                             </div>
                         )}
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                            <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Fecha</p>
-                            <p className="text-base font-semibold text-gray-900">
+                        <div className="bg-muted/50 p-3 rounded-lg">
+                            <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Fecha</p>
+                            <p className="text-base font-semibold text-foreground">
                                 <ClientOnly>{traslado.created_at ? new Date(traslado.created_at).toLocaleDateString() : ''}</ClientOnly>
                             </p>
                         </div>
                     </div>
 
-                    {/* Ubicación */}
                     {(traslado.departamento || traslado.direccion) && (
-                        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                            <p className="text-[10px] text-blue-600 uppercase font-medium mb-1">Ubicación</p>
-                            <p className="text-sm text-gray-700">
+                        <div className="mt-4 p-3 bg-blue-500/5 rounded-lg border border-blue-500/10">
+                            <p className="text-[10px] text-blue-600 dark:text-blue-400 uppercase font-medium mb-1">Ubicacion</p>
+                            <p className="text-sm text-foreground">
                                 {traslado.direccion && <span className="font-medium">{traslado.direccion}</span>}
                                 {traslado.direccion && traslado.departamento && ' - '}
                                 {traslado.departamento && <span>{traslado.departamento}</span>}
@@ -307,19 +298,21 @@ export default function DetalleTrasladoAdmin() {
                         </div>
                     )}
 
-                    {/* Observaciones */}
                     {traslado.observaciones && (
-                        <div className="mt-4 p-3 bg-orange-50 rounded-lg border border-orange-100">
-                            <p className="text-[10px] text-orange-600 uppercase font-medium mb-1">Observaciones</p>
-                            <p className="text-sm text-gray-700">{traslado.observaciones}</p>
+                        <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/10">
+                            <p className="text-[10px] text-primary uppercase font-medium mb-1">Observaciones</p>
+                            <p className="text-sm text-foreground">{traslado.observaciones}</p>
                         </div>
                     )}
                 </div>
 
-                {/* Fotos de Inspección */}
+                {/* Fotos */}
                 {fotos.length > 0 && (
-                    <div className="card p-4 sm:p-6 mb-4">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Fotos de Inspección</h3>
+                    <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Camera className="w-4 h-4 text-muted-foreground" />
+                            <h3 className="text-sm font-semibold text-foreground">Fotos de Inspeccion</h3>
+                        </div>
                         <div className="grid grid-cols-2 gap-2">
                             {fotos.map((foto) => (
                                 <div key={foto.tipo} className="relative">
@@ -338,94 +331,58 @@ export default function DetalleTrasladoAdmin() {
                     </div>
                 )}
 
-                {/* Acciones */}
-                                <div className="card p-4 sm:p-6 mb-4">
-                                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Cambiar Estado</h3>
-                                        {estadoBloqueado && (
-                                            <div className="mb-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-                                                El traslado está <b>completado</b> y no puede ser modificado.
-                                            </div>
-                                        )}
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <button
-                            onClick={() => cambiarEstado('pendiente')}
-                            disabled={actualizando || estadoBloqueado}
-                            className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
-                                traslado.estado === 'pendiente'
-                                    ? 'bg-yellow-500 text-white'
-                                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                            } ${estadoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                            Pendiente
-                        </button>
-                        <button
-                            onClick={() => cambiarEstado('en_curso')}
-                            disabled={actualizando || estadoBloqueado}
-                            className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
-                                traslado.estado === 'en_curso'
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                            } ${estadoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                            En Curso
-                        </button>
-                        <button
-                            onClick={() => cambiarEstado('completado')}
-                            disabled={actualizando || estadoBloqueado}
-                            className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
-                                traslado.estado === 'completado'
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                            } ${estadoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                            Completado
-                        </button>
+                {/* Cambiar Estado */}
+                <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
+                    <h3 className="text-sm font-semibold text-foreground mb-3">Cambiar Estado</h3>
+                    {estadoBloqueado && (
+                        <div className="mb-3 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+                            El traslado esta <b>completado</b> y no puede ser modificado.
+                        </div>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {(['pendiente', 'en_curso', 'completado'] as const).map((estado) => {
+                            const cfg = estadoConfig[estado]
+                            return (
+                                <button
+                                    key={estado}
+                                    onClick={() => cambiarEstado(estado)}
+                                    disabled={actualizando || estadoBloqueado}
+                                    className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
+                                        traslado.estado === estado ? cfg.active : cfg.inactive
+                                    } ${estadoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    {cfg.label}
+                                </button>
+                            )
+                        })}
                     </div>
                 </div>
 
                 {/* Estado de Pago */}
-                                {traslado.importe_total != null && (
-                                        <div className="card p-4 sm:p-6">
-                                                <h3 className="text-sm font-semibold text-gray-900 mb-3">Estado de Pago</h3>
-                                                {pagoBloqueado && (
-                                                    <div className="mb-3 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-3 py-2">
-                                                        El estado de pago ya fue definido y no puede ser modificado.
-                                                    </div>
-                                                )}
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <button
-                                onClick={() => cambiarEstadoPago('pendiente')}
-                                disabled={actualizando || pagoBloqueado}
-                                className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
-                                    traslado.estado_pago === 'pendiente'
-                                        ? 'bg-yellow-500 text-white'
-                                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                                } ${pagoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                Pendiente
-                            </button>
-                            <button
-                                onClick={() => cambiarEstadoPago('efectivo')}
-                                disabled={actualizando || pagoBloqueado}
-                                className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
-                                    traslado.estado_pago === 'efectivo'
-                                        ? 'bg-green-500 text-white'
-                                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                                } ${pagoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                Efectivo
-                            </button>
-                            <button
-                                onClick={() => cambiarEstadoPago('transferencia')}
-                                disabled={actualizando || pagoBloqueado}
-                                className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
-                                    traslado.estado_pago === 'transferencia'
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                                } ${pagoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                Transferencia
-                            </button>
+                {traslado.importe_total != null && (
+                    <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
+                        <h3 className="text-sm font-semibold text-foreground mb-3">Estado de Pago</h3>
+                        {pagoBloqueado && (
+                            <div className="mb-3 text-xs text-blue-700 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2">
+                                El estado de pago ya fue definido y no puede ser modificado.
+                            </div>
+                        )}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            {(['pendiente', 'efectivo', 'transferencia'] as const).map((pago) => {
+                                const cfg = pagoConfig[pago]
+                                return (
+                                    <button
+                                        key={pago}
+                                        onClick={() => cambiarEstadoPago(pago)}
+                                        disabled={actualizando || pagoBloqueado}
+                                        className={`py-3 px-3 rounded-lg font-medium text-xs transition min-h-[44px] ${
+                                            traslado.estado_pago === pago ? cfg.active : cfg.inactive
+                                        } ${pagoBloqueado ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        {cfg.label}
+                                    </button>
+                                )
+                            })}
                         </div>
                     </div>
                 )}
@@ -447,9 +404,7 @@ export default function DetalleTrasladoAdmin() {
                         className="absolute top-4 right-4 text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition"
                         onClick={() => setFotoAmpliada(null)}
                     >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <X className="w-6 h-6" />
                     </button>
                     <img
                         src={fotoAmpliada}

@@ -7,12 +7,16 @@ import ThemeToggle from '../components/ThemeToggle'
 import MobileDrawer from '../components/MobileDrawer'
 import Pagination from '../components/Pagination'
 import EmptyState from '../components/EmptyState'
-import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { PageSkeleton } from '../components/skeletons'
 import DashboardCharts from '../components/DashboardCharts'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, confirmAction, showError } from '@/lib/swal'
+import {
+    Truck, Menu, Home, Car, Users, Receipt, UserCog, LogOut,
+    Plus, UserPlus, MapPin, Clock, Zap, CheckCircle2, ChevronRight,
+    Trash2, Download, Copy, Check, Mail, X, QrCode
+} from 'lucide-react'
 
 interface Perfil {
     id: string;
@@ -68,7 +72,7 @@ export default function Dashboard() {
     // Cleanup all timers on unmount
     useEffect(() => () => timersRef.current.forEach(clearTimeout), []);
 
-    // Validar sesión al montar el componente
+    // Validar sesion al montar el componente
     useEffect(() => {
         let isMounted = true;
         async function checkSession() {
@@ -77,12 +81,11 @@ export default function Dashboard() {
             if (!user) {
                 if (isMounted) {
                     setCheckingSession(false);
-                    setError('No hay sesión activa. Redirigiendo a login...');
+                    setError('No hay sesion activa. Redirigiendo a login...');
                     timersRef.current.push(setTimeout(() => router.replace('/login'), 1000));
                 }
                 return;
             }
-            // Si hay usuario, cargar datos normales
             if (isMounted) {
                 try {
                     await cargarDatos();
@@ -105,7 +108,7 @@ export default function Dashboard() {
         setIsClient(true);
     }, []);
 
-    // Suscripción en tiempo real para nuevos choferes
+    // Suscripcion en tiempo real para nuevos choferes
     useEffect(() => {
         if (!perfil?.empresa_id) return;
 
@@ -119,10 +122,9 @@ export default function Dashboard() {
                     table: 'perfiles'
                 },
                 (payload) => {
-                    // Recargar cuando alguien se une o sale de nuestra empresa
                     const newRecord = payload.new as { empresa_id?: string };
                     const oldRecord = payload.old as { empresa_id?: string };
-                    if (newRecord?.empresa_id === perfil?.empresa_id || 
+                    if (newRecord?.empresa_id === perfil?.empresa_id ||
                         oldRecord?.empresa_id === perfil?.empresa_id) {
                         if (perfil?.empresa_id) cargarChoferes(perfil.empresa_id);
                     }
@@ -135,21 +137,19 @@ export default function Dashboard() {
         };
     }, [perfil?.empresa_id]);
 
-    // Cuando se navega a la pestaña 'traslados', cambia la página o el filtro, recargar lista
+    // Cuando se navega a la pestana 'traslados', cambia la pagina o el filtro, recargar lista
     useEffect(() => {
         if (activeTab === 'traslados' && perfil?.empresa_id) {
             cargarTraslados(perfil.empresa_id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
         }
     }, [activeTab, trasladosPage, perfil?.empresa_id, filtroTrasladosPendientes, filtroPagosPendientes])
 
-    // Hooks y funciones definidos más abajo — el render principal está al final del archivo
-
     const cargarDatos = async () => {
         try {
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             if (userError) throw new Error(userError.message);
             if (!user) {
-                setError('No se detectó usuario autenticado. Revisa si la cookie de sesión se está guardando correctamente.');
+                setError('No se detecto usuario autenticado. Revisa si la cookie de sesion se esta guardando correctamente.');
                 router.push('/login');
                 return;
             }
@@ -161,7 +161,6 @@ export default function Dashboard() {
 
             setPerfil(perfilData);
 
-            // Cargar empresa, choferes, traslados y datos del gráfico en paralelo
             const [empresaResult] = await Promise.all([
                 supabase.from('empresas').select('*').eq('id', perfilData.empresa_id).single(),
                 cargarChoferes(perfilData.empresa_id),
@@ -199,15 +198,13 @@ export default function Dashboard() {
     const expulsarChofer = async (choferId: string, nombreChofer: string) => {
         const ok = await confirmDelete({
             title: 'Expulsar chofer',
-            text: `¿Estás seguro de expulsar a ${nombreChofer}? Esta acción no se puede deshacer.`,
-            confirmButtonText: 'Sí, expulsar',
+            text: `¿Estas seguro de expulsar a ${nombreChofer}? Esta accion no se puede deshacer.`,
+            confirmButtonText: 'Si, expulsar',
         })
         if (!ok) return
 
-        // Actualización optimista
         setChoferes(prev => prev.filter(c => c.id !== choferId))
 
-        // Usar función RPC segura
         const { error } = await supabase.rpc('expulsar_chofer', {
             chofer_id: choferId
         })
@@ -236,7 +233,6 @@ export default function Dashboard() {
             query = query.eq('estado_pago', 'pendiente')
         }
 
-        // Ejecutar query principal y contadores en paralelo
         const [mainResult, pend, enCurso, comp] = await Promise.all([
             query.order('created_at', { ascending: false }).range(from, to),
             supabase.from('traslados').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId).eq('estado', 'pendiente'),
@@ -279,25 +275,22 @@ export default function Dashboard() {
         if (nuevoEstado === 'completado') {
             const confirmed = await confirmAction({
                 title: 'Confirmar',
-                text: '¿Confirmar marcar como completado? Esta acción bloqueará el traslado.',
+                text: '¿Confirmar marcar como completado? Esta accion bloqueara el traslado.',
                 icon: 'warning',
-                confirmButtonText: 'Sí, completar',
+                confirmButtonText: 'Si, completar',
             })
             if (!confirmed) return
         }
-        // Actualización optimista - cambiar UI inmediatamente
-        setTraslados(prev => prev.map(t => 
+        setTraslados(prev => prev.map(t =>
             t.id === trasladoId ? { ...t, estado: nuevoEstado } : t
         ))
 
-        // Luego actualizar en la base de datos
         const { error } = await supabase
             .from('traslados')
             .update({ estado: nuevoEstado })
             .eq('id', trasladoId)
             .eq('empresa_id', perfil.empresa_id)
 
-        // Si hay error, revertir
         if (error) {
             showError('Error al actualizar: ' + error.message)
             if (perfil) await cargarTraslados(perfil.empresa_id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
@@ -310,17 +303,14 @@ export default function Dashboard() {
         if (!perfil) return
         const ok = await confirmDelete({
             title: 'Eliminar traslado',
-            text: '¿Estás seguro de eliminar este traslado? Esta acción no se puede deshacer.',
+            text: '¿Estas seguro de eliminar este traslado? Esta accion no se puede deshacer.',
         })
         if (!ok) return
 
-        // Actualización optimista - quitar de la lista inmediatamente
         setTraslados(prev => prev.filter(t => t.id !== trasladoId))
 
-        // Primero eliminar fotos del storage si existen
         const traslado = traslados.find(t => t.id === trasladoId)
         if (traslado) {
-            // Listar archivos en la carpeta y eliminarlos
             const { data: storageFiles } = await supabase.storage.from('fotos-traslados').list(trasladoId)
             if (storageFiles && storageFiles.length > 0) {
                 await supabase.storage.from('fotos-traslados').remove(storageFiles.map(f => `${trasladoId}/${f.name}`))
@@ -344,27 +334,25 @@ export default function Dashboard() {
     const generarCodigoInvitacion = async () => {
         if (!perfil?.empresa_id) return
         setGenerandoCodigo(true)
-        
-        // Generar código solo en cliente (crypto-secure)
+
         let codigo = '';
         if (isClient) {
             const arr = new Uint8Array(5);
             crypto.getRandomValues(arr);
             codigo = Array.from(arr, b => b.toString(36).padStart(2, '0')).join('').substring(0, 8).toUpperCase();
         }
-        
+
         const { error } = await supabase.from('invitaciones').insert({
             empresa_id: perfil.empresa_id,
             codigo: codigo
         })
 
         if (error) {
-            showError('Error al generar código: ' + error.message)
+            showError('Error al generar codigo: ' + error.message)
             setGenerandoCodigo(false)
             return
         }
         setCodigoInvitacion(codigo)
-        // Generar link solo en cliente
         if (isClient) {
             setLinkInvitacion(`${window.location.origin}/unirse/${codigo}`);
         } else {
@@ -379,7 +367,6 @@ export default function Dashboard() {
             if (isClient && navigator.clipboard && window.isSecureContext) {
                 await navigator.clipboard.writeText(linkInvitacion);
             } else if (isClient) {
-                // Fallback para navegadores inseguros
                 const textArea = document.createElement('textarea');
                 textArea.value = linkInvitacion;
                 document.body.appendChild(textArea);
@@ -390,7 +377,7 @@ export default function Dashboard() {
             }
             setLinkCopiado(true);
             timersRef.current.push(setTimeout(() => setLinkCopiado(false), 2000));
-        } catch (err) {
+        } catch {
             showError('No se pudo copiar el link. Copialo manualmente: ' + linkInvitacion);
         }
     }
@@ -403,7 +390,6 @@ export default function Dashboard() {
     }
 
     const handleCerrarSesion = async () => {
-        // Limpiar email y user_id de localStorage al cerrar sesión SOLO en cliente
         timersRef.current.push(setTimeout(() => {
             if (typeof window !== 'undefined') {
                 window.localStorage.removeItem('email');
@@ -419,8 +405,8 @@ export default function Dashboard() {
     }
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen">
-                <div className="bg-red-100 text-red-700 px-6 py-4 rounded shadow">
+            <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+                <div className="rounded-xl border border-destructive/30 bg-destructive/10 text-destructive px-6 py-4 shadow-sm">
                     <b>Error:</b> {error}
                 </div>
             </div>
@@ -428,8 +414,8 @@ export default function Dashboard() {
     }
     if (!perfil) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen">
-                <div className="bg-yellow-100 text-yellow-700 px-6 py-4 rounded shadow">
+            <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+                <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 px-6 py-4 shadow-sm">
                     <b>No se pudo cargar el perfil del usuario.</b>
                 </div>
             </div>
@@ -438,75 +424,110 @@ export default function Dashboard() {
 
     const drawerItems = perfil?.rol === 'admin'
         ? [
-            { icon: '🏠', label: 'Inicio', isActive: activeTab === 'inicio', onClick: () => setActiveTab('inicio') },
-            { icon: '🚗', label: 'Traslados', isActive: activeTab === 'traslados', onClick: () => setActiveTab('traslados') },
-            { icon: '👥', label: 'Choferes', isActive: activeTab === 'choferes', onClick: () => setActiveTab('choferes') },
-            { icon: '💸', label: 'Gastos', isLink: true, href: '/dashboard/gastos', onClick: () => {} },
-            { icon: '🧑‍✈️', label: 'Modo Chofer', isLink: true, href: '/chofer', onClick: () => router.push('/chofer') },
+            { icon: <Home className="w-5 h-5" />, label: 'Inicio', isActive: activeTab === 'inicio', onClick: () => setActiveTab('inicio') },
+            { icon: <Car className="w-5 h-5" />, label: 'Traslados', isActive: activeTab === 'traslados', onClick: () => setActiveTab('traslados') },
+            { icon: <Users className="w-5 h-5" />, label: 'Choferes', isActive: activeTab === 'choferes', onClick: () => setActiveTab('choferes') },
+            { icon: <Receipt className="w-5 h-5" />, label: 'Gastos', isLink: true, href: '/dashboard/gastos', onClick: () => {} },
+            { icon: <UserCog className="w-5 h-5" />, label: 'Modo Chofer', isLink: true, href: '/chofer', onClick: () => router.push('/chofer') },
         ]
         : [
-            { icon: '💸', label: 'Gastos', isLink: true, href: '/dashboard/gastos', onClick: () => {} },
-            { icon: '🧑‍✈️', label: 'Modo Chofer', isLink: true, href: '/chofer', onClick: () => router.push('/chofer') },
+            { icon: <Receipt className="w-5 h-5" />, label: 'Gastos', isLink: true, href: '/dashboard/gastos', onClick: () => {} },
+            { icon: <UserCog className="w-5 h-5" />, label: 'Modo Chofer', isLink: true, href: '/chofer', onClick: () => router.push('/chofer') },
         ]
+
+    const statCards = [
+        {
+            label: 'Total Traslados',
+            value: trasladosTotal,
+            icon: <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />,
+            iconBg: 'bg-primary/10',
+            iconColor: 'text-primary',
+            valueColor: 'text-foreground',
+        },
+        {
+            label: 'Pendientes',
+            value: trasladosPendientesTotal,
+            icon: <Clock className="w-5 h-5 sm:w-6 sm:h-6" />,
+            iconBg: 'bg-yellow-500/10',
+            iconColor: 'text-yellow-600 dark:text-yellow-400',
+            valueColor: 'text-yellow-600 dark:text-yellow-400',
+        },
+        {
+            label: 'En Curso',
+            value: trasladosEnCursoTotal,
+            icon: <Zap className="w-5 h-5 sm:w-6 sm:h-6" />,
+            iconBg: 'bg-blue-500/10',
+            iconColor: 'text-blue-600 dark:text-blue-400',
+            valueColor: 'text-blue-600 dark:text-blue-400',
+        },
+        {
+            label: 'Completados',
+            value: trasladosCompletadosTotal,
+            icon: <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />,
+            iconBg: 'bg-emerald-500/10',
+            iconColor: 'text-emerald-600 dark:text-emerald-400',
+            valueColor: 'text-emerald-600 dark:text-emerald-400',
+        },
+    ]
+
+    const estadoConfig: Record<string, { bg: string; text: string; label: string }> = {
+        pendiente: { bg: 'bg-yellow-500/10 border-yellow-500/20', text: 'text-yellow-700 dark:text-yellow-400', label: 'Pendiente' },
+        en_curso: { bg: 'bg-blue-500/10 border-blue-500/20', text: 'text-blue-700 dark:text-blue-400', label: 'En Curso' },
+        completado: { bg: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-700 dark:text-emerald-400', label: 'Completado' },
+    }
+
+    const pagoConfig: Record<string, { bg: string; text: string; label: string }> = {
+        pendiente: { bg: 'bg-yellow-500/10', text: 'text-yellow-700 dark:text-yellow-400', label: 'Pendiente' },
+        efectivo: { bg: 'bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400', label: 'Efectivo' },
+        transferencia: { bg: 'bg-blue-500/10', text: 'text-blue-700 dark:text-blue-400', label: 'Transfer.' },
+    }
 
     return (
         <ErrorBoundary>
-        <div className="min-h-screen bg-gray-50">
-        {/* ...resto del dashboard... */}
-            {/* Navbar con menú hamburger en mobile */}
+        <div className="min-h-screen bg-background">
+            {/* Navbar */}
             <nav className="navbar sticky top-0 z-50">
                 <div className="flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
                     <div className="flex items-center gap-3">
-                        {/* Hamburger solo en mobile */}
-                        <button className="md:hidden mr-2 p-2 rounded-lg hover:bg-white/10 focus:outline-none" onClick={() => setDrawerOpen(true)} aria-label="Abrir menú">
-                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
+                        <button className="md:hidden mr-1 p-2 rounded-lg hover:bg-white/10 focus:outline-none transition" onClick={() => setDrawerOpen(true)} aria-label="Abrir menu">
+                            <Menu className="w-5 h-5 text-white" />
                         </button>
                         <div className="w-8 h-8 sm:w-9 sm:h-9 bg-white/20 rounded-lg flex items-center justify-center">
-                            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-                            </svg>
+                            <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                         </div>
                         <h1 className="text-white font-bold text-lg sm:text-xl tracking-tight">ViaGrua</h1>
                         {perfil?.nombre_completo && (
-                            <span className="ml-2 text-xs text-white/80 font-semibold bg-white/10 px-2 py-0.5 rounded-lg max-w-[120px] truncate" title={perfil.nombre_completo}>
+                            <span className="hidden sm:inline ml-2 text-xs text-white/80 font-semibold bg-white/10 px-2.5 py-1 rounded-lg max-w-[140px] truncate" title={perfil.nombre_completo}>
                                 {perfil.nombre_completo}
                             </span>
                         )}
                     </div>
-                    {/* Tabs principales: solo visibles en md+ (ocultos en mobile) */}
-                    <div className="hidden md:flex gap-1.5">
+                    <div className="hidden md:flex gap-1">
                         {['Inicio', 'Traslados', 'Choferes'].map((tab) => (
                             <button key={tab} onClick={() => setActiveTab(tab.toLowerCase())}
                                 className={`px-4 lg:px-5 py-2 text-sm font-medium transition rounded-lg ${
-                                    activeTab === tab.toLowerCase() 
-                                        ? 'bg-white/20 text-white' 
-                                        : 'text-white/80 hover:bg-white/10 hover:text-white'
+                                    activeTab === tab.toLowerCase()
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-white/70 hover:bg-white/10 hover:text-white'
                                 }`}>
                                 {tab}
                             </button>
                         ))}
                     </div>
-                    <div className="hidden md:flex items-center gap-1.5 sm:gap-2">
+                    <div className="hidden md:flex items-center gap-1.5">
                         <Link href="/dashboard/gastos" prefetch={true}
-                            className="text-white/90 hover:text-white text-sm font-medium px-3 py-2 hover:bg-white/10 rounded-lg transition flex items-center gap-1.5"
-                            title="Gastos de la empresa">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
+                            className="text-white/80 hover:text-white text-sm font-medium px-3 py-2 hover:bg-white/10 rounded-lg transition flex items-center gap-1.5">
+                            <Receipt className="w-4 h-4" />
                             Gastos
                         </Link>
-                        <button onClick={() => router.push('/chofer')} 
-                            className="text-white/90 hover:text-white text-sm font-medium px-3 py-2 hover:bg-white/10 rounded-lg transition flex items-center gap-1.5"
-                            title="Ver mis traslados como chofer">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
+                        <button onClick={() => router.push('/chofer')}
+                            className="text-white/80 hover:text-white text-sm font-medium px-3 py-2 hover:bg-white/10 rounded-lg transition flex items-center gap-1.5">
+                            <UserCog className="w-4 h-4" />
                             Modo Chofer
                         </button>
-                        <button onClick={handleCerrarSesion} 
-                            className="text-white text-sm font-medium px-3 sm:px-4 py-2 bg-white/15 hover:bg-white/25 rounded-lg transition">
+                        <button onClick={handleCerrarSesion}
+                            className="text-white text-sm font-medium px-3 py-2 bg-white/15 hover:bg-white/25 rounded-lg transition flex items-center gap-1.5">
+                            <LogOut className="w-4 h-4" />
                             Salir
                         </button>
                         <ThemeToggle />
@@ -518,129 +539,91 @@ export default function Dashboard() {
             <MobileDrawer
                 isOpen={drawerOpen}
                 onClose={() => setDrawerOpen(false)}
-                items={[...drawerItems, { icon: '🚪', label: 'Salir', isDanger: true, onClick: handleCerrarSesion }]}
+                items={[...drawerItems, { icon: <LogOut className="w-5 h-5" />, label: 'Salir', isDanger: true, onClick: handleCerrarSesion }]}
                 userName={perfil?.nombre_completo}
             />
 
-            {/* Tabs Mobile eliminados: navegación solo por drawer en mobile */}
-
-            {/* Content - Responsive */}
+            {/* Content */}
             <div className="page-enter w-full min-w-0 px-3 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 mx-auto max-w-4xl lg:max-w-5xl">
 
                 {/* Header */}
-                <div className="mb-8 sm:mb-10">
-                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-1">
+                <div className="mb-6 sm:mb-8">
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-1">
                         Hola, {perfil?.nombre_completo?.split(' ')[0] || 'Admin'}
                     </h1>
-                    <p className="text-sm sm:text-base text-gray-500">{empresa?.nombre}</p>
+                    <p className="text-sm sm:text-base text-muted-foreground">{empresa?.nombre}</p>
                 </div>
 
-                {/* Stats Grid - Dinámico */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-8 sm:mb-10">
-                    <div className="card p-4 sm:p-5 lg:p-6">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-orange-100 flex items-center justify-center mb-3">
-                            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+                    {statCards.map((stat) => (
+                        <div key={stat.label} className="rounded-xl border border-border bg-card p-4 sm:p-5">
+                            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${stat.iconBg} flex items-center justify-center mb-3`}>
+                                <span className={stat.iconColor}>{stat.icon}</span>
+                            </div>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider">{stat.label}</p>
+                            <p className={`text-xl sm:text-2xl lg:text-3xl font-bold mt-0.5 ${stat.valueColor}`}>{stat.value}</p>
                         </div>
-                        <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wide">Total Traslados</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mt-1">{trasladosTotal}</p>
-                    </div>
-                    <div className="card p-4 sm:p-5 lg:p-6">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-yellow-100 flex items-center justify-center mb-3">
-                            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wide">Pendientes</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-yellow-600 mt-1">
-                            {trasladosPendientesTotal}
-                        </p>
-                    </div>
-                    <div className="card p-4 sm:p-5 lg:p-6">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-100 flex items-center justify-center mb-3">
-                            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                        </div>
-                        <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wide">En Curso</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 mt-1">
-                            {trasladosEnCursoTotal}
-                        </p>
-                    </div>
-                    <div className="card p-4 sm:p-5 lg:p-6">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-green-100 flex items-center justify-center mb-3">
-                            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wide">Completados</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 mt-1">
-                            {trasladosCompletadosTotal}
-                        </p>
-                    </div>
+                    ))}
                 </div>
 
-                {/* Botones Acción - Solo en Inicio */}
+                {/* Tab: Inicio */}
                 {activeTab === 'inicio' && (
                     <>
                     {perfil?.rol === 'admin' && (
-                        <div className="mb-8 sm:mb-10">
+                        <div className="mb-6 sm:mb-8">
                             <DashboardCharts traslados={chartTraslados} gastos={gastos} />
                         </div>
                     )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-10">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
                         <button onClick={() => router.push('/dashboard/nuevo-traslado')}
-                            className="card card-interactive p-5 sm:p-6 lg:p-8 text-left group">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-orange-100 group-hover:bg-orange-200 flex items-center justify-center mb-4 transition">
-                                <svg className="w-6 h-6 sm:w-7 sm:h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
+                            className="group rounded-xl border border-border bg-card p-5 sm:p-6 text-left hover:border-primary/40 hover:shadow-md transition-all">
+                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-primary/10 group-hover:bg-primary/15 flex items-center justify-center mb-3 transition">
+                                <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                             </div>
-                            <p className="font-semibold text-base sm:text-lg text-gray-900 group-hover:text-orange-600 transition">Nuevo Traslado</p>
-                            <p className="text-sm text-gray-500 mt-1">Crear y asignar un nuevo servicio</p>
+                            <p className="font-semibold text-base text-foreground group-hover:text-primary transition">Nuevo Traslado</p>
+                            <p className="text-sm text-muted-foreground mt-0.5">Crear y asignar un nuevo servicio</p>
                         </button>
-                        
+
                         <button onClick={() => abrirModalInvitacion()}
-                            className="card card-interactive p-5 sm:p-6 lg:p-8 text-left group">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center mb-4 transition">
-                                <svg className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                </svg>
+                            className="group rounded-xl border border-border bg-card p-5 sm:p-6 text-left hover:border-blue-500/40 hover:shadow-md transition-all">
+                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-blue-500/10 group-hover:bg-blue-500/15 flex items-center justify-center mb-3 transition">
+                                <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <p className="font-semibold text-base sm:text-lg text-gray-900 transition">Invitar Chofer</p>
-                            <p className="text-sm text-gray-500 mt-1">Generar link de invitación</p>
+                            <p className="font-semibold text-base text-foreground transition">Invitar Chofer</p>
+                            <p className="text-sm text-muted-foreground mt-0.5">Generar link de invitacion</p>
                         </button>
                     </div>
                     </>
                 )}
+
+                {/* Tab: Traslados */}
                 {activeTab === 'traslados' && (
-                    <div className="card p-4 sm:p-6 lg:p-8">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                    <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
                             <div>
-                                <h3 className="font-semibold text-lg sm:text-xl text-gray-900">Lista de Traslados</h3>
+                                <h3 className="font-semibold text-lg text-foreground">Lista de Traslados</h3>
                                 <div className="flex flex-wrap gap-2 mt-2">
                                     <button
                                         onClick={() => { setFiltroTrasladosPendientes(!filtroTrasladosPendientes); setTrasladosPage(1) }}
-                                        className={`filter-btn inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
+                                        className={`filter-btn inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition ${
                                             filtroTrasladosPendientes
-                                                ? 'bg-yellow-100 text-yellow-700 border border-yellow-200 shadow-sm'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                ? 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/30'
+                                                : 'bg-muted text-muted-foreground border-transparent hover:bg-accent'
                                         }`}
                                     >
-                                        <span className={`status-dot ${filtroTrasladosPendientes ? 'bg-yellow-500 status-dot-pulse' : 'bg-gray-400'}`}></span>
+                                        <span className={`status-dot ${filtroTrasladosPendientes ? 'bg-yellow-500 status-dot-pulse' : 'bg-muted-foreground/40'}`}></span>
                                         Traslados Pendientes
                                     </button>
                                     <button
                                         onClick={() => { setFiltroPagosPendientes(!filtroPagosPendientes); setTrasladosPage(1) }}
-                                        className={`filter-btn inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition ${
+                                        className={`filter-btn inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition ${
                                             filtroPagosPendientes
-                                                ? 'bg-orange-100 text-orange-700 border border-orange-200 shadow-sm'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                ? 'bg-primary/10 text-primary border-primary/30'
+                                                : 'bg-muted text-muted-foreground border-transparent hover:bg-accent'
                                         }`}
                                     >
-                                        <span className={`status-dot ${filtroPagosPendientes ? 'bg-orange-500 status-dot-pulse' : 'bg-gray-400'}`}></span>
+                                        <span className={`status-dot ${filtroPagosPendientes ? 'bg-primary status-dot-pulse' : 'bg-muted-foreground/40'}`}></span>
                                         Pagos Pendientes
                                     </button>
                                 </div>
@@ -648,52 +631,49 @@ export default function Dashboard() {
                             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                                 <a
                                     href="/api/export/empresa"
-                                    className="btn-secondary px-5 py-2.5 text-sm text-center whitespace-nowrap"
+                                    className="btn-secondary px-4 py-2 text-sm text-center whitespace-nowrap inline-flex items-center justify-center gap-1.5"
                                 >
+                                    <Download className="w-4 h-4" />
                                     Exportar CSV
                                 </a>
                                 <button
                                     onClick={() => router.push('/dashboard/nuevo-traslado')}
-                                    className="btn-primary px-5 py-2.5 text-sm"
+                                    className="btn-primary px-4 py-2.5 text-sm inline-flex items-center justify-center gap-1.5"
                                 >
-                                    + Nuevo Traslado
+                                    <Plus className="w-4 h-4" />
+                                    Nuevo Traslado
                                 </button>
                             </div>
                         </div>
-                        
+
                         {traslados.length === 0 ? (
                             <EmptyState message="No hay traslados registrados" />
                         ) : (
-                            <div className="space-y-3 animate-stagger">
-                                {traslados.map((traslado) => (
-                                    <div key={traslado.id} className="border border-gray-100 rounded-xl p-4 card-interactive transition">
-                                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                                            {/* Info del traslado - Clickeable */}
+                            <div className="space-y-2 animate-stagger">
+                                {traslados.map((traslado) => {
+                                    const estado = estadoConfig[traslado.estado] || estadoConfig.pendiente
+                                    const pago = pagoConfig[traslado.estado_pago] || pagoConfig.pendiente
+                                    return (
+                                    <div key={traslado.id} className="rounded-lg border border-border hover:border-border/80 hover:bg-accent/30 p-3 sm:p-4 transition group">
+                                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                                             <div
-                                                className="flex-1 cursor-pointer"
+                                                className="flex-1 cursor-pointer min-w-0"
                                                 onClick={() => router.push(`/dashboard/traslado/${traslado.id}`)}
                                             >
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <h4 className="font-semibold text-base text-gray-900">{traslado.marca_modelo}</h4>
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                    <h4 className="font-semibold text-sm sm:text-base text-foreground truncate">{traslado.marca_modelo}</h4>
                                                     {traslado.es_0km && (
-                                                        <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">0 KM</span>
+                                                        <span className="text-[10px] bg-blue-500/10 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-medium shrink-0">0 KM</span>
                                                     )}
-                                                    <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                    </svg>
+                                                    <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary transition shrink-0 ml-auto lg:ml-0" />
                                                 </div>
-                                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-500">
-                                                    {traslado.matricula && <span className="flex items-center gap-1"><span className="text-gray-400">#</span> {traslado.matricula}</span>}
-                                                    {traslado.importe_total && (
+                                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                                    {traslado.matricula && <span className="flex items-center gap-1"><span className="text-muted-foreground/50">#</span> {traslado.matricula}</span>}
+                                                    {traslado.importe_total != null && (
                                                         <span className="flex items-center gap-1.5">
-                                                            <span className="font-medium text-gray-700">${traslado.importe_total}</span>
-                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                                                                traslado.estado_pago === 'pendiente' ? 'bg-yellow-100 text-yellow-700' :
-                                                                traslado.estado_pago === 'efectivo' ? 'bg-green-100 text-green-700' :
-                                                                'bg-blue-100 text-blue-700'
-                                                            }`}>
-                                                                {traslado.estado_pago === 'pendiente' ? 'Pendiente' : 
-                                                                 traslado.estado_pago === 'efectivo' ? 'Efectivo' : 'Transfer.'}
+                                                            <span className="font-medium text-foreground">${traslado.importe_total.toLocaleString('es-AR')}</span>
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${pago.bg} ${pago.text}`}>
+                                                                {pago.label}
                                                             </span>
                                                         </span>
                                                     )}
@@ -701,23 +681,16 @@ export default function Dashboard() {
                                                     <ClientOnly>{traslado.created_at ? new Date(traslado.created_at).toLocaleDateString() : ''}</ClientOnly>
                                                 </div>
                                                 {traslado.observaciones && (
-                                                    <p className="text-xs text-gray-400 mt-2 italic line-clamp-1">"{traslado.observaciones}"</p>
+                                                    <p className="text-xs text-muted-foreground/60 mt-1.5 italic line-clamp-1">&ldquo;{traslado.observaciones}&rdquo;</p>
                                                 )}
                                             </div>
-                                            
-                                            {/* Controles */}
-                                            <div className="flex items-center gap-2">
+
+                                            <div className="flex items-center gap-2 shrink-0">
                                                 <select
                                                     value={traslado.estado}
                                                     onChange={(e) => cambiarEstadoTraslado(traslado.id, e.target.value)}
                                                     disabled={traslado.estado === 'completado'}
-                                                    className={`text-xs sm:text-sm font-medium px-3 py-2 rounded-lg border cursor-pointer transition ${
-                                                        traslado.estado === 'pendiente'
-                                                            ? 'bg-yellow-50 border-yellow-200 text-yellow-700'
-                                                            : traslado.estado === 'en_curso'
-                                                            ? 'bg-blue-50 border-blue-200 text-blue-700'
-                                                            : 'bg-green-50 border-green-200 text-green-700'
-                                                    } ${traslado.estado === 'completado' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                    className={`text-xs font-medium px-3 py-2 rounded-lg border cursor-pointer transition ${estado.bg} ${estado.text} ${traslado.estado === 'completado' ? 'opacity-60 cursor-not-allowed' : ''}`}
                                                 >
                                                     <option value="pendiente">Pendiente</option>
                                                     <option value="en_curso">En Curso</option>
@@ -725,21 +698,19 @@ export default function Dashboard() {
                                                 </select>
                                                 <button
                                                     onClick={() => eliminarTraslado(traslado.id)}
-                                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                                                    className="p-2 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 rounded-lg transition"
                                                     title="Eliminar traslado"
                                                 >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
+                                                    <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
                                         </div>
                                     </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         )}
 
-                        {/* Paginación — responsive */}
                         <Pagination
                             currentPage={trasladosPage}
                             totalItems={trasladosTotal}
@@ -749,134 +720,112 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* Tabla Choferes - Solo en Inicio o Choferes */}
+                {/* Choferes */}
                 {(activeTab === 'inicio' || activeTab === 'choferes') && (
-                    <div className="card p-4 sm:p-6 lg:p-8">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                            <h3 className="font-semibold text-lg sm:text-xl text-gray-900">Equipo de Choferes</h3>
+                    <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
+                            <h3 className="font-semibold text-lg text-foreground">Equipo de Choferes</h3>
                             <button onClick={() => abrirModalInvitacion()}
-                                className="btn-secondary px-5 py-2.5 text-sm">
-                                + Invitar Chofer
+                                className="btn-secondary px-4 py-2 text-sm inline-flex items-center gap-1.5">
+                                <UserPlus className="w-4 h-4" />
+                                Invitar Chofer
                             </button>
                         </div>
                         {choferes.length === 0 ? (
                             <EmptyState message="No hay choferes registrados" />
                         ) : (
-                            <div className="overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8">
-                                <table className="w-full text-sm">
-                                    <thead className="border-b border-gray-100 bg-gray-50/50">
-                                        <tr>
-                                            <th className="text-left py-3 px-4 font-medium text-gray-500 text-xs uppercase tracking-wide">Nombre</th>
-                                            <th className="text-left py-3 px-4 font-medium text-gray-500 text-xs uppercase tracking-wide hidden sm:table-cell">Email</th>
-                                            <th className="text-center py-3 px-4 font-medium text-gray-500 text-xs uppercase tracking-wide">Estado</th>
-                                            <th className="text-center py-3 px-4 font-medium text-gray-500 text-xs uppercase tracking-wide">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {choferes.map((chofer) => (
-                                            <tr key={chofer.id} className="hover:bg-gray-50/50 transition">
-                                                <td className="py-3 px-4 text-gray-900">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center text-xs sm:text-sm font-semibold">
-                                                            {chofer.nombre_completo.charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <span className="font-medium truncate">{chofer.nombre_completo}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="py-3 px-4 text-gray-500 hidden sm:table-cell truncate">{chofer.email}</td>
-                                                <td className="py-3 px-4 text-center">
-                                                    <span className="inline-flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2.5 py-1 rounded-full font-medium">
-                                                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                                                        Activo
-                                                    </span>
-                                                </td>
-                                                <td className="py-3 px-4 text-center">
-                                                    <button
-                                                        onClick={() => expulsarChofer(chofer.id, chofer.nombre_completo)}
-                                                        className="text-gray-400 hover:text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition text-xs font-medium"
-                                                        title="Expulsar chofer"
-                                                    >
-                                                        Expulsar
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <div className="space-y-2">
+                                {choferes.map((chofer) => (
+                                    <div key={chofer.id} className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-accent/30 transition">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-primary/80 to-primary text-white flex items-center justify-center text-sm font-semibold shrink-0">
+                                                {chofer.nombre_completo.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-medium text-sm text-foreground truncate">{chofer.nombre_completo}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{chofer.email}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full font-medium">
+                                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                                                Activo
+                                            </span>
+                                            <button
+                                                onClick={() => expulsarChofer(chofer.id, chofer.nombre_completo)}
+                                                className="text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 px-2.5 py-1.5 rounded-lg transition text-xs font-medium"
+                                                title="Expulsar chofer"
+                                            >
+                                                Expulsar
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>
                 )}
             </div>
 
-            {/* Modal Invitación */}
+            {/* Modal Invitacion */}
             {modalAbierto && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" style={{ padding: '16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
-                    <div className="card w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 sm:p-8">
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setModalAbierto(false) }} style={{ padding: '16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+                    <div className="bg-card border border-border w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 sm:p-8 shadow-xl animate-scaleIn">
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Invitar Chofer</h3>
-                            <button onClick={() => setModalAbierto(false)} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-lg transition">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
+                            <h3 className="text-lg font-semibold text-foreground">Invitar Chofer</h3>
+                            <button onClick={() => setModalAbierto(false)} className="text-muted-foreground hover:text-foreground p-1.5 hover:bg-accent rounded-lg transition">
+                                <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         {!codigoInvitacion ? (
-                            // Paso 1: Generar código
                             <div className="text-center">
-                                <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-5">
-                                    <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                    </svg>
+                                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                                    <Mail className="w-7 h-7 text-primary" />
                                 </div>
-                                <p className="text-gray-600 text-sm mb-6">
-                                    Genera un código de invitación para que un chofer se una a tu equipo
+                                <p className="text-muted-foreground text-sm mb-6">
+                                    Genera un codigo de invitacion para que un chofer se una a tu equipo
                                 </p>
-                                <button 
-                                    onClick={generarCodigoInvitacion} 
+                                <button
+                                    onClick={generarCodigoInvitacion}
                                     disabled={generandoCodigo}
                                     className="btn-primary w-full py-3 text-sm"
                                 >
-                                    {generandoCodigo ? 'Generando...' : 'Generar Invitación'}
+                                    {generandoCodigo ? 'Generando...' : 'Generar Invitacion'}
                                 </button>
                             </div>
                         ) : (
-                            // Paso 2: Mostrar QR y Link
                             <div className="text-center">
-                                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-2">Código de invitación</p>
-                                <p className="text-2xl font-bold text-orange-600 mb-5 tracking-widest font-mono">{codigoInvitacion}</p>
-                                
-                                {/* QR Code */}
-                                {/* TODO: Reemplazar con librería client-side (qrcode.react) para evitar leak de URL a terceros */}
+                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Codigo de invitacion</p>
+                                <p className="text-2xl font-bold text-primary mb-5 tracking-widest font-mono">{codigoInvitacion}</p>
+
                                 {isClient && linkInvitacion && (
                                     <img
                                         src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(linkInvitacion)}`}
                                         alt="QR Code"
-                                        className="w-40 h-40 mx-auto mb-4"
+                                        className="w-36 h-36 mx-auto mb-4 rounded-lg"
                                     />
                                 )}
 
-                                <p className="text-xs text-gray-400 mb-4">El chofer puede escanear el QR o usar el link</p>
+                                <p className="text-xs text-muted-foreground mb-3">El chofer puede escanear el QR o usar el link</p>
 
-                                {/* Link */}
-                                <div className="bg-gray-50 rounded-lg p-3 mb-5">
-                                    <p className="text-xs text-gray-600 break-all font-mono">{isClient && linkInvitacion ? linkInvitacion : ''}</p>
+                                <div className="bg-muted rounded-lg p-3 mb-5">
+                                    <p className="text-xs text-muted-foreground break-all font-mono">{isClient && linkInvitacion ? linkInvitacion : ''}</p>
                                 </div>
 
-                                <button 
+                                <button
                                     onClick={copiarLink}
-                                    className={`w-full py-3 text-sm font-medium rounded-xl transition ${
-                                        linkCopiado 
-                                            ? 'bg-green-500 text-white' 
+                                    className={`w-full py-3 text-sm font-medium rounded-xl transition inline-flex items-center justify-center gap-2 ${
+                                        linkCopiado
+                                            ? 'bg-emerald-500 text-white'
                                             : 'btn-primary'
                                     }`}
                                 >
-                                    {linkCopiado ? 'Link Copiado' : 'Copiar Link'}
+                                    {linkCopiado ? <><Check className="w-4 h-4" /> Link Copiado</> : <><Copy className="w-4 h-4" /> Copiar Link</>}
                                 </button>
 
-                                <p className="text-[10px] text-gray-400 mt-5">
-                                    Este código expira en 7 días y solo puede usarse una vez
+                                <p className="text-[10px] text-muted-foreground mt-4">
+                                    Este codigo expira en 7 dias y solo puede usarse una vez
                                 </p>
                             </div>
                         )}

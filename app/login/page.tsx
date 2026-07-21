@@ -1,9 +1,11 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { sanitizeString, isValidEmail, LIMITS } from '@/lib/validation'
 import { showError } from '@/lib/swal'
+import { Truck, Mail, Lock, ArrowRight } from 'lucide-react'
 
 export default function Login() {
     const router = useRouter()
@@ -19,8 +21,8 @@ export default function Login() {
         const email = sanitizeString(formData.email).toLowerCase()
         const password = formData.password
 
-        if (!isValidEmail(email)) { showError('Email inválido'); return }
-        if (!password || password.length > LIMITS.password) { showError('Contraseña inválida'); return }
+        if (!isValidEmail(email)) { showError('Email invalido'); return }
+        if (!password || password.length > LIMITS.password) { showError('Contrasena invalida'); return }
 
         setLoading(true)
 
@@ -33,7 +35,7 @@ export default function Login() {
         const data = await res.json()
 
         if (!res.ok) {
-            showError(data.error || 'Error al iniciar sesión')
+            showError(data.error || 'Error al iniciar sesion')
             setLoading(false)
             return
         }
@@ -54,65 +56,69 @@ export default function Login() {
     }
 
     return (
-        <div className="page-bg min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
-            <div className="w-full max-w-md lg:max-w-lg">
-                <div className="card p-6 sm:p-8 lg:p-10">
+        <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6">
+            <div className="w-full max-w-md">
+                <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm">
                     {/* Header */}
-                    <div className="text-center mb-8 sm:mb-10">
-                        <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-lg mb-4 sm:mb-5">
-                            <svg className="w-9 h-9 sm:w-11 sm:h-11 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-                            </svg>
+                    <div className="text-center mb-8">
+                        <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-primary/80 to-primary rounded-2xl shadow-lg shadow-primary/20 mb-4">
+                            <Truck className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                         </div>
-                        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-1 tracking-tight">ViaGrua</h1>
-                        <p className="text-gray-500 text-sm sm:text-base">Gestión inteligente de traslados</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1 tracking-tight">ViaGrua</h1>
+                        <p className="text-muted-foreground text-sm">Gestion inteligente de traslados</p>
                     </div>
 
-                    {/* Form Section */}
-                    <div className="mb-8">
-                        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">Inicia sesión</h2>
-                        <p className="text-gray-500 text-sm mb-6">Accede a tu cuenta</p>
+                    {/* Form */}
+                    <div className="mb-6">
+                        <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-1">Inicia sesion</h2>
+                        <p className="text-muted-foreground text-sm mb-6">Accede a tu cuenta</p>
 
-                        <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
+                        <form onSubmit={handleLogin} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wider">Email</label>
-                                <input
-                                    type="email"
-                                    required
-                                    maxLength={LIMITS.email}
-                                    placeholder="tu@empresa.com"
-                                    className="input-field"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                />
+                                <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Email</label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+                                    <input
+                                        type="email"
+                                        required
+                                        maxLength={LIMITS.email}
+                                        placeholder="tu@empresa.com"
+                                        className="input-field pl-10"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    />
+                                </div>
                             </div>
 
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wider">Contraseña</label>
-                                <input
-                                    type="password"
-                                    required
-                                    maxLength={LIMITS.password}
-                                    placeholder="Tu contraseña"
-                                    className="input-field"
-                                    value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                />
+                                <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Contrasena</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+                                    <input
+                                        type="password"
+                                        required
+                                        maxLength={LIMITS.password}
+                                        placeholder="Tu contrasena"
+                                        className="input-field pl-10"
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    />
+                                </div>
                             </div>
 
-                            <button type="submit" disabled={loading} className="btn-primary w-full mt-4 sm:mt-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold">
-                                {loading ? 'Iniciando...' : 'Iniciar Sesión'}
+                            <button type="submit" disabled={loading} className="btn-primary w-full mt-2 py-3 text-sm font-semibold inline-flex items-center justify-center gap-2">
+                                {loading ? 'Iniciando...' : <><span>Iniciar Sesion</span><ArrowRight className="w-4 h-4" /></>}
                             </button>
                         </form>
                     </div>
 
                     {/* Footer */}
-                    <div className="text-center border-t border-gray-100 pt-6">
-                        <p className="text-gray-500 text-sm">
+                    <div className="text-center border-t border-border pt-5">
+                        <p className="text-muted-foreground text-sm">
                             ¿No tienes cuenta?{' '}
-                            <a href="/" className="text-orange-600 font-medium hover:text-orange-700 transition-colors">
+                            <Link href="/" className="text-primary font-medium hover:text-primary/80 transition-colors">
                                 Crear cuenta
-                            </a>
+                            </Link>
                         </p>
                     </div>
                 </div>

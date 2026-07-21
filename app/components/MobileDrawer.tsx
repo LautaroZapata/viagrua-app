@@ -5,10 +5,12 @@ import { Sun, Moon, Truck } from 'lucide-react'
 
 interface DrawerItem {
   label: string
-  icon?: string
+  icon?: React.ReactNode
   onClick: () => void
   isActive?: boolean
   isDanger?: boolean
+  isLink?: boolean
+  href?: string
 }
 
 interface MobileDrawerProps {

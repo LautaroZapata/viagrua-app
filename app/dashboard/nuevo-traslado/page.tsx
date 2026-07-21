@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { compressImage, formatFileSize } from '@/lib/compressImage'
 import { confirmDelete, showError } from '@/lib/swal'
 import { sanitizeString, isValidImporte, isValidMatricula, isValidFecha, LIMITS } from '@/lib/validation'
+import { ArrowLeft, Camera, X, Truck } from 'lucide-react'
 
 interface Chofer {
     id: string
@@ -38,8 +39,7 @@ export default function NuevoTraslado() {
     const [fechaPersonalizada, setFechaPersonalizada] = useState(false)
     const [fechaValor, setFechaValor] = useState('')
     const today = new Date().toISOString().split('T')[0]
-    
-    // Estados para fotos
+
     const [fotos, setFotos] = useState<{ [key: string]: FotoPreview | null }>({
         frontal: null,
         lateral: null,
@@ -47,8 +47,7 @@ export default function NuevoTraslado() {
         interior: null
     })
     const [comprimiendo, setComprimiendo] = useState<string | null>(null)
-    
-    // Refs para inputs file
+
     const inputRefs = {
         frontal: useRef<HTMLInputElement>(null),
         lateral: useRef<HTMLInputElement>(null),
@@ -56,7 +55,6 @@ export default function NuevoTraslado() {
         interior: useRef<HTMLInputElement>(null)
     }
 
-    // Clean up all object URLs on unmount
     useEffect(() => {
         return () => {
             Object.values(fotos).forEach(fotoData => {
@@ -80,7 +78,6 @@ export default function NuevoTraslado() {
             setPerfil(perfilData)
             setEmpresaId(perfilData.empresa_id)
 
-            // Traer choferes Y al admin (para que pueda asignarse a sí mismo)
             const { data } = await supabase
                 .from('perfiles').select('id, nombre_completo, rol')
                 .eq('empresa_id', perfilData.empresa_id)
@@ -90,23 +87,17 @@ export default function NuevoTraslado() {
         cargarDatos()
     }, [])
 
-    // Manejar selección de foto
     const handleFotoChange = async (tipo: string, e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
 
         setComprimiendo(tipo)
-        
+
         try {
-            // Comprimir imagen
             const compressedBlob = await compressImage(file, 1200, 0.7)
-            
-            // Crear preview
             const preview = URL.createObjectURL(compressedBlob)
-            
-            // Crear nuevo File desde el blob comprimido
             const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' })
-            
+
             setFotos(prev => ({
                 ...prev,
                 [tipo]: {
@@ -119,16 +110,15 @@ export default function NuevoTraslado() {
             console.error('Error al comprimir:', error)
             showError('Error al procesar la imagen')
         }
-        
+
         setComprimiendo(null)
     }
 
-    // Eliminar foto (con confirmación)
     const eliminarFoto = async (tipo: string) => {
         const ok = await confirmDelete({
             title: 'Quitar foto',
             text: `¿Eliminar la foto ${tipo}?`,
-            confirmButtonText: 'Sí, quitar',
+            confirmButtonText: 'Si, quitar',
         })
         if (!ok) return
         if (fotos[tipo]?.preview) {
@@ -137,18 +127,16 @@ export default function NuevoTraslado() {
         setFotos(prev => ({ ...prev, [tipo]: null }))
     }
 
-    // Subir fotos a Supabase Storage
     const subirFotos = async (trasladoId: string): Promise<{ [key: string]: string }> => {
         const urls: { [key: string]: string } = {}
-        
+
         for (const [tipo, fotoData] of Object.entries(fotos)) {
             if (fotoData) {
-                // Esta página es un Client Component, así que podemos generar el nombre directamente en el cliente
                 const fileName = `${trasladoId}/${tipo}_${Date.now()}.jpg`;
                 const { error } = await supabase.storage
                     .from('fotos-traslados')
                     .upload(fileName, fotoData.file)
-                
+
                 if (error) {
                     console.error(`Error subiendo ${tipo}:`, error)
                     showError(`Error al subir foto ${tipo}: ${error.message}`)
@@ -160,14 +148,13 @@ export default function NuevoTraslado() {
                 }
             }
         }
-        
+
         return urls
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        // Sanitizar inputs
         const marcaModelo = sanitizeString(formData.marca_modelo)
         const matricula = sanitizeString(formData.matricula)
         const observaciones = sanitizeString(formData.observaciones)
@@ -175,26 +162,25 @@ export default function NuevoTraslado() {
         const hasta = sanitizeString(formData.hasta)
 
         if (!marcaModelo || marcaModelo.length > LIMITS.marcaModelo) {
-            showError('Marca/Modelo es requerido (máx. 100 caracteres)'); return
+            showError('Marca/Modelo es requerido (max. 100 caracteres)'); return
         }
         if (!formData.es_0km && matricula && !isValidMatricula(matricula)) {
-            showError('Matrícula inválida (solo letras, números y guiones, máx. 15)'); return
+            showError('Matricula invalida (solo letras, numeros y guiones, max. 15)'); return
         }
         if (!formData.chofer_id) { showError('Selecciona un chofer'); return }
         if (formData.importe_total && !isValidImporte(formData.importe_total)) {
-            showError('Importe inválido'); return
+            showError('Importe invalido'); return
         }
-        if (observaciones.length > LIMITS.observaciones) { showError('Observaciones demasiado largas (máx. 1000)'); return }
-        if (desde.length > LIMITS.ubicacion) { showError('Origen demasiado largo (máx. 200)'); return }
-        if (hasta.length > LIMITS.ubicacion) { showError('Destino demasiado largo (máx. 200)'); return }
+        if (observaciones.length > LIMITS.observaciones) { showError('Observaciones demasiado largas (max. 1000)'); return }
+        if (desde.length > LIMITS.ubicacion) { showError('Origen demasiado largo (max. 200)'); return }
+        if (hasta.length > LIMITS.ubicacion) { showError('Destino demasiado largo (max. 200)'); return }
         if (fechaPersonalizada) {
-            if (!fechaValor || !isValidFecha(fechaValor)) { showError('Fecha inválida'); return }
+            if (!fechaValor || !isValidFecha(fechaValor)) { showError('Fecha invalida'); return }
             if (fechaValor > today) { showError('La fecha no puede ser futura'); return }
         }
 
         setLoading(true)
 
-        // 1. Llamar al endpoint server-side que reserva el cupo y crea el traslado
         const resp = await fetch('/api/create-traslado-safe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -222,12 +208,10 @@ export default function NuevoTraslado() {
 
         const { traslado } = await resp.json()
 
-        // 2. Subir fotos si hay alguna
         const hayFotos = Object.values(fotos).some(f => f !== null)
         if (hayFotos) {
             const fotoUrls = await subirFotos(traslado.id)
 
-            // Actualizar traslado con URLs de fotos
             if (Object.keys(fotoUrls).length > 0) {
                 const { error: updateError } = await supabase.from('traslados')
                     .update(fotoUrls)
@@ -244,29 +228,30 @@ export default function NuevoTraslado() {
     }
 
     return (
-        <div className="page-bg min-h-screen pb-8">
+        <div className="min-h-screen bg-background pb-8">
             {/* Navbar */}
-            <nav className="nav-fullbleed bg-white border-b border-gray-100 px-2 py-3 sticky top-0 z-30">
-                <div className="max-w-7xl mx-auto flex items-center gap-3">
-                    <button onClick={() => router.push('/dashboard')} className="nav-icon-btn p-2 -ml-2 text-gray-500 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
+            <nav className="navbar sticky top-0 z-30">
+                <div className="flex items-center gap-3 w-full px-4 sm:px-6 lg:px-8 py-3">
+                    <button onClick={() => router.push('/dashboard')} className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition">
+                        <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <h1 className="text-base font-semibold text-gray-900">Nuevo Traslado</h1>
+                    <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
+                        <Truck className="w-4 h-4 text-white" />
+                    </div>
+                    <h1 className="text-sm sm:text-base font-semibold text-white">Nuevo Traslado</h1>
                 </div>
             </nav>
 
             {/* Content */}
-            <div className="page-enter w-full min-w-0 max-w-2xl mx-auto px-3 sm:px-4 py-4">
+            <div className="page-enter w-full min-w-0 max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Form - Left Column */}
-                    <div className="card">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Detalles del Traslado</h2>
+                    {/* Form */}
+                    <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
+                        <h2 className="text-base font-semibold text-foreground mb-4">Detalles del Traslado</h2>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1.5">Marca y Modelo</label>
+                                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Marca y Modelo</label>
                                 <input
                                     type="text"
                                     required
@@ -278,23 +263,21 @@ export default function NuevoTraslado() {
                                 />
                             </div>
 
-
-
                             <div>
-                                <label className="flex items-center gap-3 cursor-pointer p-3 border border-gray-200 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition">
+                                <label className="flex items-center gap-3 cursor-pointer p-3 border border-border rounded-lg hover:border-primary/50 hover:bg-primary/5 transition">
                                     <input
                                         type="checkbox"
                                         checked={formData.es_0km}
                                         onChange={(e) => setFormData({ ...formData, es_0km: e.target.checked, matricula: '' })}
-                                        className="w-4 h-4 cursor-pointer accent-orange-500"
+                                        className="w-4 h-4 cursor-pointer accent-primary"
                                     />
-                                    <span className="font-medium text-sm text-gray-900">Es un vehículo 0 KM</span>
+                                    <span className="font-medium text-sm text-foreground">Es un vehiculo 0 KM</span>
                                 </label>
                             </div>
 
                             {!formData.es_0km && (
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Matrícula</label>
+                                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">Matricula</label>
                                     <input
                                         type="text"
                                         maxLength={LIMITS.matricula}
@@ -307,7 +290,7 @@ export default function NuevoTraslado() {
                             )}
 
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1.5">Chofer Asignado</label>
+                                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Chofer Asignado</label>
                                 <select
                                     required
                                     className="input-field"
@@ -324,7 +307,7 @@ export default function NuevoTraslado() {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1.5">Importe Total</label>
+                                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Importe Total</label>
                                 <div className="currency-input">
                                     <span className="currency-symbol">$</span>
                                     <input
@@ -342,7 +325,7 @@ export default function NuevoTraslado() {
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Desde</label>
+                                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">Desde</label>
                                     <input
                                         type="text"
                                         maxLength={LIMITS.ubicacion}
@@ -353,7 +336,7 @@ export default function NuevoTraslado() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Hasta</label>
+                                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">Hasta</label>
                                     <input
                                         type="text"
                                         maxLength={LIMITS.ubicacion}
@@ -366,7 +349,7 @@ export default function NuevoTraslado() {
                             </div>
 
                             <div>
-                                <label className="flex items-center gap-3 cursor-pointer p-3 border border-gray-200 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition">
+                                <label className="flex items-center gap-3 cursor-pointer p-3 border border-border rounded-lg hover:border-primary/50 hover:bg-primary/5 transition">
                                     <input
                                         type="checkbox"
                                         checked={fechaPersonalizada}
@@ -374,13 +357,13 @@ export default function NuevoTraslado() {
                                             setFechaPersonalizada(e.target.checked)
                                             if (e.target.checked && !fechaValor) setFechaValor(today)
                                         }}
-                                        className="w-4 h-4 cursor-pointer accent-orange-500 shrink-0"
+                                        className="w-4 h-4 cursor-pointer accent-primary shrink-0"
                                     />
-                                    <span className="font-medium text-sm text-gray-900">Registrar en fecha anterior</span>
+                                    <span className="font-medium text-sm text-foreground">Registrar en fecha anterior</span>
                                 </label>
                                 {fechaPersonalizada && (
                                     <div className="mt-2">
-                                        <label className="block text-xs font-medium text-gray-700 mb-1.5">Fecha del traslado</label>
+                                        <label className="block text-xs font-medium text-muted-foreground mb-1.5">Fecha del traslado</label>
                                         <input
                                             type="date"
                                             required
@@ -389,7 +372,7 @@ export default function NuevoTraslado() {
                                             onChange={(e) => setFechaValor(e.target.value)}
                                             className="input-field w-full"
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">Solo fechas anteriores o de hoy.</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Solo fechas anteriores o de hoy.</p>
                                     </div>
                                 )}
                             </div>
@@ -405,10 +388,13 @@ export default function NuevoTraslado() {
                         </form>
                     </div>
 
-                    {/* Inspección - Right Column */}
-                    <div className="card">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-1">Inspección</h2>
-                        <p className="text-xs text-gray-500 mb-4">Adjunta fotos del estado (opcional)</p>
+                    {/* Inspeccion */}
+                    <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
+                        <div className="flex items-center gap-2 mb-1">
+                            <Camera className="w-4 h-4 text-muted-foreground" />
+                            <h2 className="text-base font-semibold text-foreground">Inspeccion</h2>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-4">Adjunta fotos del estado (opcional)</p>
 
                         <div className="grid grid-cols-2 gap-2">
                             {(['frontal', 'lateral', 'trasera', 'interior'] as const).map((tipo) => (
@@ -420,26 +406,23 @@ export default function NuevoTraslado() {
                                         className="hidden"
                                         onChange={(e) => handleFotoChange(tipo, e)}
                                     />
-                                    
+
                                     {fotos[tipo] ? (
                                         <div className="relative">
                                             <img
                                                 src={fotos[tipo]!.preview}
                                                 alt={tipo}
-                                                className="w-full h-24 object-cover rounded-lg border-2 border-green-500"
+                                                className="w-full h-24 object-cover rounded-lg border-2 border-emerald-500"
                                             />
-                                            {/* Botón eliminar siempre visible — accesible en touch */}
                                             <button
                                                 type="button"
                                                 onClick={() => eliminarFoto(tipo)}
-                                                className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-md transition touch-manipulation"
+                                                className="absolute top-1 right-1 w-6 h-6 bg-destructive hover:bg-destructive/80 rounded-full flex items-center justify-center shadow-md transition touch-manipulation"
                                                 aria-label={`Eliminar foto ${tipo}`}
                                             >
-                                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
+                                                <X className="w-3.5 h-3.5 text-white" />
                                             </button>
-                                            <p className="text-[10px] text-center text-gray-500 mt-1">
+                                            <p className="text-[10px] text-center text-muted-foreground mt-1">
                                                 {formatFileSize(fotos[tipo]!.compressedSize || 0)}
                                             </p>
                                         </div>
@@ -448,17 +431,14 @@ export default function NuevoTraslado() {
                                             type="button"
                                             onClick={() => inputRefs[tipo].current?.click()}
                                             disabled={comprimiendo === tipo}
-                                            className="w-full h-24 border-2 border-dashed border-gray-200 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition text-center flex flex-col items-center justify-center"
+                                            className="w-full h-24 border-2 border-dashed border-border rounded-lg hover:border-primary/50 hover:bg-primary/5 transition text-center flex flex-col items-center justify-center"
                                         >
                                             {comprimiendo === tipo ? (
-                                                <p className="text-xs text-gray-500">Comprimiendo...</p>
+                                                <p className="text-xs text-muted-foreground">Comprimiendo...</p>
                                             ) : (
                                                 <>
-                                                    <svg className="w-6 h-6 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    </svg>
-                                                    <p className="font-medium text-[10px] text-gray-600 capitalize">{tipo}</p>
+                                                    <Camera className="w-5 h-5 text-muted-foreground/50 mb-1" />
+                                                    <p className="font-medium text-[10px] text-muted-foreground capitalize">{tipo}</p>
                                                 </>
                                             )}
                                         </button>
@@ -467,10 +447,10 @@ export default function NuevoTraslado() {
                             ))}
                         </div>
 
-                        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                            <p className="font-medium text-xs text-gray-700 mb-1.5">Observaciones</p>
+                        <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                            <p className="font-medium text-xs text-muted-foreground mb-1.5">Observaciones</p>
                             <textarea
-                                className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:border-orange-500"
+                                className="w-full border border-border bg-card rounded-lg p-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition"
                                 rows={3}
                                 maxLength={LIMITS.observaciones}
                                 placeholder="Notas adicionales..."

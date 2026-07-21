@@ -1,6 +1,7 @@
 'use client'
 import { useMemo } from 'react'
 import { BarChart } from '@tremor/react'
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 interface Traslado {
   importe_total: number | null
@@ -29,7 +30,7 @@ const MONTH_LABELS: Record<string, string> = {
 }
 
 export default function DashboardCharts({ traslados, gastos }: Props) {
-  const chartData = useMemo(() => {
+  const { chartData, totalIngresos, totalGastos, balance, trend } = useMemo(() => {
     const monthlyData: Record<string, { ingresos: number; gastos: number }> = {}
 
     for (const t of traslados) {
@@ -46,43 +47,85 @@ export default function DashboardCharts({ traslados, gastos }: Props) {
       monthlyData[key].gastos += g.importe || 0
     }
 
-    return Object.entries(monthlyData)
-      .map(([key, data]) => {
+    const data = Object.entries(monthlyData)
+      .map(([key, d]) => {
         const [year, month] = key.split('-')
         return {
           month: `${MONTH_LABELS[month]} ${year.slice(2)}`,
-          Ingresos: Math.round(data.ingresos),
-          Gastos: Math.round(data.gastos),
+          Ingresos: Math.round(d.ingresos),
+          Gastos: Math.round(d.gastos),
           key,
         }
       })
       .sort((a, b) => a.key.localeCompare(b.key))
-      .slice(-12)
+      .slice(-6)
+
+    const tI = data.reduce((s, d) => s + d.Ingresos, 0)
+    const tG = data.reduce((s, d) => s + d.Gastos, 0)
+    const bal = tI - tG
+
+    // Trend: compare last 2 months
+    let tr: 'up' | 'down' | 'neutral' = 'neutral'
+    if (data.length >= 2) {
+      const last = data[data.length - 1].Ingresos - data[data.length - 1].Gastos
+      const prev = data[data.length - 2].Ingresos - data[data.length - 2].Gastos
+      tr = last > prev ? 'up' : last < prev ? 'down' : 'neutral'
+    }
+
+    return { chartData: data, totalIngresos: tI, totalGastos: tG, balance: bal, trend: tr }
   }, [traslados, gastos])
+
+  const fmt = (v: number) => `$${v.toLocaleString('es-AR')}`
 
   if (chartData.length === 0) {
     return (
-      <div className="card p-4 sm:p-6">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Ingresos vs Gastos</h3>
-        <div className="text-center py-8">
-          <p className="text-muted-foreground text-sm">No hay datos para mostrar graficos</p>
-        </div>
+      <div className="rounded-2xl border border-border bg-card p-6">
+        <p className="text-sm font-medium text-foreground mb-1">Resumen financiero</p>
+        <p className="text-muted-foreground text-xs">Cuando completes traslados y registres gastos, veras el resumen aqui.</p>
       </div>
     )
   }
 
   return (
-    <div className="card p-4 sm:p-6">
-      <h3 className="text-sm font-semibold text-foreground mb-3">Ingresos vs Gastos (ultimos 12 meses)</h3>
-      <BarChart
-        className="h-64 sm:h-72"
-        data={chartData}
-        index="month"
-        categories={['Ingresos', 'Gastos']}
-        colors={['emerald', 'red']}
-        valueFormatter={(v) => `$${v.toLocaleString('es-AR')}`}
-        yAxisWidth={56}
-      />
+    <div className="space-y-4">
+      {/* Summary row */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Ingresos</p>
+          <p className="text-lg sm:text-xl font-bold text-emerald-600 mt-1">{fmt(totalIngresos)}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Gastos</p>
+          <p className="text-lg sm:text-xl font-bold text-red-500 mt-1">{fmt(totalGastos)}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Balance</p>
+          <div className="flex items-center gap-1.5 mt-1">
+            <p className={`text-lg sm:text-xl font-bold ${balance >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              {fmt(Math.abs(balance))}
+            </p>
+            {trend === 'up' && <TrendingUp className="w-4 h-4 text-emerald-500" />}
+            {trend === 'down' && <TrendingDown className="w-4 h-4 text-red-500" />}
+            {trend === 'neutral' && <Minus className="w-4 h-4 text-muted-foreground" />}
+          </div>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <p className="text-sm font-medium text-foreground mb-4">Ingresos vs Gastos</p>
+        <BarChart
+          className="h-52 sm:h-64"
+          data={chartData}
+          index="month"
+          categories={['Ingresos', 'Gastos']}
+          colors={['emerald', 'rose']}
+          valueFormatter={fmt}
+          yAxisWidth={52}
+          showAnimation
+          showGridLines={false}
+        />
+      </div>
     </div>
   )
 }
