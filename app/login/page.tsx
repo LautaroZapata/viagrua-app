@@ -24,13 +24,16 @@ export default function Login() {
 
         setLoading(true)
 
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
         })
 
-        if (error) {
-            showError('Error: ' + error.message)
+        const data = await res.json()
+
+        if (!res.ok) {
+            showError(data.error || 'Error al iniciar sesión')
             setLoading(false)
             return
         }
@@ -38,7 +41,6 @@ export default function Login() {
         const { data: perfil } = await supabase
             .from('perfiles').select('rol').eq('id', data.user.id).single()
 
-        // Navegar según rol (Supabase gestiona la sesión)
         setTimeout(() => {
             if (typeof window !== 'undefined') {
                 if (perfil?.rol === 'admin') {
