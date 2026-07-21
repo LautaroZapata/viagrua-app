@@ -50,7 +50,7 @@ export async function POST() {
     } catch (e) {
         console.error('Error en cancel:', e)
         return NextResponse.json(
-            { error: e instanceof Error ? e.message : 'Error al cancelar suscripción' },
+            { error: 'Error al cancelar la suscripción' },
             { status: 500 }
         )
     }

@@ -203,31 +203,36 @@ export default function GastosPage() {
 
         setGuardando(true)
 
-        const { error } = await supabase.from('gastos').insert({
-            empresa_id: perfil.empresa_id,
-            usuario_id: perfil.id,
-            tipo,
-            importe: parseFloat(importe),
-            descripcion: descripcion || null,
-            fecha,
-        })
+        try {
+            const res = await fetch('/api/gastos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    empresa_id: perfil.empresa_id,
+                    user_id: perfil.id,
+                    tipo,
+                    importe: parseFloat(importe),
+                    descripcion: descripcion || null,
+                    fecha,
+                }),
+            })
 
-        if (error) {
-            showError('Error: ' + error.message)
-        } else {
-            setFormData({ tipo: '', importe: '', descripcion: '', fecha: new Date().toISOString().split('T')[0] })
-            await cargarGastos(perfil)
+            const data = await res.json()
+
+            if (!res.ok) {
+                showError(data.error || 'Error al registrar el gasto')
+            } else {
+                setFormData({ tipo: '', importe: '', descripcion: '', fecha: new Date().toISOString().split('T')[0] })
+                await cargarGastos(perfil)
+            }
+        } catch {
+            showError('Error de conexión')
         }
-        
+
         setGuardando(false)
     }
 
     const eliminarGasto = async (gasto: Gasto) => {
-        if (!isAdmin && gasto.usuario_id !== perfil?.id) {
-            showError('No puedes eliminar gastos de otros usuarios')
-            return
-        }
-
         const ok = await confirmDelete({
             title: 'Eliminar gasto',
             text: '¿Eliminar este gasto?',
@@ -237,13 +242,19 @@ export default function GastosPage() {
 
         setGastos(prev => prev.filter(g => g.id !== gasto.id))
 
-        const { error } = await supabase
-            .from('gastos')
-            .delete()
-            .eq('id', gasto.id)
+        try {
+            const res = await fetch(`/api/gastos?id=${gasto.id}`, {
+                method: 'DELETE',
+            })
 
-        if (error) {
-            showError('Error: ' + error.message)
+            const data = await res.json()
+
+            if (!res.ok) {
+                showError(data.error || 'Error al eliminar el gasto')
+                if (perfil) await cargarGastos(perfil)
+            }
+        } catch {
+            showError('Error de conexión')
             if (perfil) await cargarGastos(perfil)
         }
     }

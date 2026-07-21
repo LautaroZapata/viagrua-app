@@ -139,7 +139,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ traslado })
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Error al crear el traslado' },
+      { error: 'Error al crear el traslado' },
       { status: 500 }
     )
   }

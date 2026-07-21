@@ -83,54 +83,43 @@ export default function UnirseEmpresa() {
 
         setRegistrando(true)
 
-        // 1. Crear usuario
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    nombre_completo: nombre,
-                    empresa_id: invitacion.empresa_id
-                }
+        try {
+            const res = await fetch('/api/unirse', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    codigo,
+                    email,
+                    password,
+                    nombre,
+                }),
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                showError(data.error || 'Error al crear la cuenta')
+                setRegistrando(false)
+                return
             }
-        })
 
-        if (authError || !authData.user) {
-            showError('Error: ' + authError?.message)
+            // Login automático después de crear la cuenta
+            const { error: loginError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            })
+
+            if (loginError) {
+                showError('Cuenta creada pero error al iniciar sesión. Ve a /login.')
+                setRegistrando(false)
+                return
+            }
+
+            router.push('/chofer')
+        } catch {
+            showError('Error de conexión')
             setRegistrando(false)
-            return
         }
-
-        // 2. Actualizar rol a chofer - CON MANEJO DE ERROR
-        const { error: rolError } = await supabase
-            .from('perfiles')
-            .update({ rol: 'chofer' })
-            .eq('id', authData.user.id)
-
-        if (rolError) {
-            showError('Error al configurar rol. Contacta al administrador.')
-            setRegistrando(false)
-            return
-        }
-
-        // 3. Marcar invitación como usada - Atomic: solo marca si usado=false (previene race condition)
-        const { error: invError } = await supabase
-            .from('invitaciones')
-            .update({ usado: true })
-            .eq('id', invitacion.id)
-            .eq('usado', false)
-
-        if (invError) {
-            console.error('Error marcando invitación:', invError)
-        }
-
-        // 4. Login automático
-        await supabase.auth.signInWithPassword({
-            email,
-            password,
-        })
-
-        router.push('/chofer')
     }
 
     if (loading) {
