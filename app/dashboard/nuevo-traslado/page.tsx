@@ -18,28 +18,13 @@ interface FotoPreview {
     compressedSize?: number
 }
 
-const PLANES: Record<string, { nombre: string; traslados_max: number | null; } > = {
-    free: {
-        nombre: 'Free',
-        traslados_max: 30,
-    },
-    premium: {
-        nombre: 'Premium',
-        traslados_max: null, // sin configurar, futuro
-    },
-    admin: {
-        nombre: 'Admin',
-        traslados_max: null, // ilimitado
-    },
-};
-
 export default function NuevoTraslado() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [choferes, setChoferes] = useState<Chofer[]>([])
     const [empresaId, setEmpresaId] = useState<string>('')
     const [userId, setUserId] = useState<string>('')
-    const [perfil, setPerfil] = useState<{ plan?: string; traslados_mes_actual?: number; empresa_id: string } | null>(null)
+    const [perfil, setPerfil] = useState<{ empresa_id: string } | null>(null)
     const [formData, setFormData] = useState({
         marca_modelo: '',
         matricula: '',
@@ -87,10 +72,9 @@ export default function NuevoTraslado() {
 
             setUserId(user.id)
 
-            // Traer perfil completo para saber plan y traslados
             const { data: perfilData } = await supabase
                 .from('perfiles')
-                .select('*, plan, plan_renovacion, traslados_mes_actual')
+                .select('id, empresa_id')
                 .eq('id', user.id).single()
             if (!perfilData) return
             setPerfil(perfilData)
@@ -259,15 +243,6 @@ export default function NuevoTraslado() {
         router.push('/dashboard')
     }
 
-    // --- Lógica de restricción de traslados ---
-    const planKey = perfil?.plan || 'free';
-    const planInfo = PLANES[planKey] || PLANES['free'];
-    const trasladosMax = planInfo.traslados_max;
-    const trasladosUsados = perfil?.traslados_mes_actual || 0;
-    const trasladosRestantes = trasladosMax !== null ? Math.max(trasladosMax - trasladosUsados, 0) : null;
-    // Solo bloquear traslados si es free y llegó al límite
-    const bloqueoTraslados = planKey === 'free' && trasladosRestantes === 0;
-
     return (
         <div className="page-bg min-h-screen pb-8">
             {/* Navbar */}
@@ -290,15 +265,6 @@ export default function NuevoTraslado() {
                         <h2 className="text-lg font-semibold text-gray-900 mb-4">Detalles del Traslado</h2>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            {/* Solo mostrar traslados usados si es plan free y perfil cargado */}
-                            {perfil && planKey === 'free' && (
-                                <div className="mb-2 p-2 rounded bg-yellow-50 text-yellow-800 text-xs">
-                                    Traslados usados este mes: <b>{trasladosUsados}</b> / {trasladosMax}
-                                    {bloqueoTraslados && (
-                                        <span className="block text-red-600 font-bold mt-1">¡Has alcanzado el límite de traslados este mes! Actualiza tu plan para más beneficios.</span>
-                                    )}
-                                </div>
-                            )}
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1.5">Marca y Modelo</label>
                                 <input
@@ -432,8 +398,7 @@ export default function NuevoTraslado() {
                                 <button type="button" onClick={() => router.push('/dashboard')} className="btn-secondary flex-1 py-2.5 text-sm">
                                     Cancelar
                                 </button>
-                                <button type="submit" disabled={loading || bloqueoTraslados} className={`btn-primary flex-1 py-2.5 text-sm ${bloqueoTraslados ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                    title={bloqueoTraslados ? 'Límite de traslados alcanzado este mes' : ''}>
+                                <button type="submit" disabled={loading} className="btn-primary flex-1 py-2.5 text-sm">
                                     {loading ? 'Creando...' : 'Crear Traslado'}
                                 </button>
                             </div>

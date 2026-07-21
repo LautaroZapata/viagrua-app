@@ -1,7 +1,7 @@
 import { toast } from 'sonner'
 
 /**
- * Confirmación para acciones destructivas (eliminar, expulsar).
+ * Confirmacion para acciones destructivas (eliminar, expulsar).
  * Retorna true si el usuario confirma.
  */
 export async function confirmDelete(options: {
@@ -10,10 +10,10 @@ export async function confirmDelete(options: {
   confirmButtonText?: string
 }): Promise<boolean> {
   return new Promise((resolve) => {
-    toast(options.title ?? '¿Estás seguro?', {
+    toast(options.title ?? '¿Estas seguro?', {
       description: options.text,
       action: {
-        label: options.confirmButtonText ?? 'Sí, eliminar',
+        label: options.confirmButtonText ?? 'Si, eliminar',
         onClick: () => resolve(true),
       },
       cancel: {
@@ -21,17 +21,12 @@ export async function confirmDelete(options: {
         onClick: () => resolve(false),
       },
       duration: Infinity,
-      style: {
-        '--normal-bg': 'white',
-        '--normal-text': '#111827',
-        '--normal-border': '#e5e7eb',
-      } as React.CSSProperties,
     })
   })
 }
 
 /**
- * Confirmación genérica para acciones que requieren confirmar.
+ * Confirmacion generica para acciones que requieren confirmar.
  * Retorna true si el usuario confirma.
  */
 export async function confirmAction(options: {
@@ -44,7 +39,7 @@ export async function confirmAction(options: {
     toast(options.title, {
       description: options.text,
       action: {
-        label: options.confirmButtonText ?? 'Sí, confirmar',
+        label: options.confirmButtonText ?? 'Si, confirmar',
         onClick: () => resolve(true),
       },
       cancel: {
@@ -52,11 +47,6 @@ export async function confirmAction(options: {
         onClick: () => resolve(false),
       },
       duration: Infinity,
-      style: {
-        '--normal-bg': 'white',
-        '--normal-text': '#111827',
-        '--normal-border': '#e5e7eb',
-      } as React.CSSProperties,
     })
   })
 }
@@ -69,7 +59,7 @@ export function showError(message: string): void {
 }
 
 /**
- * Muestra un mensaje de éxito.
+ * Muestra un mensaje de exito.
  */
 export function showSuccess(message: string): void {
   toast.success('Listo', { description: message })

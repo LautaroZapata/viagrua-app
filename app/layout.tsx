@@ -2,10 +2,11 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import PwaRegister from '@/components/PwaRegister'
 import { Toaster } from 'sonner'
+import { Providers } from './providers'
 
 export const metadata: Metadata = {
-    title: 'ViaGrua — Gestión de Traslados',
-    description: 'Plataforma interna de gestión de traslados de vehículos',
+    title: 'ViaGrua — Gestion de Traslados',
+    description: 'Plataforma interna de gestion de traslados de vehiculos',
     appleWebApp: {
         capable: true,
         statusBarStyle: 'black-translucent',
@@ -32,21 +33,13 @@ export default function RootLayout({
     return (
         <html lang="es" suppressHydrationWarning>
             <body className="antialiased">
-                <script dangerouslySetInnerHTML={{ __html: `
-                  (function() {
-                    try {
-                      var theme = localStorage.getItem('theme');
-                      if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                        document.documentElement.classList.add('dark');
-                      }
-                    } catch(e) {}
-                  })()
-                `}} />
-                <PwaRegister />
-                <Toaster position="top-center" richColors closeButton />
-                <div className="app-container">
-                    {children}
-                </div>
+                <Providers>
+                    <PwaRegister />
+                    <Toaster position="top-center" richColors closeButton />
+                    <div className="app-container">
+                        {children}
+                    </div>
+                </Providers>
             </body>
         </html>
     )

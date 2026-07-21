@@ -24,7 +24,7 @@ const nextConfig = {
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-evaluate' 'unsafe-inline' https://js.mercadopago.com.br https://www.mercadopago.com.br; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://*; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mercadopago.com https://www.mercadopago.com.br; frame-src https://www.mercadopago.com.br https://sandbox.mercadopago.com.br; worker-src 'self' blob:; manifest-src 'self'",
+            value: "default-src 'self'; script-src 'self' 'unsafe-evaluate' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://*; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'none'; worker-src 'self' blob:; manifest-src 'self'",
           },
         ],
       },

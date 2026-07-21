@@ -53,9 +53,6 @@ self.addEventListener('fetch', (event) => {
     // Network-only: rutas API internas (datos en tiempo real)
     if (url.pathname.startsWith('/api/')) return
 
-    // Network-only: Mercado Pago
-    if (url.hostname.includes('mercadopago') || url.hostname.includes('mercadolibre')) return
-
     // Cache-first: assets estáticos de Next.js (filenames con hash → inmutables)
     if (url.pathname.startsWith('/_next/static/')) {
         event.respondWith(

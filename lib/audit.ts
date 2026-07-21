@@ -9,8 +9,6 @@ export type AuditAction =
   | 'update_traslado_estado'
   | 'create_gasto'
   | 'delete_gasto'
-  | 'subscribe_plan'
-  | 'cancel_plan'
   | 'invite_user'
   | 'join_company'
 

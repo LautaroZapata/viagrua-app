@@ -1,8 +1,6 @@
 'use client'
 import { useMemo } from 'react'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
-} from 'recharts'
+import { BarChart } from '@tremor/react'
 
 interface Traslado {
   importe_total: number | null
@@ -34,7 +32,6 @@ export default function DashboardCharts({ traslados, gastos }: Props) {
   const chartData = useMemo(() => {
     const monthlyData: Record<string, { ingresos: number; gastos: number }> = {}
 
-    // Process income from completed, paid transfers
     for (const t of traslados) {
       if (!t.created_at) continue
       const key = getMonthKey(t.created_at)
@@ -42,7 +39,6 @@ export default function DashboardCharts({ traslados, gastos }: Props) {
       monthlyData[key].ingresos += t.importe_total || 0
     }
 
-    // Process expenses
     for (const g of gastos) {
       if (!g.fecha) continue
       const key = getMonthKey(g.fecha)
@@ -50,7 +46,6 @@ export default function DashboardCharts({ traslados, gastos }: Props) {
       monthlyData[key].gastos += g.importe || 0
     }
 
-    // Convert to array and sort by month
     return Object.entries(monthlyData)
       .map(([key, data]) => {
         const [year, month] = key.split('-')
@@ -62,15 +57,15 @@ export default function DashboardCharts({ traslados, gastos }: Props) {
         }
       })
       .sort((a, b) => a.key.localeCompare(b.key))
-      .slice(-12) // Last 12 months
+      .slice(-12)
   }, [traslados, gastos])
 
   if (chartData.length === 0) {
     return (
       <div className="card p-4 sm:p-6">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Ingresos vs Gastos</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Ingresos vs Gastos</h3>
         <div className="text-center py-8">
-          <p className="text-gray-400 text-sm">No hay datos para mostrar gráficos</p>
+          <p className="text-muted-foreground text-sm">No hay datos para mostrar graficos</p>
         </div>
       </div>
     )
@@ -78,23 +73,16 @@ export default function DashboardCharts({ traslados, gastos }: Props) {
 
   return (
     <div className="card p-4 sm:p-6">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">Ingresos vs Gastos (últimos 12 meses)</h3>
-      <div className="h-64 sm:h-72">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-            <Tooltip
-              formatter={(value) => `$${Number(value).toLocaleString('es-AR')}`}
-              contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
-            />
-            <Legend wrapperStyle={{ fontSize: '12px' }} />
-            <Bar dataKey="Ingresos" fill="#22c55e" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="Gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      <h3 className="text-sm font-semibold text-foreground mb-3">Ingresos vs Gastos (ultimos 12 meses)</h3>
+      <BarChart
+        className="h-64 sm:h-72"
+        data={chartData}
+        index="month"
+        categories={['Ingresos', 'Gastos']}
+        colors={['emerald', 'red']}
+        valueFormatter={(v) => `$${v.toLocaleString('es-AR')}`}
+        yAxisWidth={56}
+      />
     </div>
   )
 }

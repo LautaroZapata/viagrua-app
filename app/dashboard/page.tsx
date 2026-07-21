@@ -12,9 +12,7 @@ import ErrorBoundary from '../components/ErrorBoundary'
 import { PageSkeleton } from '../components/skeletons'
 import DashboardCharts from '../components/DashboardCharts'
 import { supabase } from '@/lib/supabase'
-import { usePlanConfig } from '@/lib/useSupabaseQuery'
 import { confirmDelete, confirmAction, showError } from '@/lib/swal'
-import { getPlanConfig, canAddPeople, getTrasladosRestantes, isTrasladosLimitReached } from '@/lib/plans'
 
 interface Perfil {
     id: string;
@@ -22,8 +20,6 @@ interface Perfil {
     rol: string;
     empresa_id: string;
     email?: string;
-    plan?: string;
-    traslados_mes_actual?: number;
 }
 interface Chofer { id: string; nombre_completo: string; email: string }
 interface Empresa { id: string; nombre: string }
@@ -48,12 +44,6 @@ export default function Dashboard() {
     const [traslados, setTraslados] = useState<Traslado[]>([]);
     const [gastos, setGastos] = useState<{ importe: number; fecha: string }[]>([]);
     const [chartTraslados, setChartTraslados] = useState<{ importe_total: number | null; created_at: string }[]>([]);
-    // --- Lógica de planes y bloqueo traslados ---
-    const planKey = perfil?.plan || 'free';
-    const trasladosUsados = perfil?.traslados_mes_actual || 0;
-    const trasladosMax = getPlanConfig(planKey).traslados_max;
-    const trasladosRestantes = getTrasladosRestantes(planKey, trasladosUsados);
-    const bloqueoTraslados = isTrasladosLimitReached(planKey, trasladosUsados);
     const [trasladosPage, setTrasladosPage] = useState(1);
     const [trasladosTotal, setTrasladosTotal] = useState(0);
     const [trasladosPendientesTotal, setTrasladosPendientesTotal] = useState(0);
@@ -74,8 +64,6 @@ export default function Dashboard() {
     const router = useRouter();
     const [isClient, setIsClient] = useState(false);
     const timersRef = useRef<NodeJS.Timeout[]>([]);
-
-    const { data: empresaPlanData } = usePlanConfig(perfil?.empresa_id ?? null);
 
     // Cleanup all timers on unmount
     useEffect(() => () => timersRef.current.forEach(clearTimeout), []);
@@ -167,21 +155,11 @@ export default function Dashboard() {
             }
 
             const { data: perfilData, error: perfilError } = await supabase
-                .from('perfiles').select('id, nombre_completo, rol, empresa_id, email, plan, traslados_mes_actual').eq('id', user.id).single();
+                .from('perfiles').select('id, nombre_completo, rol, empresa_id, email').eq('id', user.id).single();
             if (perfilError) throw new Error(perfilError.message);
             if (!perfilData) { router.push('/login'); return; }
 
             setPerfil(perfilData);
-            // Guardar email y user_id en localStorage para el flujo de pago SOLO en cliente
-            // Guardar email y user_id en localStorage SOLO en cliente después del render
-            if (perfilData?.email && perfilData?.id) {
-                timersRef.current.push(setTimeout(() => {
-                    if (typeof window !== 'undefined') {
-                        window.localStorage.setItem('email', perfilData.email!);
-                        window.localStorage.setItem('user_id', perfilData.id);
-                    }
-                }, 0));
-            }
 
             // Cargar empresa, choferes, traslados y datos del gráfico en paralelo
             const [empresaResult] = await Promise.all([
@@ -555,33 +533,7 @@ export default function Dashboard() {
                         Hola, {perfil?.nombre_completo?.split(' ')[0] || 'Admin'}
                     </h1>
                     <p className="text-sm sm:text-base text-gray-500">{empresa?.nombre}</p>
-                    {/* Traslados usados solo para plan free y cuando perfil cargado */}
-                    {/* Solo mostrar traslados usados si es plan free y perfil cargado */}
-                    {perfil && planKey === 'free' && (
-                        <div className="mt-2 text-xs sm:text-sm bg-yellow-50 text-yellow-800 rounded px-2 py-1 inline-block">
-                            Traslados usados este mes: <b>{trasladosUsados}</b> / {trasladosMax}
-                            {bloqueoTraslados && (
-                                <span className="block text-red-600 font-bold mt-1">¡Has alcanzado el límite de traslados este mes!</span>
-                            )}
-                        </div>
-                    )}
                 </div>
-
-                {/* Banner Upgrade Premium - Solo para plan Free */}
-                {planKey === 'free' && (
-                    <div className="mb-6 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
-                        <div className="text-white text-center sm:text-left">
-                            <p className="font-bold text-sm sm:text-base">Desbloqueá traslados ilimitados y más funciones</p>
-                            <p className="text-white/80 text-xs sm:text-sm mt-0.5">Agregá choferes, sin límites mensuales. Desde $199 UYU/mes.</p>
-                        </div>
-                        <button
-                            onClick={() => router.push('/planes')}
-                            className="shrink-0 px-5 py-2 bg-white text-orange-600 font-bold text-sm rounded-lg hover:bg-orange-50 transition shadow"
-                        >
-                            Ver planes
-                        </button>
-                    </div>
-                )}
 
                 {/* Stats Grid - Dinámico */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-8 sm:mb-10">
@@ -639,8 +591,8 @@ export default function Dashboard() {
                         </div>
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-10">
-                        <button onClick={() => { if (!bloqueoTraslados) router.push('/dashboard/nuevo-traslado') }}
-                            className={`card card-interactive p-5 sm:p-6 lg:p-8 text-left group ${bloqueoTraslados ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                        <button onClick={() => router.push('/dashboard/nuevo-traslado')}
+                            className="card card-interactive p-5 sm:p-6 lg:p-8 text-left group">
                             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-orange-100 group-hover:bg-orange-200 flex items-center justify-center mb-4 transition">
                                 <svg className="w-6 h-6 sm:w-7 sm:h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -651,9 +603,7 @@ export default function Dashboard() {
                         </button>
                         
                         <button onClick={() => abrirModalInvitacion()}
-                            className={`card card-interactive p-5 sm:p-6 lg:p-8 text-left group ${planKey === 'free' ? 'opacity-60 cursor-not-allowed' : ''}`}
-                            disabled={planKey === 'free'}
-                            title={planKey === 'free' ? 'Disponible solo en planes pagos (Premium/Admin)' : ''}>
+                            className="card card-interactive p-5 sm:p-6 lg:p-8 text-left group">
                             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center mb-4 transition">
                                 <svg className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -703,9 +653,8 @@ export default function Dashboard() {
                                     Exportar CSV
                                 </a>
                                 <button
-                                    onClick={() => { if (!bloqueoTraslados) router.push('/dashboard/nuevo-traslado') }}
-                                    className={`btn-primary px-5 py-2.5 text-sm ${bloqueoTraslados ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                    title={bloqueoTraslados ? 'Límite de traslados alcanzado' : ''}
+                                    onClick={() => router.push('/dashboard/nuevo-traslado')}
+                                    className="btn-primary px-5 py-2.5 text-sm"
                                 >
                                     + Nuevo Traslado
                                 </button>
@@ -805,10 +754,8 @@ export default function Dashboard() {
                     <div className="card p-4 sm:p-6 lg:p-8">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                             <h3 className="font-semibold text-lg sm:text-xl text-gray-900">Equipo de Choferes</h3>
-                            <button onClick={() => { if (canAddPeople(planKey)) abrirModalInvitacion() }}
-                                className={`btn-secondary px-5 py-2.5 text-sm ${!canAddPeople(planKey) ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                disabled={!canAddPeople(planKey)}
-                                title={!canAddPeople(planKey) ? 'Disponible solo en planes pagos' : ''}>
+                            <button onClick={() => abrirModalInvitacion()}
+                                className="btn-secondary px-5 py-2.5 text-sm">
                                 + Invitar Chofer
                             </button>
                         </div>

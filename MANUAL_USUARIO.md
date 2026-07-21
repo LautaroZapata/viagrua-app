@@ -34,9 +34,9 @@ Al iniciar sesion como administrador, veras el **Dashboard** con tres secciones 
 
 - Veras un saludo con tu nombre y el nombre de tu empresa.
 - **Estadisticas en tiempo real:** total de traslados, pendientes, en curso y completados.
+- **Graficos:** ingresos vs gastos de los ultimos 12 meses.
 - **Boton "Nuevo Traslado":** para crear un traslado nuevo.
-- **Boton "Invitar Chofer":** para generar un codigo de invitacion (disponible en plan Premium).
-- Si estas en el **plan Free**, veras cuantos traslados te quedan este mes (limite: 30).
+- **Boton "Invitar Chofer":** para generar un codigo de invitacion.
 
 ### 2.2 Traslados
 
@@ -92,7 +92,7 @@ Podes activar ambos filtros al mismo tiempo.
 
 ### 2.3 Choferes
 
-#### Invitar un chofer (Plan Premium)
+#### Invitar un chofer
 
 1. Presiona **Invitar Chofer**.
 2. Se genera un **codigo de invitacion** y un **link**.
@@ -135,6 +135,10 @@ Accede desde el boton **Gastos** en la barra de navegacion.
 
 Como admin, podes cambiar a la **vista de chofer** para ver tus propios traslados asignados. Usa el boton "Modo Chofer" en la barra de navegacion.
 
+### 2.6 Modo Oscuro
+
+Podes cambiar entre modo claro, oscuro o automatico (sigue la preferencia del sistema). En desktop usa el boton en la barra de navegacion, en mobile esta en el menu lateral.
+
 ---
 
 ## 3. Panel de Chofer
@@ -175,27 +179,16 @@ Accede desde el boton **Gastos**:
 
 ### En computadora
 - La barra de navegacion superior tiene las pestanas: **Inicio**, **Traslados**, **Choferes**.
-- Botones adicionales: **Gastos**, **Modo Chofer**, **Salir**.
+- Botones adicionales: **Gastos**, **Modo Chofer**, **Modo Oscuro**, **Salir**.
 
 ### En celular
 - Presiona el icono de **menu** (tres lineas) arriba a la izquierda.
-- Se abre un menu lateral con todas las opciones de navegacion.
+- Se abre un menu lateral con todas las opciones de navegacion, incluyendo el cambio de tema.
 - Toca fuera del menu para cerrarlo.
 
 ---
 
-## 5. Planes
-
-| Caracteristica | Free | Premium |
-|---|---|---|
-| Traslados por mes | 30 | Ilimitados |
-| Agregar choferes | No | Si |
-| Gastos | Si | Si |
-| Fotos en traslados | Si | Si |
-
----
-
-## 6. Consejos utiles
+## 5. Consejos utiles
 
 - **Actualizaciones en tiempo real:** no necesitas recargar la pagina. Los cambios que hagan otros usuarios (choferes o admins) se reflejan automaticamente.
 - **Fotos:** se comprimen automaticamente al subirlas para optimizar el rendimiento.
@@ -205,10 +198,7 @@ Accede desde el boton **Gastos**:
 
 ---
 
-## 7. Preguntas frecuentes
-
-**No puedo crear mas traslados**
-Puede que hayas alcanzado el limite de 30 traslados mensuales del plan Free. Considera actualizar al plan Premium.
+## 6. Preguntas frecuentes
 
 **Mi chofer no puede unirse**
 Verifica que el codigo de invitacion sea correcto y que no haya expirado. Genera uno nuevo si es necesario.

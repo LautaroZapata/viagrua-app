@@ -43,7 +43,7 @@ export function useSupabaseQuery<T>(
 export function usePerfil(userId: string | null) {
   return useSupabaseQuery(
     userId ? `perfil:${userId}` : null,
-    () => supabase.from('perfiles').select('id, email, nombre_completo, telefono, rol, empresa_id, avatar_url, plan').eq('id', userId!).single(),
+    () => supabase.from('perfiles').select('id, email, nombre_completo, telefono, rol, empresa_id, avatar_url').eq('id', userId!).single(),
   )
 }
 
@@ -72,12 +72,3 @@ export function useGastos(empresaId: string | null, userId: string | null, isAdm
   )
 }
 
-/**
- * Hook for fetching the empresa plan config.
- */
-export function usePlanConfig(empresaId: string | null) {
-  return useSupabaseQuery(
-    empresaId ? `empresa:${empresaId}` : null,
-    () => supabase.from('empresas').select('id, plan, estado').eq('id', empresaId!).single(),
-  )
-}

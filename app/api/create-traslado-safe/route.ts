@@ -69,24 +69,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No tienes permiso para crear traslados en esta empresa' }, { status: 403 })
     }
 
-    // Verificar límite de plan
-    const { data: perfilPlan, error: perfilPlanError } = await supabaseAdmin
-      .from('perfiles')
-      .select('plan, traslados_mes_actual')
-      .eq('id', user.id)
-      .single()
-
-    if (perfilPlanError || !perfilPlan) {
-      return NextResponse.json({ error: 'No se pudo verificar el plan' }, { status: 500 })
-    }
-
-    const planLimits: Record<string, number> = { free: 30, premium: Infinity, admin: Infinity }
-    const limite = planLimits[perfilPlan.plan] ?? 30
-
-    if ((perfilPlan.traslados_mes_actual || 0) >= limite) {
-      return new Response(JSON.stringify({ error: 'Límite de traslados alcanzado para el plan gratuito' }), { status: 403 })
-    }
-
     // Verificar que el chofer pertenece a la misma empresa
     const { data: choferPerfil, error: choferError } = await supabase
       .from('perfiles')
@@ -130,12 +112,6 @@ export async function POST(request: Request) {
         { status: 500 }
       )
     }
-
-    // Incrementar contador de traslados del mes
-    await supabaseAdmin
-      .from('perfiles')
-      .update({ traslados_mes_actual: (perfilPlan.traslados_mes_actual || 0) + 1 })
-      .eq('id', user.id)
 
     auditLog({ userId: user.id, empresaId: input.empresa_id, action: 'create_traslado', details: { marca_modelo: input.marca_modelo } })
 
