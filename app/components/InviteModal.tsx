@@ -80,7 +80,7 @@ export default function InviteModal({ open, onOpenChange, empresaId }: InviteMod
                     </div>
                 ) : (
                     <div className="text-center py-4">
-                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Codigo de invitacion</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Codigo de invitacion</p>
                         <p className="text-2xl font-bold text-primary mb-5 tracking-widest font-mono">{codigoInvitacion}</p>
                         {linkInvitacion && (
                             <img
@@ -96,7 +96,7 @@ export default function InviteModal({ open, onOpenChange, empresaId }: InviteMod
                         <Button onClick={copiarLink} className="w-full" variant={linkCopiado ? 'outline' : 'default'}>
                             {linkCopiado ? <><Check className="size-4 mr-1.5" /> Link Copiado</> : <><Copy className="size-4 mr-1.5" /> Copiar Link</>}
                         </Button>
-                        <p className="text-[10px] text-muted-foreground mt-4">Este codigo expira en 7 dias y solo puede usarse una vez</p>
+                        <p className="text-xs text-muted-foreground mt-4">Este codigo expira en 7 dias y solo puede usarse una vez</p>
                     </div>
                 )}
             </DialogContent>

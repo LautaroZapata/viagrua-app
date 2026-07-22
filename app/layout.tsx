@@ -1,17 +1,17 @@
 import type { Metadata, Viewport } from 'next'
-import { Instrument_Sans, Space_Grotesk } from 'next/font/google'
+import { DM_Sans, Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 import PwaRegister from '@/components/PwaRegister'
 import { Toaster } from 'sonner'
 import { Providers } from './providers'
 
-const instrumentSans = Instrument_Sans({
+const dmSans = DM_Sans({
     subsets: ['latin'],
     variable: '--font-body',
     display: 'swap',
 })
 
-const spaceGrotesk = Space_Grotesk({
+const plusJakarta = Plus_Jakarta_Sans({
     subsets: ['latin'],
     variable: '--font-display',
     display: 'swap',
@@ -44,7 +44,7 @@ export default function RootLayout({
     children: React.ReactNode
 }) {
     return (
-        <html lang="es" className={`${instrumentSans.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
+        <html lang="es" className={`${dmSans.variable} ${plusJakarta.variable}`} suppressHydrationWarning>
             <body className="antialiased">
                 <Providers>
                     <PwaRegister />

@@ -147,7 +147,7 @@ export default function DashboardPage() {
                                     >
                                         <div className="flex items-center justify-between mb-3">
                                             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{s.label}</p>
-                                            <Badge variant="secondary" className={`${s.badgeClass} rounded-full text-[10px] px-2 py-0.5`}>
+                                            <Badge variant="secondary" className={`${s.badgeClass} rounded-full text-xs px-2 py-0.5`}>
                                                 <s.icon className="size-3 mr-1" />
                                                 {s.label.split(' ').pop()}
                                             </Badge>

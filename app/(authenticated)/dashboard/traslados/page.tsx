@@ -141,7 +141,7 @@ export default function TrasladosPage() {
                                                 <div className="flex-1 cursor-pointer min-w-0" onClick={() => router.push(`/dashboard/traslado/${t.id}`)}>
                                                     <div className="flex items-center gap-2 mb-1.5">
                                                         <h4 className="font-semibold text-sm sm:text-base text-foreground truncate">{t.marca_modelo}</h4>
-                                                        {t.es_0km && <Badge variant="secondary" className="text-[10px]">0 KM</Badge>}
+                                                        {t.es_0km && <Badge variant="secondary" className="text-xs">0 KM</Badge>}
                                                         <ChevronRight className="size-4 text-muted-foreground/50 group-hover:text-primary transition shrink-0 ml-auto lg:ml-0" />
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -149,7 +149,7 @@ export default function TrasladosPage() {
                                                         {t.importe_total != null && (
                                                             <span className="flex items-center gap-1.5">
                                                                 <span className="font-medium text-foreground">${t.importe_total.toLocaleString('es-AR')}</span>
-                                                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${pago.bg} ${pago.text}`}>{pago.label}</span>
+                                                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${pago.bg} ${pago.text}`}>{pago.label}</span>
                                                             </span>
                                                         )}
                                                         <span>{t.perfiles?.nombre_completo || 'Sin asignar'}</span>

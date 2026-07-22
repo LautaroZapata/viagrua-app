@@ -211,13 +211,13 @@ export default function NuevoTraslado() {
                                                 <button type="button" onClick={() => eliminarFoto(tipo)}
                                                     className="absolute top-1 right-1 size-6 bg-destructive hover:bg-destructive/80 rounded-full flex items-center justify-center shadow-md transition"
                                                     aria-label={`Eliminar foto ${tipo}`}><X className="size-3.5 text-white" /></button>
-                                                <p className="text-[10px] text-center text-muted-foreground mt-1">{formatFileSize(fotos[tipo]!.compressedSize || 0)}</p>
+                                                <p className="text-xs text-center text-muted-foreground mt-1">{formatFileSize(fotos[tipo]!.compressedSize || 0)}</p>
                                             </div>
                                         ) : (
                                             <button type="button" onClick={() => inputRefs[tipo].current?.click()} disabled={comprimiendo === tipo}
                                                 className="w-full h-24 border-2 border-dashed border-border rounded-lg hover:border-primary/50 hover:bg-primary/5 transition text-center flex flex-col items-center justify-center">
                                                 {comprimiendo === tipo ? <p className="text-xs text-muted-foreground">Comprimiendo...</p> : (
-                                                    <><Camera className="size-5 text-muted-foreground/50 mb-1" /><p className="font-medium text-[10px] text-muted-foreground capitalize">{tipo}</p></>
+                                                    <><Camera className="size-5 text-muted-foreground/50 mb-1" /><p className="font-medium text-xs text-muted-foreground capitalize">{tipo}</p></>
                                                 )}
                                             </button>
                                         )}

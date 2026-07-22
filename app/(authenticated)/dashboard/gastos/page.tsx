@@ -191,38 +191,38 @@ export default function GastosPage() {
                 {isAdmin && (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <Card><CardContent className="p-4 text-center">
-                            <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wide">Ingresos</p>
+                            <p className="text-xs text-muted-foreground uppercase font-medium tracking-wide">Ingresos</p>
                             <p className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">${totalIngresos.toLocaleString('es-AR')}</p>
-                            <p className="text-[10px] text-muted-foreground mt-1">Traslados cobrados</p>
+                            <p className="text-xs text-muted-foreground mt-1">Traslados cobrados</p>
                         </CardContent></Card>
                         <Card><CardContent className="p-4 text-center">
-                            <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wide">Gastos Totales</p>
+                            <p className="text-xs text-muted-foreground uppercase font-medium tracking-wide">Gastos Totales</p>
                             <p className="text-xl sm:text-2xl font-bold text-red-500 mt-1">${gastos.reduce((s, g) => s + g.importe, 0).toLocaleString('es-AR')}</p>
-                            <p className="text-[10px] text-muted-foreground mt-1">Toda la empresa</p>
+                            <p className="text-xs text-muted-foreground mt-1">Toda la empresa</p>
                         </CardContent></Card>
                         <Card className={rentabilidad >= 0 ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}><CardContent className="p-4 text-center">
-                            <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wide">Rentabilidad</p>
+                            <p className="text-xs text-muted-foreground uppercase font-medium tracking-wide">Rentabilidad</p>
                             <p className={`text-xl sm:text-2xl font-bold mt-1 ${rentabilidad >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600'}`}>${rentabilidad.toLocaleString('es-AR')}</p>
-                            <p className="text-[10px] text-muted-foreground mt-1">{rentabilidad >= 0 ? 'Ganancia' : 'Perdida'}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{rentabilidad >= 0 ? 'Ganancia' : 'Perdida'}</p>
                         </CardContent></Card>
                     </div>
                 )}
                 {!isAdmin && (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <Card className="bg-emerald-500/5 border-emerald-500/20"><CardContent className="p-4 text-center">
-                            <p className="text-[10px] text-muted-foreground uppercase font-medium">Mis Ingresos</p>
+                            <p className="text-xs text-muted-foreground uppercase font-medium">Mis Ingresos</p>
                             <p className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">${misIngresosTotal.toLocaleString('es-AR')}</p>
-                            <p className="text-[10px] text-muted-foreground mt-1">{misTraslados.length} traslados</p>
+                            <p className="text-xs text-muted-foreground mt-1">{misTraslados.length} traslados</p>
                         </CardContent></Card>
                         <Card className="bg-red-500/5 border-red-500/20"><CardContent className="p-4 text-center">
-                            <p className="text-[10px] text-muted-foreground uppercase font-medium">Mis Gastos</p>
+                            <p className="text-xs text-muted-foreground uppercase font-medium">Mis Gastos</p>
                             <p className="text-xl sm:text-2xl font-bold text-red-500 mt-1">${totalGastos.toLocaleString('es-AR')}</p>
-                            <p className="text-[10px] text-muted-foreground mt-1">{gastos.length} gastos</p>
+                            <p className="text-xs text-muted-foreground mt-1">{gastos.length} gastos</p>
                         </CardContent></Card>
                         <Card className={miBalance >= 0 ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}><CardContent className="p-4 text-center">
-                            <p className="text-[10px] text-muted-foreground uppercase font-medium">Mi Balance</p>
+                            <p className="text-xs text-muted-foreground uppercase font-medium">Mi Balance</p>
                             <p className={`text-xl sm:text-2xl font-bold mt-1 ${miBalance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600'}`}>${miBalance.toLocaleString('es-AR')}</p>
-                            <p className="text-[10px] text-muted-foreground mt-1">{miBalance >= 0 ? 'Positivo' : 'Negativo'}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{miBalance >= 0 ? 'Positivo' : 'Negativo'}</p>
                         </CardContent></Card>
                     </div>
                 )}
@@ -332,12 +332,12 @@ export default function GastosPage() {
                                                         <div className="min-w-0">
                                                             <div className="flex flex-wrap items-center gap-2">
                                                                 <p className="font-medium text-sm text-foreground">{getLabelForTipo(gasto.tipo)}</p>
-                                                                {gasto.perfiles && <span className="text-[10px] bg-blue-500/10 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded shrink-0">
+                                                                {gasto.perfiles && <span className="text-xs bg-blue-500/10 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded shrink-0">
                                                                     {gasto.usuario_id === perfil?.id ? 'Yo' : (Array.isArray(gasto.perfiles) ? gasto.perfiles[0]?.nombre_completo : gasto.perfiles.nombre_completo)}
                                                                 </span>}
                                                                 {gasto.descripcion && expandedId !== gasto.id && <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />}
                                                             </div>
-                                                            <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
+                                                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5">
                                                                 <ClientOnly>{gasto.fecha ? new Date(gasto.fecha).toLocaleDateString('es-AR') : ''}</ClientOnly>
                                                                 {gasto.descripcion && expandedId !== gasto.id && <span className="truncate max-w-[180px] sm:max-w-[240px]">{gasto.descripcion}</span>}
                                                             </div>
@@ -392,12 +392,12 @@ export default function GastosPage() {
                                                         <div className="min-w-0">
                                                             <div className="flex flex-wrap items-center gap-2">
                                                                 <p className="font-medium text-sm text-foreground truncate">{mov.concepto}</p>
-                                                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${mov.tipo === 'ingreso' ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-red-500/20 text-red-700 dark:text-red-400'}`}>
+                                                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${mov.tipo === 'ingreso' ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-red-500/20 text-red-700 dark:text-red-400'}`}>
                                                                     {mov.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}
                                                                 </span>
                                                                 {mov.descripcion && expandedId !== key && <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />}
                                                             </div>
-                                                            <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
+                                                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5">
                                                                 <ClientOnly>{mov.fecha ? new Date(mov.fecha).toLocaleDateString('es-AR') : ''}</ClientOnly>
                                                                 {mov.descripcion && expandedId !== key && <span className="truncate max-w-[180px] sm:max-w-[240px]">{mov.descripcion}</span>}
                                                             </div>

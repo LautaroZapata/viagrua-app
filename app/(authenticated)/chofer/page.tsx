@@ -264,26 +264,26 @@ export default function PanelChofer() {
                                     <div className="flex items-start sm:items-center justify-between gap-3">
                                         <div className="flex-1 min-w-0">
                                             <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-                                                <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-medium">{t.empresas?.nombre || 'Empresa'}</span>
-                                                {t.departamento && <span className="text-[10px] bg-blue-500/10 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-medium">{t.departamento}</span>}
-                                                <span className="text-[10px] text-muted-foreground/50"><ClientOnly>{t.created_at ? new Date(t.created_at).toLocaleDateString() : ''}</ClientOnly></span>
+                                                <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-medium">{t.empresas?.nombre || 'Empresa'}</span>
+                                                {t.departamento && <span className="text-xs bg-blue-500/10 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-medium">{t.departamento}</span>}
+                                                <span className="text-xs text-muted-foreground/50"><ClientOnly>{t.created_at ? new Date(t.created_at).toLocaleDateString() : ''}</ClientOnly></span>
                                             </div>
                                             <h3 className="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
                                                 {t.marca_modelo}
-                                                {t.es_0km && <span className="text-[10px] bg-blue-500/10 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-medium">0 KM</span>}
+                                                {t.es_0km && <span className="text-xs bg-blue-500/10 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-medium">0 KM</span>}
                                             </h3>
                                             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground">
                                                 {t.matricula && <span># {t.matricula}</span>}
                                                 {t.importe_total != null && (
                                                     <span className="flex items-center gap-1">
                                                         <span className="font-medium text-foreground">${t.importe_total.toLocaleString('es-AR')}</span>
-                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${pago.bg} ${pago.text}`}>{pago.label}</span>
+                                                        <span className={`text-xs px-1.5 py-0.5 rounded ${pago.bg} ${pago.text}`}>{pago.label}</span>
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
-                                            <span className={`text-[10px] font-medium px-2 py-1 rounded-lg border ${estado.bg} ${estado.text}`}>{estado.label}</span>
+                                            <span className={`text-xs font-medium px-2 py-1 rounded-lg border ${estado.bg} ${estado.text}`}>{estado.label}</span>
                                             <ChevronRight className="size-4 text-muted-foreground/30 group-hover:text-primary transition" />
                                         </div>
                                     </div>

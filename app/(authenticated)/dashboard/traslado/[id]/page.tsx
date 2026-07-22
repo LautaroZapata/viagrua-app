@@ -137,21 +137,21 @@ export default function DetalleTrasladoAdmin() {
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                             {traslado.matricula && (
                                 <div className="bg-muted/50 p-3 rounded-lg">
-                                    <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Matricula</p>
+                                    <p className="text-xs text-muted-foreground uppercase font-medium mb-1">Matricula</p>
                                     <p className="text-base font-semibold text-foreground">{traslado.matricula}</p>
                                 </div>
                             )}
                             {traslado.importe_total != null && (
                                 <div className="bg-muted/50 p-3 rounded-lg">
-                                    <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Importe</p>
+                                    <p className="text-xs text-muted-foreground uppercase font-medium mb-1">Importe</p>
                                     <p className="text-base font-semibold text-emerald-600 dark:text-emerald-400">${traslado.importe_total.toLocaleString('es-AR')}</p>
-                                    <Badge variant="outline" className={`text-[10px] mt-1 ${traslado.estado_pago === 'pendiente' ? 'text-yellow-700 dark:text-yellow-400' : traslado.estado_pago === 'efectivo' ? 'text-emerald-700 dark:text-emerald-400' : 'text-blue-700 dark:text-blue-400'}`}>
+                                    <Badge variant="outline" className={`text-xs mt-1 ${traslado.estado_pago === 'pendiente' ? 'text-yellow-700 dark:text-yellow-400' : traslado.estado_pago === 'efectivo' ? 'text-emerald-700 dark:text-emerald-400' : 'text-blue-700 dark:text-blue-400'}`}>
                                         {traslado.estado_pago === 'pendiente' ? 'Pago pendiente' : traslado.estado_pago === 'efectivo' ? 'Efectivo' : 'Transferencia'}
                                     </Badge>
                                 </div>
                             )}
                             <div className="bg-muted/50 p-3 rounded-lg">
-                                <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Fecha</p>
+                                <p className="text-xs text-muted-foreground uppercase font-medium mb-1">Fecha</p>
                                 <p className="text-base font-semibold text-foreground">
                                     <ClientOnly>{traslado.created_at ? new Date(traslado.created_at).toLocaleDateString() : ''}</ClientOnly>
                                 </p>
@@ -159,7 +159,7 @@ export default function DetalleTrasladoAdmin() {
                         </div>
                         {(traslado.desde || traslado.hasta) && (
                             <div className="mt-4 p-3 bg-emerald-500/5 rounded-lg border border-emerald-500/10">
-                                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-medium mb-1">Recorrido</p>
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400 uppercase font-medium mb-1">Recorrido</p>
                                 <p className="text-sm text-foreground">
                                     {traslado.desde && <span className="font-medium">Desde: {traslado.desde}</span>}
                                     {traslado.desde && traslado.hasta && <span className="mx-2 text-muted-foreground">&rarr;</span>}
@@ -169,7 +169,7 @@ export default function DetalleTrasladoAdmin() {
                         )}
                         {(traslado.departamento || traslado.direccion) && (
                             <div className="mt-4 p-3 bg-blue-500/5 rounded-lg border border-blue-500/10">
-                                <p className="text-[10px] text-blue-600 dark:text-blue-400 uppercase font-medium mb-1">Ubicacion</p>
+                                <p className="text-xs text-blue-600 dark:text-blue-400 uppercase font-medium mb-1">Ubicacion</p>
                                 <p className="text-sm text-foreground">
                                     {traslado.direccion && <span className="font-medium">{traslado.direccion}</span>}
                                     {traslado.direccion && traslado.departamento && ' - '}
@@ -179,7 +179,7 @@ export default function DetalleTrasladoAdmin() {
                         )}
                         {traslado.observaciones && (
                             <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/10">
-                                <p className="text-[10px] text-primary uppercase font-medium mb-1">Observaciones</p>
+                                <p className="text-xs text-primary uppercase font-medium mb-1">Observaciones</p>
                                 <p className="text-sm text-foreground">{traslado.observaciones}</p>
                             </div>
                         )}
@@ -197,7 +197,7 @@ export default function DetalleTrasladoAdmin() {
                                 {fotos.map((f) => (
                                     <div key={f.tipo} className="relative">
                                         <img src={f.url!} alt={f.tipo} className="w-full h-28 sm:h-36 object-cover rounded-lg cursor-pointer hover:opacity-90 transition" onClick={() => setFotoAmpliada(f.url)} />
-                                        <span className="absolute bottom-1.5 left-1.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">{f.tipo}</span>
+                                        <span className="absolute bottom-1.5 left-1.5 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">{f.tipo}</span>
                                     </div>
                                 ))}
                             </div>

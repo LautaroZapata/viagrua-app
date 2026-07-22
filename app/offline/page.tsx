@@ -2,12 +2,11 @@
 
 export default function OfflinePage() {
     return (
-        <div className="page-bg min-h-screen flex items-center justify-center px-4">
+        <div className="min-h-screen bg-background flex items-center justify-center px-4">
             <div className="text-center max-w-sm mx-auto animate-fadeInUp">
-                {/* Icono */}
-                <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-6">
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
                     <svg
-                        className="w-10 h-10 text-orange-500"
+                        className="w-10 h-10 text-primary"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -21,14 +20,14 @@ export default function OfflinePage() {
                     </svg>
                 </div>
 
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Sin conexión</h1>
-                <p className="text-gray-500 text-sm mb-8">
-                    No hay acceso a internet. Revisá tu conexión y volvé a intentarlo.
+                <h1 className="text-2xl font-bold text-foreground mb-2">Sin conexion</h1>
+                <p className="text-muted-foreground text-sm mb-8">
+                    No hay acceso a internet. Revisa tu conexion y volve a intentarlo.
                 </p>
 
                 <button
                     onClick={() => window.location.reload()}
-                    className="btn-primary px-8 py-3 text-sm"
+                    className="inline-flex items-center justify-center h-11 px-8 rounded-[10px] bg-primary text-primary-foreground font-medium text-sm shadow-[0_4px_14px_rgba(255,122,0,0.25)] hover:bg-primary/90 transition"
                 >
                     Reintentar
                 </button>
