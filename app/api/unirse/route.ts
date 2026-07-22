@@ -4,10 +4,8 @@ import { auditLog } from '@/lib/audit'
 import {
   sanitizeString,
   sanitizeAndLimit,
-  isValidUUID,
   isValidEmail,
   isValidPassword,
-  isValidName,
   isValidCodigoInvitacion,
   LIMITS,
 } from '@/lib/validation'
@@ -61,7 +59,7 @@ export async function POST(request: Request) {
     // Look up invitation (use supabaseAdmin to bypass RLS for unauthenticated lookup)
     const { data: invitacion, error: invError } = await supabaseAdmin
       .from('invitaciones')
-      .select('id, empresa_id, rol, usado, expires_at, email')
+      .select('id, empresa_id, usado, expires_at')
       .eq('codigo', codigo)
       .single()
 
@@ -77,11 +75,6 @@ export async function POST(request: Request) {
     // Check expiration
     if (invitacion.expires_at && new Date(invitacion.expires_at) < new Date()) {
       return NextResponse.json({ error: 'Esta invitación ha expirado' }, { status: 400 })
-    }
-
-    // Check email match (if invitation is email-specific)
-    if (invitacion.email && invitacion.email.toLowerCase() !== email.toLowerCase()) {
-      return NextResponse.json({ error: 'Esta invitación está dirigida a otro email' }, { status: 400 })
     }
 
     // Create user with Supabase Auth (use admin client to bypass email confirmation if needed)
@@ -111,7 +104,7 @@ export async function POST(request: Request) {
         id: authData.user.id,
         email,
         nombre_completo: nombre,
-        rol: invitacion.rol || 'chofer',
+        rol: 'chofer',
         empresa_id: invitacion.empresa_id,
       })
 

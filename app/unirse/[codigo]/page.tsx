@@ -13,9 +13,7 @@ interface Invitacion {
     id: string
     empresa_id: string
     codigo: string
-    usado: boolean
-    expires_at: string
-    empresas: { nombre: string }
+    empresa_nombre: string
 }
 
 export default function UnirseEmpresa() {
@@ -45,31 +43,20 @@ export default function UnirseEmpresa() {
             return
         }
 
-        const { data, error } = await supabase
-            .from('invitaciones')
-            .select('*, empresas(nombre)')
-            .eq('codigo', codigo)
-            .single()
+        try {
+            const res = await fetch(`/api/validar-invitacion?codigo=${encodeURIComponent(codigo)}`)
+            const data = await res.json()
 
-        if (error || !data) {
-            setError('Código de invitación inválido')
-            setLoading(false)
-            return
+            if (!res.ok) {
+                setError(data.error || 'Código de invitación inválido')
+                setLoading(false)
+                return
+            }
+
+            setInvitacion(data)
+        } catch {
+            setError('Error de conexión')
         }
-
-        if (data.usado) {
-            setError('Este código ya fue utilizado')
-            setLoading(false)
-            return
-        }
-
-        if (new Date(data.expires_at) < new Date()) {
-            setError('Este código ha expirado')
-            setLoading(false)
-            return
-        }
-
-        setInvitacion(data)
         setLoading(false)
     }
 
@@ -167,7 +154,7 @@ export default function UnirseEmpresa() {
                         </div>
                         <h1 className="text-xl font-semibold text-foreground mb-1">Únete como Chofer</h1>
                         <p className="text-sm text-muted-foreground">
-                            Invitación para <span className="font-medium text-primary">{invitacion?.empresas?.nombre}</span>
+                            Invitación para <span className="font-medium text-primary">{invitacion?.empresa_nombre}</span>
                         </p>
                     </div>
 

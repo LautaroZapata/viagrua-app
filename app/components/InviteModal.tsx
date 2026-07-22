@@ -35,7 +35,8 @@ export default function InviteModal({ open, onOpenChange, empresaId }: InviteMod
         const arr = new Uint8Array(5)
         crypto.getRandomValues(arr)
         const codigo = Array.from(arr, b => b.toString(36).padStart(2, '0')).join('').substring(0, 8).toUpperCase()
-        const { error } = await supabase.from('invitaciones').insert({ empresa_id: empresaId, codigo })
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        const { error } = await supabase.from('invitaciones').insert({ empresa_id: empresaId, codigo, expires_at: expiresAt })
         if (error) { showError('Error al generar codigo: ' + error.message); setGenerandoCodigo(false); return }
         setCodigoInvitacion(codigo)
         setLinkInvitacion(`${window.location.origin}/unirse/${codigo}`)
