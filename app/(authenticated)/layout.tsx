@@ -17,7 +17,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     return (
         <SidebarProvider>
             <AppSidebar />
-            <SidebarInset>
+            <SidebarInset className="bg-background">
                 <main id="main-content" className="flex-1">
                     {children}
                 </main>

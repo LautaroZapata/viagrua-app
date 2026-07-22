@@ -46,92 +46,112 @@
   --color-info: hsl(var(--info));
   --color-info-foreground: hsl(var(--info-foreground));
   --color-sidebar: var(--sidebar);
+  --font-display: var(--font-display);
 }
 
 :root {
-  --background: 28 33% 96%;
-  --foreground: 220 14% 10%;
-  --card: 0 0% 100%;
-  --card-foreground: 220 14% 10%;
+  /* Light mode — Variante 2a */
+  --background: 220 14% 96%;       /* #F6F7F9 */
+  --foreground: 225 15% 12%;       /* #1A1D23 */
+  --card: 0 0% 100%;               /* #FFFFFF */
+  --card-foreground: 225 15% 12%;  /* #1A1D23 */
   --popover: 0 0% 100%;
-  --popover-foreground: 220 14% 10%;
-  --primary: 28 100% 50%;
+  --popover-foreground: 225 15% 12%;
+  --primary: 28 100% 50%;          /* #FF7A00 */
   --primary-foreground: 0 0% 100%;
   --secondary: 220 14% 96%;
-  --secondary-foreground: 220 14% 30%;
+  --secondary-foreground: 224 12% 30%;
   --muted: 220 14% 96%;
-  --muted-foreground: 220 9% 46%;
+  --muted-foreground: 224 12% 44%; /* #61687A */
   --accent: 28 100% 97%;
   --accent-foreground: 28 100% 35%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --border: 220 13% 91%;
-  --input: 220 13% 91%;
+  --border: 225 14% 91%;           /* #E6E8EE */
+  --input: 225 18% 95%;            /* #EEF0F4 */
   --ring: 28 100% 50%;
   --radius: 0.75rem;
+
+  /* Semantic */
   --success: 142 76% 36%;
   --success-foreground: 0 0% 100%;
   --warning: 38 92% 50%;
   --warning-foreground: 0 0% 100%;
   --info: 217 91% 60%;
   --info-foreground: 0 0% 100%;
+
+  /* Charts */
   --chart-1: 28 100% 50%;
   --chart-2: 173 58% 39%;
   --chart-3: 197 37% 24%;
   --chart-4: 43 74% 66%;
   --chart-5: 27 87% 67%;
-  --sidebar-background: 0 0% 98%;
-  --sidebar-foreground: 240 5.3% 26.1%;
+
+  /* Sidebar — always dark */
+  --sidebar-background: 228 23% 9%;   /* #14161C */
+  --sidebar-foreground: 230 25% 96%;   /* #F2F3F7 */
   --sidebar-primary: 28 100% 50%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 4.8% 95.9%;
-  --sidebar-accent-foreground: 240 5.9% 10%;
-  --sidebar-border: 220 13% 91%;
+  --sidebar-accent: 231 18% 15%;      /* #1F2230 */
+  --sidebar-accent-foreground: 230 25% 96%;
+  --sidebar-border: 229 16% 18%;      /* #262A35 */
   --sidebar-ring: 28 100% 50%;
-  --sidebar: hsl(0 0% 98%);
+  --sidebar: hsl(228 23% 9%);
+
+  /* Status badge colors */
+  --status-pending: 38 92% 50%;
+  --status-in-progress: 217 91% 60%;
+  --status-completed: 142 76% 36%;
+  --status-available: 142 76% 36%;
+  --status-on-route: 217 91% 60%;
 }
 
 .dark {
-  --background: 222 47% 11%;
-  --foreground: 213 31% 91%;
-  --card: 217 33% 17%;
-  --card-foreground: 213 31% 91%;
-  --popover: 217 33% 17%;
-  --popover-foreground: 213 31% 91%;
+  /* Dark mode — Torre de Control 1b */
+  --background: 228 23% 9%;        /* #14161C */
+  --foreground: 220 20% 93%;       /* #E8EAF0 */
+  --card: 225 18% 13%;             /* #1B1E26 */
+  --card-foreground: 220 20% 93%;
+  --popover: 225 18% 13%;
+  --popover-foreground: 220 20% 93%;
   --primary: 28 100% 50%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 217 33% 17%;
-  --secondary-foreground: 213 31% 91%;
-  --muted: 217 33% 17%;
-  --muted-foreground: 215 20% 55%;
-  --accent: 217 33% 22%;
-  --accent-foreground: 213 31% 91%;
+  --secondary: 225 18% 13%;
+  --secondary-foreground: 220 20% 93%;
+  --muted: 225 18% 16%;
+  --muted-foreground: 222 13% 65%; /* #9AA1B2 */
+  --accent: 225 18% 18%;
+  --accent-foreground: 220 20% 93%;
   --destructive: 0 62% 50%;
   --destructive-foreground: 0 0% 100%;
-  --border: 217 33% 24%;
-  --input: 217 33% 24%;
+  --border: 224 16% 21%;           /* #2C313E */
+  --input: 224 16% 21%;
   --ring: 28 100% 50%;
+
   --success: 142 76% 36%;
   --success-foreground: 0 0% 100%;
   --warning: 45 93% 47%;
   --warning-foreground: 0 0% 100%;
   --info: 217 91% 60%;
   --info-foreground: 0 0% 100%;
+
   --chart-1: 28 100% 55%;
   --chart-2: 160 60% 45%;
   --chart-3: 30 80% 55%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
-  --sidebar-background: 222 47% 11%;
-  --sidebar-foreground: 213 31% 91%;
+
+  /* Sidebar stays same dark in dark mode */
+  --sidebar-background: 228 23% 9%;
+  --sidebar-foreground: 230 25% 96%;
   --sidebar-primary: 28 100% 50%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 217 33% 17%;
-  --sidebar-accent-foreground: 213 31% 91%;
-  --sidebar-border: 217 33% 24%;
+  --sidebar-accent: 231 18% 15%;
+  --sidebar-accent-foreground: 230 25% 96%;
+  --sidebar-border: 229 16% 18%;
   --sidebar-ring: 28 100% 50%;
   color-scheme: dark;
-  --sidebar: hsl(240 5.9% 10%);
+  --sidebar: hsl(228 23% 9%);
 }
 
 @layer base {
@@ -143,12 +163,17 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-body), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     min-height: 100vh;
     margin: 0;
     letter-spacing: -0.01em;
     overflow-x: clip;
   }
+}
+
+/* Display font utility */
+.font-display {
+  font-family: var(--font-display), -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* Horizontal scroll containers */

@@ -10,6 +10,7 @@ import {
   ChartLegendContent,
 } from '@/components/ui/chart'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
 
 interface Traslado {
   importe_total: number | null
@@ -40,11 +41,11 @@ const MONTH_LABELS: Record<string, string> = {
 const chartConfig = {
   ingresos: {
     label: 'Ingresos',
-    color: 'hsl(160 60% 45%)',
+    color: 'hsl(28, 100%, 50%)',
   },
   gastos: {
     label: 'Gastos',
-    color: 'hsl(0 72% 51%)',
+    color: 'hsl(225, 14%, 85%)',
   },
 } satisfies ChartConfig
 
@@ -97,41 +98,19 @@ export default function DashboardCharts({ traslados, gastos }: Props) {
 
   if (chartData.length === 0) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-6">
-        <p className="text-sm font-medium text-foreground mb-1">Resumen financiero</p>
-        <p className="text-muted-foreground text-xs">Cuando completes traslados y registres gastos, veras el resumen aqui.</p>
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <p className="font-display text-[15px] font-bold text-foreground mb-1">Resumen financiero</p>
+          <p className="text-muted-foreground text-xs">Cuando completes traslados y registres gastos, veras el resumen aqui.</p>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
-    <div className="space-y-4">
-      {/* Summary row */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Ingresos</p>
-          <p className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{fmt(totalIngresos)}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Gastos</p>
-          <p className="text-lg sm:text-xl font-bold text-red-500 dark:text-red-400 mt-1">{fmt(totalGastos)}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Balance</p>
-          <div className="flex items-center gap-1.5 mt-1">
-            <p className={`text-lg sm:text-xl font-bold ${balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
-              {fmt(Math.abs(balance))}
-            </p>
-            {trend === 'up' && <TrendingUp className="w-4 h-4 text-emerald-500" />}
-            {trend === 'down' && <TrendingDown className="w-4 h-4 text-red-500" />}
-            {trend === 'neutral' && <Minus className="w-4 h-4 text-muted-foreground" />}
-          </div>
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
-        <p className="text-sm font-medium text-foreground mb-4">Ingresos vs Gastos</p>
+    <Card>
+      <CardContent className="p-4 sm:p-6">
+        <p className="font-display text-[15px] font-bold text-foreground mb-4">Ingresos vs Gastos</p>
         <ChartContainer config={chartConfig} className="h-52 sm:h-64 w-full">
           <BarChart data={chartData} barGap={4} barCategoryGap="20%">
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
@@ -165,16 +144,39 @@ export default function DashboardCharts({ traslados, gastos }: Props) {
             <Bar
               dataKey="ingresos"
               fill="var(--color-ingresos)"
-              radius={[4, 4, 0, 0]}
+              radius={[6, 6, 0, 0]}
             />
             <Bar
               dataKey="gastos"
               fill="var(--color-gastos)"
-              radius={[4, 4, 0, 0]}
+              radius={[6, 6, 0, 0]}
             />
           </BarChart>
         </ChartContainer>
-      </div>
-    </div>
+
+        {/* Metrics below chart */}
+        <div className="border-t border-border mt-4 pt-4 grid grid-cols-3 gap-3">
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Ingresos</p>
+            <p className="font-display text-lg sm:text-xl font-bold text-foreground mt-1">{fmt(totalIngresos)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Gastos</p>
+            <p className="font-display text-lg sm:text-xl font-bold text-muted-foreground mt-1">{fmt(totalGastos)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Balance</p>
+            <div className="flex items-center gap-1.5 mt-1">
+              <p className={`font-display text-lg sm:text-xl font-bold ${balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                {fmt(Math.abs(balance))}
+              </p>
+              {trend === 'up' && <TrendingUp className="w-4 h-4 text-emerald-500" />}
+              {trend === 'down' && <TrendingDown className="w-4 h-4 text-red-500" />}
+              {trend === 'neutral' && <Minus className="w-4 h-4 text-muted-foreground" />}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

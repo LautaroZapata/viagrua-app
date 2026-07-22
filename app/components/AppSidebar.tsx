@@ -12,10 +12,8 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
     SidebarGroup,
-    SidebarGroupLabel,
     SidebarGroupContent,
 } from '@/components/ui/sidebar'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import {
     DropdownMenu,
@@ -25,7 +23,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-    Truck, LayoutDashboard, Car, Plus, Users, Receipt, LogOut,
+    LayoutDashboard, Car, Plus, Users, Receipt, LogOut,
     Sun, Moon, ChevronsUpDown, UserCog,
 } from 'lucide-react'
 import { useUser } from './UserContext'
@@ -61,18 +59,18 @@ export default function AppSidebar() {
 
     return (
         <Sidebar collapsible="icon" variant="sidebar">
-            <SidebarHeader>
+            <SidebarHeader className="px-3 py-4">
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
+                        <SidebarMenuButton size="lg" asChild className="hover:bg-[hsl(231,18%,15%)]">
                             <Link href={role === 'admin' ? '/dashboard' : '/chofer'}>
-                                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                                    <Truck className="size-4" />
+                                <div className="flex items-center justify-center rounded-[8px] bg-primary text-primary-foreground size-[34px] shrink-0">
+                                    <span className="font-display text-[17px] font-bold leading-none">G</span>
                                 </div>
-                                <div className="flex flex-col gap-0.5 leading-none">
-                                    <span className="font-semibold">ViaGrua</span>
+                                <div className="flex flex-col gap-0 leading-none min-w-0">
+                                    <span className="font-display text-[17px] font-bold text-[hsl(var(--sidebar-foreground))]">ViaGrua</span>
                                     {empresa && (
-                                        <span className="text-xs text-muted-foreground truncate max-w-[140px]">
+                                        <span className="text-[11px] text-[#8A91A3] truncate max-w-[140px]">
                                             {empresa.nombre}
                                         </span>
                                     )}
@@ -83,21 +81,29 @@ export default function AppSidebar() {
                 </SidebarMenu>
             </SidebarHeader>
 
-            <SidebarContent>
-                <SidebarGroup>
-                    <SidebarGroupLabel>Navegacion</SidebarGroupLabel>
+            <SidebarContent className="px-3">
+                <SidebarGroup className="p-0">
                     <SidebarGroupContent>
-                        <SidebarMenu>
+                        <SidebarMenu className="gap-1">
                             {navItems.map((item) => {
                                 const isActive = item.href === '/dashboard'
                                     ? pathname === '/dashboard'
                                     : pathname.startsWith(item.href)
                                 return (
                                     <SidebarMenuItem key={item.href}>
-                                        <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            isActive={isActive}
+                                            tooltip={item.label}
+                                            className={`h-9 rounded-[10px] px-3 gap-2.5 font-medium transition-colors ${
+                                                isActive
+                                                    ? 'bg-[rgba(255,122,0,0.14)] text-[#FFA149] font-semibold hover:bg-[rgba(255,122,0,0.18)]'
+                                                    : 'text-[#8A91A3] hover:bg-[hsl(231,18%,15%)] hover:text-[hsl(var(--sidebar-foreground))]'
+                                            }`}
+                                        >
                                             <Link href={item.href}>
-                                                <item.icon className="size-4" />
-                                                <span>{item.label}</span>
+                                                <item.icon className="size-4" strokeWidth={2} />
+                                                <span className="text-[13px]">{item.label}</span>
                                             </Link>
                                         </SidebarMenuButton>
                                     </SidebarMenuItem>
@@ -108,15 +114,18 @@ export default function AppSidebar() {
                 </SidebarGroup>
 
                 {role === 'admin' && (
-                    <SidebarGroup>
-                        <SidebarGroupLabel>Vista</SidebarGroupLabel>
+                    <SidebarGroup className="p-0 mt-4">
                         <SidebarGroupContent>
                             <SidebarMenu>
                                 <SidebarMenuItem>
-                                    <SidebarMenuButton asChild tooltip="Modo Chofer">
+                                    <SidebarMenuButton
+                                        asChild
+                                        tooltip="Modo Chofer"
+                                        className="h-9 rounded-[10px] px-3 gap-2.5 text-[#8A91A3] font-medium hover:bg-[hsl(231,18%,15%)] hover:text-[hsl(var(--sidebar-foreground))]"
+                                    >
                                         <Link href="/chofer">
-                                            <UserCog className="size-4" />
-                                            <span>Modo Chofer</span>
+                                            <UserCog className="size-4" strokeWidth={2} />
+                                            <span className="text-[13px]">Modo Chofer</span>
                                         </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
@@ -126,40 +135,42 @@ export default function AppSidebar() {
                 )}
             </SidebarContent>
 
-            <SidebarFooter>
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <SidebarMenuButton size="lg">
-                                    <Avatar className="size-8">
-                                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                                            {initials}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex flex-col gap-0.5 leading-none min-w-0">
-                                        <span className="font-medium text-sm truncate">{perfil?.nombre_completo}</span>
-                                        <span className="text-xs text-muted-foreground capitalize">{role}</span>
-                                    </div>
-                                    <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
-                                </SidebarMenuButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent side="top" align="start" className="w-56">
-                                {mounted && (
-                                    <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-                                        {theme === 'dark' ? <Sun className="size-4 mr-2" /> : <Moon className="size-4 mr-2" />}
-                                        {theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+            <SidebarFooter className="px-3 pb-4">
+                <div className="border-t border-[#262A35] pt-3">
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <SidebarMenuButton size="lg" className="hover:bg-[hsl(231,18%,15%)] rounded-[10px]">
+                                        <div className="flex items-center justify-center size-8 rounded-full bg-primary text-primary-foreground shrink-0">
+                                            <span className="text-xs font-semibold">{initials}</span>
+                                        </div>
+                                        <div className="flex flex-col gap-0 leading-none min-w-0">
+                                            <span className="font-medium text-[13px] text-[hsl(var(--sidebar-foreground))] truncate">
+                                                {perfil?.nombre_completo}
+                                            </span>
+                                            <span className="text-[11px] text-[#8A91A3] capitalize">{role}</span>
+                                        </div>
+                                        <ChevronsUpDown className="ml-auto size-4 text-[#8A91A3]" />
+                                    </SidebarMenuButton>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent side="top" align="start" className="w-56">
+                                    {mounted && (
+                                        <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                                            {theme === 'dark' ? <Sun className="size-4 mr-2" /> : <Moon className="size-4 mr-2" />}
+                                            {theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+                                        </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
+                                        <LogOut className="size-4 mr-2" />
+                                        Cerrar sesion
                                     </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
-                                    <LogOut className="size-4 mr-2" />
-                                    Cerrar sesion
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </SidebarMenuItem>
-                </SidebarMenu>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                </div>
             </SidebarFooter>
         </Sidebar>
     )

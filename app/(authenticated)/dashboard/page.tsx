@@ -20,10 +20,23 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
-    MapPin, Clock, Zap, CheckCircle2, Plus, UserPlus,
+    MapPin, Clock, Zap, CheckCircle2, Plus, UserPlus, Users,
 } from 'lucide-react'
 
 interface Chofer { id: string; nombre_completo: string; email: string }
+
+const statMeta = [
+    { key: 'total', label: 'Total Traslados', icon: MapPin, badgeClass: 'bg-primary/10 text-primary' },
+    { key: 'pendiente', label: 'Pendientes', icon: Clock, badgeClass: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' },
+    { key: 'en_curso', label: 'En Curso', icon: Zap, badgeClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+    { key: 'completado', label: 'Completados', icon: CheckCircle2, badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+] as const
+
+function formatDate() {
+    return new Date().toLocaleDateString('es-AR', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    })
+}
 
 export default function DashboardPage() {
     const { perfil, empresa, role } = useUser()
@@ -84,84 +97,95 @@ export default function DashboardPage() {
         }
     }
 
-    const statCards = [
-        { label: 'Total Traslados', value: counts?.total ?? 0, icon: MapPin, iconBg: 'bg-primary/10', iconColor: 'text-primary', valueColor: 'text-foreground' },
-        { label: 'Pendientes', value: counts?.pendiente ?? 0, icon: Clock, iconBg: 'bg-yellow-500/10', iconColor: 'text-yellow-600 dark:text-yellow-400', valueColor: 'text-yellow-600 dark:text-yellow-400' },
-        { label: 'En Curso', value: counts?.en_curso ?? 0, icon: Zap, iconBg: 'bg-blue-500/10', iconColor: 'text-blue-600 dark:text-blue-400', valueColor: 'text-blue-600 dark:text-blue-400' },
-        { label: 'Completados', value: counts?.completado ?? 0, icon: CheckCircle2, iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-600 dark:text-emerald-400', valueColor: 'text-emerald-600 dark:text-emerald-400' },
-    ]
+    const firstName = perfil?.nombre_completo?.split(' ')[0] || 'Admin'
 
     return (
         <ErrorBoundary>
             <AppHeader breadcrumbs={[{ label: 'Dashboard' }]} />
             <div className="page-enter p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
                 {/* Header */}
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                        Hola, {perfil?.nombre_completo?.split(' ')[0] || 'Admin'}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">{empresa?.nombre}</p>
+                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                    <div>
+                        <p className="text-[13px] text-muted-foreground uppercase tracking-wide">
+                            {formatDate()}
+                        </p>
+                        <h1 className="font-display text-[26px] font-bold text-foreground mt-1">
+                            Buenos dias, {firstName}
+                        </h1>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="default" className="h-10 rounded-[10px]" onClick={() => setModalAbierto(true)}>
+                            <UserPlus className="size-4 mr-1.5" />
+                            Invitar chofer
+                        </Button>
+                        <Button size="default" className="h-10 rounded-[10px] shadow-[0_4px_14px_rgba(255,122,0,0.25)]" onClick={() => router.push('/dashboard/nuevo-traslado')}>
+                            <Plus className="size-4 mr-1.5" />
+                            Nuevo traslado
+                        </Button>
+                    </div>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                    {statCards.map((s) => (
-                        <Card key={s.label}>
-                            <CardContent className="p-4 sm:p-5">
-                                <div className={`w-10 h-10 rounded-xl ${s.iconBg} flex items-center justify-center mb-3`}>
-                                    <s.icon className={`size-5 ${s.iconColor}`} />
-                                </div>
-                                <p className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider">{s.label}</p>
-                                <p className={`text-xl sm:text-2xl lg:text-3xl font-bold mt-0.5 ${s.valueColor}`}>{s.value}</p>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
+                {/* KPI Stats — unified card with dividers */}
+                <Card className="overflow-hidden">
+                    <CardContent className="p-0">
+                        <div className="grid grid-cols-2 lg:grid-cols-4">
+                            {statMeta.map((s, i) => {
+                                const value = counts?.[s.key] ?? 0
+                                const isLast = i === statMeta.length - 1
+                                // Mobile 2-col: items 0,1 get border-bottom; items 0,2 get border-right
+                                // Desktop 4-col: items 0,1,2 get border-right only
+                                const borders = [
+                                    i < 2 ? 'border-b lg:border-b-0' : '',
+                                    i % 2 === 0 ? 'border-r' : (i < 3 ? 'lg:border-r' : ''),
+                                ].filter(Boolean).join(' ')
+                                return (
+                                    <div
+                                        key={s.key}
+                                        className={`p-5 sm:p-6 ${borders} border-border ${
+                                            isLast ? 'bg-gradient-to-br from-primary/5 to-primary/10' : ''
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between mb-3">
+                                            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{s.label}</p>
+                                            <Badge variant="secondary" className={`${s.badgeClass} rounded-full text-[10px] px-2 py-0.5`}>
+                                                <s.icon className="size-3 mr-1" />
+                                                {s.label.split(' ').pop()}
+                                            </Badge>
+                                        </div>
+                                        <p className="font-display text-4xl font-bold tracking-[-0.02em] text-foreground">
+                                            {value}
+                                        </p>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Charts */}
                 {role === 'admin' && (
                     <DashboardCharts traslados={chartTraslados} gastos={gastos} />
                 )}
 
-                {/* Quick Actions */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <button onClick={() => router.push('/dashboard/nuevo-traslado')}
-                        className="group rounded-xl border border-border bg-card p-5 sm:p-6 text-left hover:border-primary/40 hover:shadow-md transition-all">
-                        <div className="w-11 h-11 rounded-xl bg-primary/10 group-hover:bg-primary/15 flex items-center justify-center mb-3 transition">
-                            <Plus className="size-5 text-primary" />
-                        </div>
-                        <p className="font-semibold text-base text-foreground group-hover:text-primary transition">Nuevo Traslado</p>
-                        <p className="text-sm text-muted-foreground mt-0.5">Crear y asignar un nuevo servicio</p>
-                    </button>
-                    <button onClick={() => setModalAbierto(true)}
-                        className="group rounded-xl border border-border bg-card p-5 sm:p-6 text-left hover:border-blue-500/40 hover:shadow-md transition-all">
-                        <div className="w-11 h-11 rounded-xl bg-blue-500/10 group-hover:bg-blue-500/15 flex items-center justify-center mb-3 transition">
-                            <UserPlus className="size-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <p className="font-semibold text-base text-foreground transition">Invitar Chofer</p>
-                        <p className="text-sm text-muted-foreground mt-0.5">Generar link de invitacion</p>
-                    </button>
-                </div>
-
-                {/* Choferes */}
+                {/* Team section */}
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                        <CardTitle className="text-lg">Equipo de Choferes</CardTitle>
-                        <Button variant="outline" size="sm" onClick={() => setModalAbierto(true)}>
-                            <UserPlus className="size-4 mr-1.5" />
-                            Invitar
+                        <CardTitle className="font-display text-[15px] font-bold">Equipo de Choferes</CardTitle>
+                        <Button variant="outline" size="sm" className="rounded-[10px]" onClick={() => router.push('/dashboard/choferes')}>
+                            <Users className="size-4 mr-1.5" />
+                            Gestionar equipo
                         </Button>
                     </CardHeader>
                     <CardContent>
                         {choferes.length === 0 ? (
                             <EmptyState message="No hay choferes registrados" />
                         ) : (
-                            <div className="space-y-2">
+                            <div className="space-y-1">
                                 {choferes.map((chofer) => (
-                                    <div key={chofer.id} className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-accent/30 transition">
+                                    <div key={chofer.id} className="flex items-center justify-between gap-3 p-3 rounded-[10px] hover:bg-accent/50 transition">
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <Avatar className="size-9 sm:size-10">
-                                                <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                                            <Avatar className="size-9">
+                                                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                                                     {chofer.nombre_completo.charAt(0).toUpperCase()}
                                                 </AvatarFallback>
                                             </Avatar>
@@ -171,9 +195,10 @@ export default function DashboardPage() {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
-                                            <Badge variant="outline" className="hidden sm:inline-flex text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
-                                                Activo
-                                            </Badge>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="status-dot bg-emerald-500 status-dot-pulse" />
+                                                <span className="text-xs text-muted-foreground hidden sm:inline">Disponible</span>
+                                            </div>
                                             <Button variant="ghost" size="sm"
                                                 onClick={() => expulsarChofer(chofer.id, chofer.nombre_completo)}
                                                 className="text-muted-foreground hover:text-destructive text-xs">

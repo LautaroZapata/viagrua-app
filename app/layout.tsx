@@ -1,13 +1,19 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Instrument_Sans, Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import PwaRegister from '@/components/PwaRegister'
 import { Toaster } from 'sonner'
 import { Providers } from './providers'
 
-const inter = Inter({
+const instrumentSans = Instrument_Sans({
     subsets: ['latin'],
-    variable: '--font-inter',
+    variable: '--font-body',
+    display: 'swap',
+})
+
+const spaceGrotesk = Space_Grotesk({
+    subsets: ['latin'],
+    variable: '--font-display',
     display: 'swap',
 })
 
@@ -38,7 +44,7 @@ export default function RootLayout({
     children: React.ReactNode
 }) {
     return (
-        <html lang="es" className={inter.variable} suppressHydrationWarning>
+        <html lang="es" className={`${instrumentSans.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
             <body className="antialiased">
                 <Providers>
                     <PwaRegister />
