@@ -4,6 +4,10 @@ import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { sanitizeString, isValidEmail, isValidPassword, isValidName, isValidCodigoInvitacion, LIMITS } from '@/lib/validation'
 import { showError } from '@/lib/swal'
+import { ArrowLeftRight, X, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface Invitacion {
     id: string
@@ -103,7 +107,6 @@ export default function UnirseEmpresa() {
                 return
             }
 
-            // Login automático después de crear la cuenta
             const { error: loginError } = await supabase.auth.signInWithPassword({
                 email,
                 password,
@@ -124,15 +127,12 @@ export default function UnirseEmpresa() {
 
     if (loading) {
         return (
-            <div className="page-bg min-h-screen flex items-center justify-center p-4">
+            <div className="min-h-screen bg-background flex items-center justify-center p-4">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="relative">
-                        <div className="w-16 h-16 border-4 border-orange-200 rounded-full"></div>
-                        <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full absolute top-0 left-0 animate-spin"></div>
-                    </div>
+                    <Loader2 className="w-10 h-10 text-primary animate-spin" />
                     <div className="text-center">
-                        <p className="text-gray-700 font-semibold">Validando</p>
-                        <p className="text-gray-400 text-sm">Verificando invitación...</p>
+                        <p className="text-foreground font-semibold">Validando</p>
+                        <p className="text-muted-foreground text-sm">Verificando invitación...</p>
                     </div>
                 </div>
             </div>
@@ -141,98 +141,62 @@ export default function UnirseEmpresa() {
 
     if (error) {
         return (
-            <div className="page-bg min-h-screen flex items-center justify-center p-4">
-                <div className="card text-center max-w-sm">
-                    <div className="w-14 h-14 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                        <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+            <div className="min-h-screen bg-background flex items-center justify-center p-4">
+                <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm text-center max-w-sm">
+                    <div className="w-14 h-14 mx-auto mb-4 bg-destructive/10 rounded-full flex items-center justify-center">
+                        <X className="w-7 h-7 text-destructive" />
                     </div>
-                    <h1 className="text-xl font-semibold text-gray-900 mb-2">Invitación Inválida</h1>
-                    <p className="text-sm text-gray-600 mb-6">{error}</p>
-                    <a href="/" className="btn-primary inline-block text-sm">
-                        Ir al Inicio
-                    </a>
+                    <h1 className="text-xl font-semibold text-foreground mb-2">Invitación Inválida</h1>
+                    <p className="text-sm text-muted-foreground mb-6">{error}</p>
+                    <Button asChild>
+                        <a href="/">Ir al Inicio</a>
+                    </Button>
                 </div>
             </div>
         )
     }
 
     return (
-        <div className="page-bg min-h-screen flex items-center justify-center p-4">
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
             <div className="w-full max-w-md">
-                <div className="card">
+                <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm">
                     {/* Header */}
                     <div className="text-center mb-6">
-                        <div className="w-14 h-14 mx-auto mb-3 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
+                        <div className="w-14 h-14 mx-auto mb-3 bg-gradient-to-br from-primary/80 to-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                            <ArrowLeftRight className="w-7 h-7 text-white" />
                         </div>
-                        <h1 className="text-xl font-semibold text-gray-900 mb-1">Únete como Chofer</h1>
-                        <p className="text-sm text-gray-600">
-                            Invitación para <span className="font-medium text-orange-600">{invitacion?.empresas?.nombre}</span>
+                        <h1 className="text-xl font-semibold text-foreground mb-1">Únete como Chofer</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Invitación para <span className="font-medium text-primary">{invitacion?.empresas?.nombre}</span>
                         </p>
                     </div>
 
                     {/* Form */}
                     <form onSubmit={handleRegistro} className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                                Tu Nombre
-                            </label>
-                            <input
-                                type="text"
-                                required
-                                maxLength={LIMITS.nombre}
-                                placeholder="Juan Pérez"
-                                className="input-field"
-                                value={formData.nombre}
-                                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                            />
+                        <div className="space-y-1.5">
+                            <Label htmlFor="nombre">Tu Nombre</Label>
+                            <Input id="nombre" type="text" required maxLength={LIMITS.nombre} placeholder="Juan Pérez"
+                                value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} />
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                                Email
-                            </label>
-                            <input
-                                type="email"
-                                required
-                                maxLength={LIMITS.email}
-                                placeholder="tu@email.com"
-                                className="input-field"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            />
+                        <div className="space-y-1.5">
+                            <Label htmlFor="email">Email</Label>
+                            <Input id="email" type="email" required maxLength={LIMITS.email} placeholder="tu@email.com"
+                                value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                                Contraseña
-                            </label>
-                            <input
-                                type="password"
-                                required
-                                minLength={6}
-                                maxLength={LIMITS.password}
-                                placeholder="Mínimo 6 caracteres"
-                                className="input-field"
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            />
+                        <div className="space-y-1.5">
+                            <Label htmlFor="password">Contraseña</Label>
+                            <Input id="password" type="password" required minLength={6} maxLength={LIMITS.password} placeholder="Mínimo 6 caracteres"
+                                value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={registrando}
-                            className="btn-primary w-full py-3 text-sm mt-2"
-                        >
+                        <Button type="submit" disabled={registrando} className="w-full py-3 mt-2">
                             {registrando ? 'Creando cuenta...' : 'Unirme al equipo'}
-                        </button>
+                        </Button>
                     </form>
 
-                    <p className="text-center text-xs text-gray-500 mt-5">
+                    <p className="text-center text-xs text-muted-foreground mt-5">
                         Al registrarte, podrás ver y gestionar los traslados asignados
                     </p>
                 </div>

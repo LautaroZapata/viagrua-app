@@ -6,6 +6,9 @@ import { supabase } from '@/lib/supabase'
 import { sanitizeString, isValidEmail, isValidPassword, isValidName, isValidCompanyName, LIMITS } from '@/lib/validation'
 import { showError } from '@/lib/swal'
 import { Truck, Building2, User, Mail, Lock, ArrowRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function RegistroEmpresa() {
     const router = useRouter()
@@ -101,74 +104,45 @@ export default function RegistroEmpresa() {
                         <p className="text-muted-foreground text-sm mb-6">Crea tu cuenta y accede al panel de control</p>
 
                         <form onSubmit={handleRegistro} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Nombre Empresa</label>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="empresa">Nombre Empresa</Label>
                                 <div className="relative">
                                     <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-                                    <input
-                                        type="text"
-                                        required
-                                        maxLength={LIMITS.empresa}
-                                        placeholder="Ej: Transportes ABC"
-                                        className="input-field pl-10"
-                                        value={formData.nombreEmpresa}
-                                        onChange={(e) => setFormData({ ...formData, nombreEmpresa: e.target.value })}
-                                    />
+                                    <Input id="empresa" type="text" required maxLength={LIMITS.empresa} placeholder="Ej: Transportes ABC" className="pl-10"
+                                        value={formData.nombreEmpresa} onChange={(e) => setFormData({ ...formData, nombreEmpresa: e.target.value })} />
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Tu Nombre</label>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="nombre">Tu Nombre</Label>
                                 <div className="relative">
                                     <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-                                    <input
-                                        type="text"
-                                        required
-                                        maxLength={LIMITS.nombre}
-                                        placeholder="Ej: Juan Perez"
-                                        className="input-field pl-10"
-                                        value={formData.nombreDuenio}
-                                        onChange={(e) => setFormData({ ...formData, nombreDuenio: e.target.value })}
-                                    />
+                                    <Input id="nombre" type="text" required maxLength={LIMITS.nombre} placeholder="Ej: Juan Perez" className="pl-10"
+                                        value={formData.nombreDuenio} onChange={(e) => setFormData({ ...formData, nombreDuenio: e.target.value })} />
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Email</label>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="email">Email</Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-                                    <input
-                                        type="email"
-                                        required
-                                        maxLength={LIMITS.email}
-                                        placeholder="Ej: juan@empresa.com"
-                                        className="input-field pl-10"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    />
+                                    <Input id="email" type="email" required maxLength={LIMITS.email} placeholder="Ej: juan@empresa.com" className="pl-10"
+                                        value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Contrasena</label>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="password">Contrase&ntilde;a</Label>
                                 <div className="relative">
                                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-                                    <input
-                                        type="password"
-                                        required
-                                        minLength={6}
-                                        maxLength={LIMITS.password}
-                                        placeholder="Minimo 6 caracteres"
-                                        className="input-field pl-10"
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    />
+                                    <Input id="password" type="password" required minLength={6} maxLength={LIMITS.password} placeholder="Minimo 6 caracteres" className="pl-10"
+                                        value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
                                 </div>
                             </div>
 
-                            <button type="submit" disabled={loading} className="btn-primary w-full mt-2 py-3 text-sm font-semibold inline-flex items-center justify-center gap-2">
+                            <Button type="submit" disabled={loading} className="w-full mt-2 py-3">
                                 {loading ? 'Creando cuenta...' : <><span>Crear Cuenta</span><ArrowRight className="w-4 h-4" /></>}
-                            </button>
+                            </Button>
                         </form>
                     </div>
 

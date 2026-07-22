@@ -6,6 +6,9 @@ import { supabase } from '@/lib/supabase'
 import { sanitizeString, isValidEmail, LIMITS } from '@/lib/validation'
 import { showError } from '@/lib/swal'
 import { Truck, Mail, Lock, ArrowRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function Login() {
     const router = useRouter()
@@ -22,7 +25,7 @@ export default function Login() {
         const password = formData.password
 
         if (!isValidEmail(email)) { showError('Email invalido'); return }
-        if (!password || password.length > LIMITS.password) { showError('Contrasena invalida'); return }
+        if (!password || password.length > LIMITS.password) { showError('Contrase&ntilde;a invalida'); return }
 
         setLoading(true)
 
@@ -74,41 +77,27 @@ export default function Login() {
                         <p className="text-muted-foreground text-sm mb-6">Accede a tu cuenta</p>
 
                         <form onSubmit={handleLogin} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Email</label>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="email">Email</Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-                                    <input
-                                        type="email"
-                                        required
-                                        maxLength={LIMITS.email}
-                                        placeholder="tu@empresa.com"
-                                        className="input-field pl-10"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    />
+                                    <Input id="email" type="email" required maxLength={LIMITS.email} placeholder="tu@empresa.com" className="pl-10"
+                                        value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Contrasena</label>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="password">Contrase&ntilde;a</Label>
                                 <div className="relative">
                                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-                                    <input
-                                        type="password"
-                                        required
-                                        maxLength={LIMITS.password}
-                                        placeholder="Tu contrasena"
-                                        className="input-field pl-10"
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    />
+                                    <Input id="password" type="password" required maxLength={LIMITS.password} placeholder="Tu contrase&ntilde;a" className="pl-10"
+                                        value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
                                 </div>
                             </div>
 
-                            <button type="submit" disabled={loading} className="btn-primary w-full mt-2 py-3 text-sm font-semibold inline-flex items-center justify-center gap-2">
+                            <Button type="submit" disabled={loading} className="w-full mt-2 py-3">
                                 {loading ? 'Iniciando...' : <><span>Iniciar Sesion</span><ArrowRight className="w-4 h-4" /></>}
-                            </button>
+                            </Button>
                         </form>
                     </div>
 
