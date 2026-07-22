@@ -9,6 +9,7 @@ interface Perfil {
     rol: string
     empresa_id: string
     email?: string
+    onboarding_completed: boolean
 }
 
 interface Empresa {
@@ -59,7 +60,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
             const { data: perfilData } = await supabase
                 .from('perfiles')
-                .select('id, nombre_completo, rol, empresa_id, email, empresas(id, nombre)')
+                .select('id, nombre_completo, rol, empresa_id, email, onboarding_completed, empresas(id, nombre)')
                 .eq('id', authUser.id)
                 .single()
 

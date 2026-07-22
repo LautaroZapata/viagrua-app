@@ -44,11 +44,13 @@ export default function Login() {
         }
 
         const { data: perfil } = await supabase
-            .from('perfiles').select('rol').eq('id', data.user.id).single()
+            .from('perfiles').select('rol, onboarding_completed').eq('id', data.user.id).single()
 
         setTimeout(() => {
             if (typeof window !== 'undefined') {
-                if (perfil?.rol === 'admin') {
+                if (!perfil?.onboarding_completed) {
+                    router.push('/onboarding');
+                } else if (perfil?.rol === 'admin') {
                     router.push('/dashboard');
                 } else {
                     router.push('/chofer');

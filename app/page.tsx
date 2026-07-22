@@ -82,7 +82,7 @@ export default function RegistroEmpresa() {
         })
 
         if (errorLogin) { router.push('/login'); return }
-        router.push('/dashboard')
+        router.push('/onboarding')
     }
 
     return (

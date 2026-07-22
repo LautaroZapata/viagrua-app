@@ -43,20 +43,32 @@ export async function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const isDashboard = pathname.startsWith('/dashboard');
   const isChofer = pathname.startsWith('/chofer');
-  const isProtected = isDashboard || isChofer;
+  const isOnboarding = pathname === '/onboarding';
+  const isProtected = isDashboard || isChofer || isOnboarding;
 
   // Sin usuario autenticado y quiere entrar a ruta protegida → login
   if (!user && isProtected) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  // Usuario autenticado - verificar rol para rutas específicas
+  // Usuario autenticado - verificar rol y onboarding para rutas protegidas
   if (user && isProtected) {
     const { data: perfil } = await supabase
       .from('perfiles')
-      .select('rol')
+      .select('rol, onboarding_completed')
       .eq('id', user.id)
       .single();
+
+    // Onboarding incompleto → forzar /onboarding
+    if (!perfil?.onboarding_completed && !isOnboarding) {
+      return NextResponse.redirect(new URL('/onboarding', req.url));
+    }
+
+    // Ya completó onboarding y visita /onboarding → redirigir a home
+    if (perfil?.onboarding_completed && isOnboarding) {
+      const redirectTo = perfil?.rol === 'chofer' ? '/chofer' : '/dashboard';
+      return NextResponse.redirect(new URL(redirectTo, req.url));
+    }
 
     // Chofer puede acceder a /dashboard/gastos (ruta compartida)
     const isGastosRoute = pathname.startsWith('/dashboard/gastos');
@@ -72,9 +84,14 @@ export async function proxy(req: NextRequest) {
   if (user && (pathname === '/login' || pathname === '/')) {
     const { data: perfil } = await supabase
       .from('perfiles')
-      .select('rol')
+      .select('rol, onboarding_completed')
       .eq('id', user.id)
       .single();
+
+    // Si no completó onboarding, ir a /onboarding
+    if (!perfil?.onboarding_completed) {
+      return NextResponse.redirect(new URL('/onboarding', req.url));
+    }
 
     const redirectTo = perfil?.rol === 'chofer' ? '/chofer' : '/dashboard';
     return NextResponse.redirect(new URL(redirectTo, req.url));

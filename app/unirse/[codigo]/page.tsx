@@ -118,7 +118,7 @@ export default function UnirseEmpresa() {
                 return
             }
 
-            router.push('/chofer')
+            router.push('/onboarding')
         } catch {
             showError('Error de conexión')
             setRegistrando(false)

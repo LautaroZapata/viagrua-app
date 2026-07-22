@@ -1,10 +1,12 @@
 'use client'
+import { usePathname } from 'next/navigation'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { UserProvider, useUser } from '../components/UserContext'
 import AppSidebar from '../components/AppSidebar'
 
 function AuthGate({ children }: { children: React.ReactNode }) {
     const { loading } = useUser()
+    const pathname = usePathname()
 
     if (loading) {
         return (
@@ -12,6 +14,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
                 <div className="spinner-orange spinner" />
             </div>
         )
+    }
+
+    if (pathname === '/onboarding') {
+        return <>{children}</>
     }
 
     return (
