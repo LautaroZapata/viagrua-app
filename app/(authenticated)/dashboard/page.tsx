@@ -147,12 +147,13 @@ export default function DashboardPage() {
                                     >
                                         <div className="flex items-center justify-between mb-3">
                                             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{s.label}</p>
-                                            <Badge variant="secondary" className={`${s.badgeClass} rounded-full text-xs px-2 py-0.5`}>
+                                            <div className={`hidden sm:flex items-center rounded-full text-xs px-2 py-0.5 ${s.badgeClass}`}>
                                                 <s.icon className="size-3 mr-1" />
-                                                {s.label.split(' ').pop()}
-                                            </Badge>
+                                                <span>{s.label.split(' ').pop()}</span>
+                                            </div>
+                                            <s.icon className={`sm:hidden size-4 ${s.badgeClass.split(' ').find(c => c.startsWith('text-')) || 'text-muted-foreground'}`} />
                                         </div>
-                                        <p className="font-display text-4xl font-bold tracking-[-0.02em] text-foreground">
+                                        <p className="font-display text-2xl sm:text-4xl font-bold tracking-[-0.02em] text-foreground">
                                             {value}
                                         </p>
                                     </div>
