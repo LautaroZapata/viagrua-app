@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, showError } from '@/lib/swal'
 import { useUser } from '@/app/components/UserContext'
@@ -10,8 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { UserPlus, Mail, Copy, Check } from 'lucide-react'
+import { UserPlus } from 'lucide-react'
+
+const InviteModal = dynamic(() => import('@/app/components/InviteModal'), { ssr: false })
 
 interface Chofer { id: string; nombre_completo: string; email: string }
 
@@ -19,15 +21,6 @@ export default function ChoferesPage() {
     const { perfil } = useUser()
     const [choferes, setChoferes] = useState<Chofer[]>([])
     const [modalAbierto, setModalAbierto] = useState(false)
-    const [codigoInvitacion, setCodigoInvitacion] = useState('')
-    const [linkInvitacion, setLinkInvitacion] = useState('')
-    const [generandoCodigo, setGenerandoCodigo] = useState(false)
-    const [linkCopiado, setLinkCopiado] = useState(false)
-    const [isClient, setIsClient] = useState(false)
-    const timersRef = useRef<NodeJS.Timeout[]>([])
-
-    useEffect(() => () => timersRef.current.forEach(clearTimeout), [])
-    useEffect(() => { setIsClient(true) }, [])
 
     useEffect(() => {
         if (perfil?.empresa_id) cargarChoferes(perfil.empresa_id)
@@ -58,35 +51,11 @@ export default function ChoferesPage() {
         if (error) { showError('Error: ' + error.message); if (perfil) cargarChoferes(perfil.empresa_id) }
     }
 
-    const generarCodigo = async () => {
-        if (!perfil?.empresa_id) return
-        setGenerandoCodigo(true)
-        const arr = new Uint8Array(5)
-        if (isClient) crypto.getRandomValues(arr)
-        const codigo = Array.from(arr, b => b.toString(36).padStart(2, '0')).join('').substring(0, 8).toUpperCase()
-        const { error } = await supabase.from('invitaciones').insert({ empresa_id: perfil.empresa_id, codigo })
-        if (error) { showError('Error: ' + error.message); setGenerandoCodigo(false); return }
-        setCodigoInvitacion(codigo)
-        if (isClient) setLinkInvitacion(`${window.location.origin}/unirse/${codigo}`)
-        setGenerandoCodigo(false)
-    }
-
-    const copiarLink = async () => {
-        if (!linkInvitacion) return
-        try {
-            await navigator.clipboard.writeText(linkInvitacion)
-            setLinkCopiado(true)
-            timersRef.current.push(setTimeout(() => setLinkCopiado(false), 2000))
-        } catch { showError('No se pudo copiar') }
-    }
-
-    const abrirModal = () => { setCodigoInvitacion(''); setLinkInvitacion(''); setLinkCopiado(false); setModalAbierto(true) }
-
     return (
         <ErrorBoundary>
             <AppHeader
                 breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Choferes' }]}
-                actions={<Button size="sm" onClick={abrirModal}><UserPlus className="size-4 mr-1.5" />Invitar</Button>}
+                actions={<Button size="sm" onClick={() => setModalAbierto(true)}><UserPlus className="size-4 mr-1.5" />Invitar</Button>}
             />
             <div className="page-enter p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
                 <Card>
@@ -124,38 +93,7 @@ export default function ChoferesPage() {
                 </Card>
             </div>
 
-            <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader><DialogTitle>Invitar Chofer</DialogTitle></DialogHeader>
-                    {!codigoInvitacion ? (
-                        <div className="text-center py-4">
-                            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                                <Mail className="size-7 text-primary" />
-                            </div>
-                            <p className="text-muted-foreground text-sm mb-6">Genera un codigo para que un chofer se una</p>
-                            <Button onClick={generarCodigo} disabled={generandoCodigo} className="w-full">
-                                {generandoCodigo ? 'Generando...' : 'Generar Invitacion'}
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="text-center py-4">
-                            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Codigo</p>
-                            <p className="text-2xl font-bold text-primary mb-5 tracking-widest font-mono">{codigoInvitacion}</p>
-                            {isClient && linkInvitacion && (
-                                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(linkInvitacion)}`}
-                                    alt="QR" className="w-36 h-36 mx-auto mb-4 rounded-lg" />
-                            )}
-                            <div className="bg-muted rounded-lg p-3 mb-5">
-                                <p className="text-xs text-muted-foreground break-all font-mono">{linkInvitacion}</p>
-                            </div>
-                            <Button onClick={copiarLink} className="w-full" variant={linkCopiado ? 'outline' : 'default'}>
-                                {linkCopiado ? <><Check className="size-4 mr-1.5" />Copiado</> : <><Copy className="size-4 mr-1.5" />Copiar Link</>}
-                            </Button>
-                            <p className="text-[10px] text-muted-foreground mt-4">Expira en 7 dias, uso unico</p>
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
+            <InviteModal open={modalAbierto} onOpenChange={setModalAbierto} empresaId={perfil?.empresa_id ?? null} />
         </ErrorBoundary>
     )
 }

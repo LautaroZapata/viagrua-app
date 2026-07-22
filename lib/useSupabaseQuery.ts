@@ -12,12 +12,28 @@ interface Gasto {
   perfiles?: { nombre_completo: string } | { nombre_completo: string }[]
 }
 
+interface Traslado {
+  id: string
+  marca_modelo: string
+  matricula: string | null
+  es_0km: boolean
+  estado: string
+  estado_pago: string
+  importe_total: number | null
+  observaciones: string | null
+  created_at: string
+  perfiles?: { nombre_completo: string }
+}
+
+interface TrasladosCounts {
+  total: number
+  pendiente: number
+  en_curso: number
+  completado: number
+}
+
 type SupabaseQueryFn<T> = () => PromiseLike<{ data: T | null; error: unknown }>
 
-/**
- * Generic SWR hook for Supabase queries.
- * Automatically caches and deduplicates requests.
- */
 export function useSupabaseQuery<T>(
   key: string | null,
   queryFn: SupabaseQueryFn<T>,
@@ -32,14 +48,11 @@ export function useSupabaseQuery<T>(
   return useSWR<T>(key, fetcher, {
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
-    dedupingInterval: 5000, // 5s dedup
+    dedupingInterval: 5000,
     ...options,
   })
 }
 
-/**
- * Hook for fetching the current user's profile.
- */
 export function usePerfil(userId: string | null) {
   return useSupabaseQuery(
     userId ? `perfil:${userId}` : null,
@@ -47,9 +60,6 @@ export function usePerfil(userId: string | null) {
   )
 }
 
-/**
- * Hook for fetching gastos.
- */
 export function useGastos(empresaId: string | null, userId: string | null, isAdmin: boolean) {
   return useSupabaseQuery<Gasto[]>(
     empresaId ? `gastos:${empresaId}:${isAdmin ? 'all' : userId}` : null,
@@ -68,7 +78,50 @@ export function useGastos(empresaId: string | null, userId: string | null, isAdm
 
       return query
     },
-    { refreshInterval: 30000 } // Refresh every 30s
+    { refreshInterval: 30000 }
+  )
+}
+
+export function useTrasladosCounts(empresaId: string | null) {
+  return useSupabaseQuery<TrasladosCounts>(
+    empresaId ? `traslados-counts:${empresaId}` : null,
+    () => supabase.rpc('get_traslados_counts', { p_empresa_id: empresaId! }),
+  )
+}
+
+export function useTraslados(
+  empresaId: string | null,
+  page: number,
+  filtroTrasladosPendientes: boolean,
+  filtroPagosPendientes: boolean
+) {
+  const ITEMS_PER_PAGE = 10
+  const from = (page - 1) * ITEMS_PER_PAGE
+  const to = page * ITEMS_PER_PAGE - 1
+  const key = empresaId
+    ? `traslados:${empresaId}:${page}:${filtroTrasladosPendientes}:${filtroPagosPendientes}`
+    : null
+
+  return useSWR<{ data: Traslado[]; count: number }>(
+    key,
+    async () => {
+      let query = supabase
+        .from('traslados')
+        .select('*, perfiles(nombre_completo)', { count: 'exact' })
+        .eq('empresa_id', empresaId!)
+      if (filtroTrasladosPendientes) query = query.eq('estado', 'pendiente')
+      if (filtroPagosPendientes) query = query.eq('estado_pago', 'pendiente')
+      const { data, count, error } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to)
+      if (error) throw error
+      return { data: data || [], count: count || 0 }
+    },
+    {
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 5000,
+    }
   )
 }
 

@@ -1,5 +1,5 @@
 'use client'
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -59,7 +59,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
             const { data: perfilData } = await supabase
                 .from('perfiles')
-                .select('id, nombre_completo, rol, empresa_id, email')
+                .select('id, nombre_completo, rol, empresa_id, email, empresas(id, nombre)')
                 .eq('id', authUser.id)
                 .single()
 
@@ -68,16 +68,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 return
             }
 
-            setPerfil(perfilData)
-
-            if (perfilData.empresa_id) {
-                const { data: empresaData } = await supabase
-                    .from('empresas')
-                    .select('id, nombre')
-                    .eq('id', perfilData.empresa_id)
-                    .single()
-                setEmpresa(empresaData)
-            }
+            const { empresas, ...perfilOnly } = perfilData as typeof perfilData & { empresas: Empresa | null }
+            setPerfil(perfilOnly)
+            setEmpresa(empresas ?? null)
         } catch {
             router.replace('/login')
         } finally {
@@ -92,16 +85,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         router.push('/login')
     }, [router])
 
+    const value = useMemo(() => ({
+        user,
+        perfil,
+        empresa,
+        role: perfil?.rol ?? null,
+        loading,
+        reload: load,
+        logout,
+    }), [user, perfil, empresa, loading, load, logout])
+
     return (
-        <UserCtx.Provider value={{
-            user,
-            perfil,
-            empresa,
-            role: perfil?.rol ?? null,
-            loading,
-            reload: load,
-            logout,
-        }}>
+        <UserCtx.Provider value={value}>
             {children}
         </UserCtx.Provider>
     )

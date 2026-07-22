@@ -1,9 +1,10 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, confirmAction, showError } from '@/lib/swal'
 import { useUser } from '@/app/components/UserContext'
+import { useTraslados } from '@/lib/useSupabaseQuery'
 import AppHeader from '@/app/components/AppHeader'
 import Pagination from '@/app/components/Pagination'
 import EmptyState from '@/app/components/EmptyState'
@@ -13,12 +14,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Download, Trash2, ChevronRight } from 'lucide-react'
-
-interface Traslado {
-    id: string; marca_modelo: string; matricula: string | null; es_0km: boolean;
-    estado: string; estado_pago: string; importe_total: number | null;
-    observaciones: string | null; created_at: string; perfiles?: { nombre_completo: string };
-}
 
 const ITEMS_PER_PAGE = 10
 
@@ -37,36 +32,31 @@ const pagoConfig: Record<string, { bg: string; text: string; label: string }> = 
 export default function TrasladosPage() {
     const { perfil } = useUser()
     const router = useRouter()
-    const [traslados, setTraslados] = useState<Traslado[]>([])
     const [trasladosPage, setTrasladosPage] = useState(1)
-    const [trasladosTotal, setTrasladosTotal] = useState(0)
     const [filtroTrasladosPendientes, setFiltroTrasladosPendientes] = useState(false)
     const [filtroPagosPendientes, setFiltroPagosPendientes] = useState(false)
 
-    useEffect(() => {
-        if (perfil?.empresa_id) cargarTraslados(perfil.empresa_id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
-    }, [perfil?.empresa_id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes])
+    const { data: trasladosData, mutate } = useTraslados(
+        perfil?.empresa_id ?? null,
+        trasladosPage,
+        filtroTrasladosPendientes,
+        filtroPagosPendientes
+    )
+    const traslados = trasladosData?.data ?? []
+    const trasladosTotal = trasladosData?.count ?? 0
+
+    // Stable Realtime subscription — only depends on empresa_id
+    const mutateRef = useRef(mutate)
+    mutateRef.current = mutate
 
     useEffect(() => {
         if (!perfil?.empresa_id) return
         const sub = supabase.channel('traslados-list')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'traslados' }, () => {
-                if (perfil?.empresa_id) cargarTraslados(perfil.empresa_id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
+                mutateRef.current()
             }).subscribe()
         return () => { supabase.removeChannel(sub) }
-    }, [perfil?.empresa_id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes])
-
-    const cargarTraslados = async (empresaId: string, page: number, soloTP: boolean, soloPP: boolean) => {
-        const from = (page - 1) * ITEMS_PER_PAGE
-        const to = page * ITEMS_PER_PAGE - 1
-        let query = supabase.from('traslados').select('*, perfiles(nombre_completo)', { count: 'exact' }).eq('empresa_id', empresaId)
-        if (soloTP) query = query.eq('estado', 'pendiente')
-        if (soloPP) query = query.eq('estado_pago', 'pendiente')
-        const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, to)
-        if (error) { setTraslados([]); setTrasladosTotal(0); return }
-        setTraslados(data || [])
-        setTrasladosTotal(count || 0)
-    }
+    }, [perfil?.empresa_id])
 
     const cambiarEstado = async (trasladoId: string, nuevoEstado: string) => {
         if (!perfil) return
@@ -74,11 +64,14 @@ export default function TrasladosPage() {
             const ok = await confirmAction({ title: 'Confirmar', text: '¿Marcar como completado? Esta accion bloqueara el traslado.', icon: 'warning', confirmButtonText: 'Si, completar' })
             if (!ok) return
         }
-        setTraslados(prev => prev.map(t => t.id === trasladoId ? { ...t, estado: nuevoEstado } : t))
+        mutate(
+            prev => prev ? { ...prev, data: prev.data.map(t => t.id === trasladoId ? { ...t, estado: nuevoEstado } : t) } : prev,
+            { revalidate: false }
+        )
         const { error } = await supabase.from('traslados').update({ estado: nuevoEstado }).eq('id', trasladoId).eq('empresa_id', perfil.empresa_id)
         if (error) {
             showError('Error: ' + error.message)
-            cargarTraslados(perfil.empresa_id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
+            mutate()
         }
     }
 
@@ -86,13 +79,16 @@ export default function TrasladosPage() {
         if (!perfil) return
         const ok = await confirmDelete({ title: 'Eliminar traslado', text: '¿Eliminar este traslado? No se puede deshacer.' })
         if (!ok) return
-        setTraslados(prev => prev.filter(t => t.id !== trasladoId))
+        mutate(
+            prev => prev ? { ...prev, data: prev.data.filter(t => t.id !== trasladoId), count: prev.count - 1 } : prev,
+            { revalidate: false }
+        )
         const { data: files } = await supabase.storage.from('fotos-traslados').list(trasladoId)
         if (files?.length) await supabase.storage.from('fotos-traslados').remove(files.map(f => `${trasladoId}/${f.name}`))
         const { error } = await supabase.from('traslados').delete().eq('id', trasladoId).eq('empresa_id', perfil.empresa_id)
         if (error) {
             showError('Error: ' + error.message)
-            cargarTraslados(perfil.empresa_id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
+            mutate()
         }
     }
 

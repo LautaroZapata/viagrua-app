@@ -1,22 +1,26 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, showError } from '@/lib/swal'
 import { useUser } from '@/app/components/UserContext'
+import { useTrasladosCounts } from '@/lib/useSupabaseQuery'
 import AppHeader from '@/app/components/AppHeader'
-import DashboardCharts from '@/app/components/DashboardCharts'
+import dynamic from 'next/dynamic'
+
+const DashboardCharts = dynamic(() => import('@/app/components/DashboardCharts'), {
+    loading: () => <div className="rounded-2xl border border-border bg-card p-6 h-64 animate-pulse" />,
+    ssr: false,
+})
+const InviteModal = dynamic(() => import('@/app/components/InviteModal'), { ssr: false })
 import EmptyState from '@/app/components/EmptyState'
 import ErrorBoundary from '@/app/components/ErrorBoundary'
-import ClientOnly from '@/app/components/ClientOnly'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
     MapPin, Clock, Zap, CheckCircle2, Plus, UserPlus,
-    Mail, Copy, Check, Trash2,
 } from 'lucide-react'
 
 interface Chofer { id: string; nombre_completo: string; email: string }
@@ -27,20 +31,8 @@ export default function DashboardPage() {
     const [choferes, setChoferes] = useState<Chofer[]>([])
     const [gastos, setGastos] = useState<{ importe: number; fecha: string }[]>([])
     const [chartTraslados, setChartTraslados] = useState<{ importe_total: number | null; created_at: string }[]>([])
-    const [trasladosTotal, setTrasladosTotal] = useState(0)
-    const [trasladosPendientesTotal, setTrasladosPendientesTotal] = useState(0)
-    const [trasladosEnCursoTotal, setTrasladosEnCursoTotal] = useState(0)
-    const [trasladosCompletadosTotal, setTrasladosCompletadosTotal] = useState(0)
     const [modalAbierto, setModalAbierto] = useState(false)
-    const [codigoInvitacion, setCodigoInvitacion] = useState('')
-    const [linkInvitacion, setLinkInvitacion] = useState('')
-    const [generandoCodigo, setGenerandoCodigo] = useState(false)
-    const [linkCopiado, setLinkCopiado] = useState(false)
-    const [isClient, setIsClient] = useState(false)
-    const timersRef = useRef<NodeJS.Timeout[]>([])
-
-    useEffect(() => () => timersRef.current.forEach(clearTimeout), [])
-    useEffect(() => { setIsClient(true) }, [])
+    const { data: counts } = useTrasladosCounts(perfil?.empresa_id ?? null)
 
     useEffect(() => {
         if (!perfil?.empresa_id) return
@@ -63,7 +55,6 @@ export default function DashboardPage() {
     const cargarDatos = async (empresaId: string) => {
         await Promise.all([
             cargarChoferes(empresaId),
-            cargarContadores(empresaId),
             cargarDatosGrafico(empresaId),
         ])
     }
@@ -71,19 +62,6 @@ export default function DashboardPage() {
     const cargarChoferes = async (empresaId: string) => {
         const { data } = await supabase.from('perfiles').select('*').eq('empresa_id', empresaId).eq('rol', 'chofer')
         setChoferes(data || [])
-    }
-
-    const cargarContadores = async (empresaId: string) => {
-        const [total, pend, enCurso, comp] = await Promise.all([
-            supabase.from('traslados').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId),
-            supabase.from('traslados').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId).eq('estado', 'pendiente'),
-            supabase.from('traslados').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId).eq('estado', 'en_curso'),
-            supabase.from('traslados').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId).eq('estado', 'completado'),
-        ])
-        setTrasladosTotal(total.count || 0)
-        setTrasladosPendientesTotal(pend.count || 0)
-        setTrasladosEnCursoTotal(enCurso.count || 0)
-        setTrasladosCompletadosTotal(comp.count || 0)
     }
 
     const cargarDatosGrafico = async (empresaId: string) => {
@@ -106,52 +84,11 @@ export default function DashboardPage() {
         }
     }
 
-    const generarCodigoInvitacion = async () => {
-        if (!perfil?.empresa_id) return
-        setGenerandoCodigo(true)
-        let codigo = ''
-        if (isClient) {
-            const arr = new Uint8Array(5)
-            crypto.getRandomValues(arr)
-            codigo = Array.from(arr, b => b.toString(36).padStart(2, '0')).join('').substring(0, 8).toUpperCase()
-        }
-        const { error } = await supabase.from('invitaciones').insert({ empresa_id: perfil.empresa_id, codigo })
-        if (error) { showError('Error al generar codigo: ' + error.message); setGenerandoCodigo(false); return }
-        setCodigoInvitacion(codigo)
-        if (isClient) setLinkInvitacion(`${window.location.origin}/unirse/${codigo}`)
-        setGenerandoCodigo(false)
-    }
-
-    const copiarLink = async () => {
-        if (!linkInvitacion) return
-        try {
-            if (isClient && navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(linkInvitacion)
-            } else if (isClient) {
-                const ta = document.createElement('textarea')
-                ta.value = linkInvitacion
-                document.body.appendChild(ta)
-                ta.select()
-                document.execCommand('copy')
-                document.body.removeChild(ta)
-            }
-            setLinkCopiado(true)
-            timersRef.current.push(setTimeout(() => setLinkCopiado(false), 2000))
-        } catch { showError('No se pudo copiar. Copialo manualmente: ' + linkInvitacion) }
-    }
-
-    const abrirModal = () => {
-        setCodigoInvitacion('')
-        setLinkInvitacion('')
-        setLinkCopiado(false)
-        setModalAbierto(true)
-    }
-
     const statCards = [
-        { label: 'Total Traslados', value: trasladosTotal, icon: MapPin, iconBg: 'bg-primary/10', iconColor: 'text-primary', valueColor: 'text-foreground' },
-        { label: 'Pendientes', value: trasladosPendientesTotal, icon: Clock, iconBg: 'bg-yellow-500/10', iconColor: 'text-yellow-600 dark:text-yellow-400', valueColor: 'text-yellow-600 dark:text-yellow-400' },
-        { label: 'En Curso', value: trasladosEnCursoTotal, icon: Zap, iconBg: 'bg-blue-500/10', iconColor: 'text-blue-600 dark:text-blue-400', valueColor: 'text-blue-600 dark:text-blue-400' },
-        { label: 'Completados', value: trasladosCompletadosTotal, icon: CheckCircle2, iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-600 dark:text-emerald-400', valueColor: 'text-emerald-600 dark:text-emerald-400' },
+        { label: 'Total Traslados', value: counts?.total ?? 0, icon: MapPin, iconBg: 'bg-primary/10', iconColor: 'text-primary', valueColor: 'text-foreground' },
+        { label: 'Pendientes', value: counts?.pendiente ?? 0, icon: Clock, iconBg: 'bg-yellow-500/10', iconColor: 'text-yellow-600 dark:text-yellow-400', valueColor: 'text-yellow-600 dark:text-yellow-400' },
+        { label: 'En Curso', value: counts?.en_curso ?? 0, icon: Zap, iconBg: 'bg-blue-500/10', iconColor: 'text-blue-600 dark:text-blue-400', valueColor: 'text-blue-600 dark:text-blue-400' },
+        { label: 'Completados', value: counts?.completado ?? 0, icon: CheckCircle2, iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-600 dark:text-emerald-400', valueColor: 'text-emerald-600 dark:text-emerald-400' },
     ]
 
     return (
@@ -196,7 +133,7 @@ export default function DashboardPage() {
                         <p className="font-semibold text-base text-foreground group-hover:text-primary transition">Nuevo Traslado</p>
                         <p className="text-sm text-muted-foreground mt-0.5">Crear y asignar un nuevo servicio</p>
                     </button>
-                    <button onClick={abrirModal}
+                    <button onClick={() => setModalAbierto(true)}
                         className="group rounded-xl border border-border bg-card p-5 sm:p-6 text-left hover:border-blue-500/40 hover:shadow-md transition-all">
                         <div className="w-11 h-11 rounded-xl bg-blue-500/10 group-hover:bg-blue-500/15 flex items-center justify-center mb-3 transition">
                             <UserPlus className="size-5 text-blue-600 dark:text-blue-400" />
@@ -210,7 +147,7 @@ export default function DashboardPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                         <CardTitle className="text-lg">Equipo de Choferes</CardTitle>
-                        <Button variant="outline" size="sm" onClick={abrirModal}>
+                        <Button variant="outline" size="sm" onClick={() => setModalAbierto(true)}>
                             <UserPlus className="size-4 mr-1.5" />
                             Invitar
                         </Button>
@@ -251,47 +188,7 @@ export default function DashboardPage() {
                 </Card>
             </div>
 
-            {/* Invite Dialog */}
-            <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Invitar Chofer</DialogTitle>
-                    </DialogHeader>
-                    {!codigoInvitacion ? (
-                        <div className="text-center py-4">
-                            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                                <Mail className="size-7 text-primary" />
-                            </div>
-                            <p className="text-muted-foreground text-sm mb-6">
-                                Genera un codigo de invitacion para que un chofer se una a tu equipo
-                            </p>
-                            <Button onClick={generarCodigoInvitacion} disabled={generandoCodigo} className="w-full">
-                                {generandoCodigo ? 'Generando...' : 'Generar Invitacion'}
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="text-center py-4">
-                            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Codigo de invitacion</p>
-                            <p className="text-2xl font-bold text-primary mb-5 tracking-widest font-mono">{codigoInvitacion}</p>
-                            {isClient && linkInvitacion && (
-                                <img
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(linkInvitacion)}`}
-                                    alt="QR Code"
-                                    className="w-36 h-36 mx-auto mb-4 rounded-lg"
-                                />
-                            )}
-                            <p className="text-xs text-muted-foreground mb-3">El chofer puede escanear el QR o usar el link</p>
-                            <div className="bg-muted rounded-lg p-3 mb-5">
-                                <p className="text-xs text-muted-foreground break-all font-mono">{isClient && linkInvitacion ? linkInvitacion : ''}</p>
-                            </div>
-                            <Button onClick={copiarLink} className="w-full" variant={linkCopiado ? 'outline' : 'default'}>
-                                {linkCopiado ? <><Check className="size-4 mr-1.5" /> Link Copiado</> : <><Copy className="size-4 mr-1.5" /> Copiar Link</>}
-                            </Button>
-                            <p className="text-[10px] text-muted-foreground mt-4">Este codigo expira en 7 dias y solo puede usarse una vez</p>
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
+            <InviteModal open={modalAbierto} onOpenChange={setModalAbierto} empresaId={perfil?.empresa_id ?? null} />
         </ErrorBoundary>
     )
 }

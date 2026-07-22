@@ -1,8 +1,15 @@
 import type { Metadata, Viewport } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
 import PwaRegister from '@/components/PwaRegister'
 import { Toaster } from 'sonner'
 import { Providers } from './providers'
+
+const inter = Inter({
+    subsets: ['latin'],
+    variable: '--font-inter',
+    display: 'swap',
+})
 
 export const metadata: Metadata = {
     title: 'ViaGrua — Gestion de Traslados',
@@ -31,7 +38,7 @@ export default function RootLayout({
     children: React.ReactNode
 }) {
     return (
-        <html lang="es" suppressHydrationWarning>
+        <html lang="es" className={inter.variable} suppressHydrationWarning>
             <body className="antialiased">
                 <Providers>
                     <PwaRegister />
