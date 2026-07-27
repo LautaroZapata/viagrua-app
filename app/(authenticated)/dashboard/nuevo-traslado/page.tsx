@@ -147,7 +147,7 @@ export default function NuevoTraslado() {
                                 )}
                                 <div className="space-y-2">
                                     <Label htmlFor="chofer">Chofer Asignado</Label>
-                                    <select id="chofer" required className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    <select id="chofer" required className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base md:text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                                         value={formData.chofer_id} onChange={e => setFormData({ ...formData, chofer_id: e.target.value })}>
                                         <option value="">Selecciona un chofer</option>
                                         {choferes.map(c => <option key={c.id} value={c.id}>{c.nombre_completo}{c.id === user?.id ? ' (Yo)' : ''}</option>)}

@@ -160,7 +160,7 @@ export default function TrasladosPage() {
                                                 <div className="flex items-center gap-2 shrink-0">
                                                     <select value={t.estado} onChange={(e) => cambiarEstado(t.id, e.target.value)}
                                                         disabled={t.estado === 'completado'}
-                                                        className={`text-xs font-medium px-3 py-2 rounded-lg border cursor-pointer transition ${estado.bg} ${estado.text} ${t.estado === 'completado' ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                                                        className={`text-base sm:text-xs font-medium px-3 py-2 rounded-lg border cursor-pointer transition ${estado.bg} ${estado.text} ${t.estado === 'completado' ? 'opacity-60 cursor-not-allowed' : ''}`}>
                                                         <option value="pendiente">Pendiente</option>
                                                         <option value="en_curso">En Curso</option>
                                                         <option value="completado">Completado</option>

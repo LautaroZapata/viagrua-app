@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 import PwaRegister from '@/components/PwaRegister'
-import { Toaster } from 'sonner'
+import { Toaster } from '@/components/ui/sonner'
+import ConfirmDialog from '@/app/components/ConfirmDialog'
 import { Providers } from './providers'
 
 const dmSans = DM_Sans({
@@ -34,7 +35,10 @@ export const viewport: Viewport = {
     themeColor: '#FF7A00',
     width: 'device-width',
     initialScale: 1,
-    maximumScale: 1,
+    // Sin maximumScale/userScalable=no: bloquear el pinch-zoom rompe WCAG 1.4.4
+    // y en iOS deja sin salida a quien necesita agrandar. El zoom automatico al
+    // enfocar inputs se evita con font-size >= 16px en los campos, no capando el zoom.
+    userScalable: true,
     viewportFit: 'cover',
 }
 
@@ -48,7 +52,8 @@ export default function RootLayout({
             <body className="antialiased">
                 <Providers>
                     <PwaRegister />
-                    <Toaster position="top-center" richColors closeButton />
+                    <Toaster />
+                    <ConfirmDialog />
                     <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:rounded-lg">
                         Saltar al contenido
                     </a>

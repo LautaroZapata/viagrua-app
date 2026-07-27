@@ -1,5 +1,6 @@
 'use client'
 import { useEffect } from 'react'
+import { toast } from 'sonner'
 
 /**
  * Registra el Service Worker de la PWA.
@@ -29,10 +30,18 @@ export default function PwaRegister() {
                             newWorker.state === 'installed' &&
                             navigator.serviceWorker.controller
                         ) {
-                            // Hay una nueva versión disponible — recargar silenciosamente
-                            // para que el usuario siempre tenga la última versión
+                            // Hay una nueva versión. Recargar de una perdia lo que
+                            // el usuario estuviera tipeando (un traslado a medio
+                            // cargar, un gasto sin guardar), asi que decide él.
                             newWorker.postMessage({ type: 'SKIP_WAITING' })
-                            window.location.reload()
+                            toast('Nueva version disponible', {
+                                description: 'Recarga para aplicar los ultimos cambios.',
+                                duration: Infinity,
+                                action: {
+                                    label: 'Recargar',
+                                    onClick: () => window.location.reload(),
+                                },
+                            })
                         }
                     })
                 })

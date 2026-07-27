@@ -109,7 +109,7 @@ export default function DetalleTrasladoAdmin() {
         transferencia: { active: 'bg-blue-500 text-white', inactive: 'bg-muted text-muted-foreground hover:bg-accent', label: 'Transferencia' },
     }
 
-    if (loading) return <div className="flex h-screen items-center justify-center"><LoadingSpinner /></div>
+    if (loading) return <div className="flex h-dvh items-center justify-center"><LoadingSpinner /></div>
     if (!traslado) return null
 
     return (

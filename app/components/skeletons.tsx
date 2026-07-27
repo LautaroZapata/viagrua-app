@@ -54,7 +54,7 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
 
 export function PageSkeleton() {
   return (
-    <div className="page-bg min-h-screen pb-12">
+    <div className="page-bg min-h-dvh pb-12">
       <div className="navbar sticky top-0 z-50">
         <div className="flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center gap-3">

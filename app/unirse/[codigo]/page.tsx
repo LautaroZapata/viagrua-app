@@ -114,7 +114,7 @@ export default function UnirseEmpresa() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center p-4">
+            <div className="min-h-dvh bg-background flex items-center justify-center p-4">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="w-10 h-10 text-primary animate-spin" />
                     <div className="text-center">
@@ -128,7 +128,7 @@ export default function UnirseEmpresa() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center p-4">
+            <div className="min-h-dvh bg-background flex items-center justify-center p-4">
                 <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm text-center max-w-sm">
                     <div className="w-14 h-14 mx-auto mb-4 bg-destructive/10 rounded-full flex items-center justify-center">
                         <X className="w-7 h-7 text-destructive" />
@@ -144,7 +144,7 @@ export default function UnirseEmpresa() {
     }
 
     return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="min-h-dvh bg-background flex items-center justify-center p-4">
             <div className="w-full max-w-md">
                 <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm">
                     {/* Header */}

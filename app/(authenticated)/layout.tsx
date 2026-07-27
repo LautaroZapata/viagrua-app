@@ -10,7 +10,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
     if (loading) {
         return (
-            <div className="flex h-screen w-full items-center justify-center">
+            <div className="flex h-dvh w-full items-center justify-center">
                 <div className="spinner-orange spinner" />
             </div>
         )

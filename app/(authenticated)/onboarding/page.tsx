@@ -290,7 +290,7 @@ export default function OnboardingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6">
+        <div className="min-h-dvh bg-background flex items-center justify-center p-4 sm:p-6">
             <div className="w-full max-w-lg page-enter">
                 {/* Logo */}
                 <div className="text-center mb-6">

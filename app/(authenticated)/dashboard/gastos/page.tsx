@@ -240,7 +240,7 @@ export default function GastosPage() {
                                 <div className="space-y-2">
                                     <Label htmlFor="tipo-gasto">Tipo</Label>
                                     <select id="tipo-gasto" required value={formData.tipo} onChange={e => setFormData({ ...formData, tipo: e.target.value })}
-                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base md:text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                                         <option value="">Seleccionar...</option>
                                         {tiposGasto.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                                     </select>
@@ -284,12 +284,12 @@ export default function GastosPage() {
                                                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${!verTodos ? 'bg-card shadow text-primary' : 'text-muted-foreground'}`}>Solo mios</button>
                                         </div>
                                         <select value={filtroTipoGastoAdmin} onChange={e => { setFiltroTipoGastoAdmin(e.target.value); setPaginaGastosAdmin(1) }}
-                                            className="bg-muted hover:bg-accent text-foreground text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
+                                            className="bg-muted hover:bg-accent text-foreground text-base sm:text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
                                             <option value="todos">Todos los tipos</option>
                                             {tiposGasto.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                                         </select>
                                         <select value={filtroOrdenAdmin} onChange={e => { setFiltroOrdenAdmin(e.target.value); setPaginaGastosAdmin(1) }}
-                                            className="bg-muted hover:bg-accent text-foreground text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
+                                            className="bg-muted hover:bg-accent text-foreground text-base sm:text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
                                             <optgroup label="Por fecha"><option value="fecha_desc">Mas recientes</option><option value="fecha_asc">Mas antiguos</option></optgroup>
                                             <optgroup label="Por importe"><option value="mayor_importe">Mayor importe</option><option value="menor_importe">Menor importe</option></optgroup>
                                         </select>
@@ -298,12 +298,12 @@ export default function GastosPage() {
                                 {!isAdmin && (
                                     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                                         <select value={filtroTipoGasto} onChange={e => { setFiltroTipoGasto(e.target.value); setPaginaActual(1) }}
-                                            className="bg-muted hover:bg-accent text-foreground text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
+                                            className="bg-muted hover:bg-accent text-foreground text-base sm:text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
                                             <option value="todos">Todos</option><option value="solo_ingresos">Solo Ingresos</option><option value="solo_gastos">Solo Gastos</option>
                                             <optgroup label="Por tipo">{tiposGasto.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</optgroup>
                                         </select>
                                         <select value={filtroMovimientos} onChange={e => { setFiltroMovimientos(e.target.value); setPaginaActual(1) }}
-                                            className="bg-muted hover:bg-accent text-foreground text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
+                                            className="bg-muted hover:bg-accent text-foreground text-base sm:text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
                                             <optgroup label="Por fecha"><option value="fecha_desc">Mas recientes</option><option value="fecha_asc">Mas antiguos</option></optgroup>
                                             <optgroup label="Por importe"><option value="mayor_importe">Mayor importe</option><option value="menor_importe">Menor importe</option></optgroup>
                                         </select>

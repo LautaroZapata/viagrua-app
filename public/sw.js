@@ -39,6 +39,11 @@ self.addEventListener('activate', (event) => {
     self.clients.claim()
 })
 
+// ─── Mensajes ────────────────────────────────────────────────────────────────
+self.addEventListener('message', (event) => {
+    if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
+})
+
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
     const { request } = event
@@ -81,11 +86,21 @@ self.addEventListener('fetch', (event) => {
                 }
                 return response
             })
-            .catch(() =>
+            .catch(async () => {
                 // Sin conexión: intentar desde caché, si no → página offline
-                caches.match(request).then(
-                    (cached) => cached || caches.match(OFFLINE_URL)
+                const cached = await caches.match(request)
+                if (cached) return cached
+
+                const offline = await caches.match(OFFLINE_URL)
+                if (offline) return offline
+
+                // Si ni /offline quedo cacheado, devolver algo antes que un
+                // error opaco de red: respondWith(undefined) rompe la navegacion.
+                return new Response(
+                    '<!doctype html><meta charset="utf-8"><title>Sin conexion</title>' +
+                    '<p style="font:16px system-ui;padding:2rem">Sin conexion. Reintenta cuando vuelva la señal.</p>',
+                    { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
                 )
-            )
+            })
     )
 })
