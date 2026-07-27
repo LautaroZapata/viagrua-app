@@ -104,7 +104,7 @@ export async function POST(request: Request) {
       .from('gastos')
       .insert({
         empresa_id: empresaId,
-        user_id: user.id,
+        usuario_id: user.id,
         tipo,
         importe: Number(importe),
         descripcion,
@@ -167,7 +167,7 @@ export async function DELETE(request: Request) {
 
     const { data: gasto, error: gastoError } = await supabaseAdmin
       .from('gastos')
-      .select('id, empresa_id, user_id')
+      .select('id, empresa_id, usuario_id')
       .eq('id', gastoId)
       .single()
 
@@ -182,7 +182,7 @@ export async function DELETE(request: Request) {
       )
     }
 
-    if (perfil.rol !== 'admin' && gasto.user_id !== user.id) {
+    if (perfil.rol !== 'admin' && gasto.usuario_id !== user.id) {
       return NextResponse.json(
         { error: 'Solo el admin o el creador pueden eliminar este gasto' },
         { status: 403 },

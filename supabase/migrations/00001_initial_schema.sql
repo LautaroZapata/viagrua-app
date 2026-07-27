@@ -77,19 +77,18 @@ create index idx_traslados_created_at on public.traslados(created_at desc);
 create table public.gastos (
   id uuid primary key default uuid_generate_v4(),
   empresa_id uuid not null references public.empresas(id) on delete cascade,
-  user_id uuid references public.perfiles(id) on delete set null,
+  usuario_id uuid references public.perfiles(id) on delete set null,
   tipo text not null,
   importe numeric(12, 2) not null,
   descripcion text,
   fecha date not null default current_date,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  created_at timestamptz not null default now()
 );
 
 alter table public.gastos enable row level security;
 
 create index idx_gastos_empresa_id on public.gastos(empresa_id);
-create index idx_gastos_user_id on public.gastos(user_id);
+create index idx_gastos_usuario_id on public.gastos(usuario_id);
 create index idx_gastos_fecha on public.gastos(fecha desc);
 
 -- =============================================
@@ -209,7 +208,7 @@ create policy "gastos_insert_empresa"
   on public.gastos for insert
   with check (
     empresa_id = public.get_user_empresa_id()
-    and user_id = auth.uid()
+    and usuario_id = auth.uid()
   );
 
 create policy "gastos_update_empresa"
@@ -222,7 +221,7 @@ create policy "gastos_delete_empresa"
   using (
     empresa_id = public.get_user_empresa_id()
     and (
-      user_id = auth.uid()
+      usuario_id = auth.uid()
       or public.get_user_rol() = 'admin'
     )
   );
@@ -277,5 +276,5 @@ create trigger set_updated_at before update on public.perfiles
 create trigger set_updated_at before update on public.traslados
   for each row execute function public.handle_updated_at();
 
-create trigger set_updated_at before update on public.gastos
-  for each row execute function public.handle_updated_at();
+-- Nota: public.gastos no tiene columna updated_at (verificado contra la DB viva),
+-- por eso no lleva el trigger set_updated_at.
