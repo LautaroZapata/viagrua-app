@@ -1,5 +1,21 @@
 -- ViaGrua initial schema migration
 -- Run with: supabase db push (or supabase migration up for local dev)
+--
+-- ⚠️ ATENCION: este archivo NO refleja la base de produccion.
+-- Figura como aplicado en supabase_migrations.schema_migrations, pero nunca se
+-- ejecuto: la base se armo a mano desde el dashboard y despues se baselineo.
+-- Verificado con `supabase db dump --linked` (2026-07-26). Diferencias reales:
+--   - el helper de produccion se llama public.get_empresa_id(), no
+--     get_user_empresa_id(), y no existe get_user_rol()
+--   - las policies de produccion se llaman "Ver gastos" / "Crear gastos" /
+--     "Eliminar gastos" y gastos NO tiene ninguna policy de UPDATE
+--   - gastos.empresa_id es nullable y usuario_id es NOT NULL (aca al reves)
+--   - no existe la tabla audit_log de 00002_audit_log.sql
+--   - produccion tiene tablas que no estan aca: inspecciones, planes
+--
+-- Antes de razonar sobre permisos o columnas, mirar la base real, no este archivo.
+-- Un drift de este estilo (user_id vs usuario_id) fue el que rompio el alta de
+-- gastos; ver 20260727_normalizar_tipo_gastos.sql y el commit c97afe7.
 
 -- Enable UUID generation
 create extension if not exists "uuid-ossp";
@@ -211,10 +227,26 @@ create policy "gastos_insert_empresa"
     and usuario_id = auth.uid()
   );
 
-create policy "gastos_update_empresa"
+-- Editar un gasto: manda el creador, con el admin de la empresa como excepcion.
+-- Que a un chofer le aparezca un gasto asignado no le da derecho a modificarlo.
+-- USING filtra la fila existente; WITH CHECK valida la resultante, y por eso
+-- ademas impide sacar el gasto de la empresa o reasignarlo a otro usuario.
+create policy "gastos_update_propio"
   on public.gastos for update
-  using (empresa_id = public.get_user_empresa_id())
-  with check (empresa_id = public.get_user_empresa_id());
+  using (
+    empresa_id = public.get_user_empresa_id()
+    and (
+      usuario_id = auth.uid()
+      or public.get_user_rol() = 'admin'
+    )
+  )
+  with check (
+    empresa_id = public.get_user_empresa_id()
+    and (
+      usuario_id = auth.uid()
+      or public.get_user_rol() = 'admin'
+    )
+  );
 
 create policy "gastos_delete_empresa"
   on public.gastos for delete

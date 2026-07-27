@@ -58,8 +58,10 @@ function stubAdmin(opts: {
     deleteError = null,
   } = opts
 
-  const insert = vi.fn(() => ({ select: () => ({ single: async () => insertResult }) }))
-  const select = vi.fn(() => ({
+  const insert = vi.fn((_payload: Record<string, unknown>) => ({
+    select: () => ({ single: async () => insertResult }),
+  }))
+  const select = vi.fn((_columnas: string) => ({
     eq: () => ({ single: async () => ({ data: gastoRow, error: gastoError }) }),
   }))
   const deleteEq = vi.fn(async () => ({ error: deleteError }))
@@ -106,7 +108,7 @@ describe('POST /api/gastos — nombre de columna (regresión usuario_id)', () =>
 
     expect(res.status).toBe(200)
     expect(insert).toHaveBeenCalledTimes(1)
-    const payload = insert.mock.calls[0][0] as Record<string, unknown>
+    const payload = insert.mock.calls[0][0]
     expect(payload).toHaveProperty('usuario_id', USER_ID)
     expect(payload).not.toHaveProperty('user_id')
   })
@@ -117,7 +119,7 @@ describe('POST /api/gastos — nombre de columna (regresión usuario_id)', () =>
 
     await POST(postRequest({ ...bodyValido, usuario_id: OTRO_USER_ID }))
 
-    const payload = insert.mock.calls[0][0] as Record<string, unknown>
+    const payload = insert.mock.calls[0][0]
     expect(payload.usuario_id).toBe(USER_ID)
   })
 })
@@ -129,7 +131,7 @@ describe('POST /api/gastos — payload insertado', () => {
 
     await POST(postRequest({ ...bodyValido, importe: '2500.75' }))
 
-    const payload = insert.mock.calls[0][0] as Record<string, unknown>
+    const payload = insert.mock.calls[0][0]
     expect(Object.keys(payload).sort()).toEqual(
       ['descripcion', 'empresa_id', 'fecha', 'importe', 'tipo', 'usuario_id'].sort(),
     )
@@ -147,7 +149,7 @@ describe('POST /api/gastos — payload insertado', () => {
 
     await POST(postRequest({ ...bodyValido, descripcion: '' }))
 
-    expect((insert.mock.calls[0][0] as Record<string, unknown>).descripcion).toBeNull()
+    expect((insert.mock.calls[0][0]).descripcion).toBeNull()
   })
 
   it('trunca descripcion a LIMITS.descripcion', async () => {
@@ -156,7 +158,7 @@ describe('POST /api/gastos — payload insertado', () => {
 
     await POST(postRequest({ ...bodyValido, descripcion: 'x'.repeat(LIMITS.descripcion + 200) }))
 
-    const payload = insert.mock.calls[0][0] as Record<string, unknown>
+    const payload = insert.mock.calls[0][0]
     expect((payload.descripcion as string).length).toBe(LIMITS.descripcion)
   })
 
