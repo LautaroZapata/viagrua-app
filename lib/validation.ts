@@ -77,6 +77,7 @@ export const LIMITS = {
   descripcion: 500,
   ubicacion: 200,  // desde/hasta
   codigoInvitacion: 50,
+  telefono: 30,    // espeja el CHECK perfiles_telefono_largo
 } as const
 
 // --- Validación server-side para create-traslado-safe ---

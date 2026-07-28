@@ -5,7 +5,9 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "rls:check": "node scripts/rls-check.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@/app/components/UserContext'
 import InvitacionQR from '@/app/components/InvitacionQR'
-import { sanitizeString } from '@/lib/validation'
+import { sanitizeAndLimit, LIMITS } from '@/lib/validation'
 import { showError } from '@/lib/swal'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -192,12 +192,15 @@ export default function OnboardingPage() {
 
     const saveProfileAndNext = async () => {
         if (!perfil) return
-        const cleaned = sanitizeString(telefono)
+        const cleaned = sanitizeAndLimit(telefono, LIMITS.telefono)
         if (cleaned) {
-            await supabase
+            const { error } = await supabase
                 .from('perfiles')
                 .update({ telefono: cleaned })
                 .eq('id', perfil.id)
+            // Antes este error se descartaba y la columna ni siquiera existia,
+            // asi que el telefono se perdia sin que nadie se enterara.
+            if (error) showError('No se pudo guardar el telefono')
         }
         setStep(s => s + 1)
     }
