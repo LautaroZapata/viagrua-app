@@ -1,8 +1,9 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@/app/components/UserContext'
+import InvitacionQR from '@/app/components/InvitacionQR'
 import { sanitizeString } from '@/lib/validation'
 import { showError } from '@/lib/swal'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -12,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import {
     Truck, Users, Receipt, MapPin,
-    ArrowLeft, ArrowRight, Check, Copy, Mail,
+    ArrowLeft, ArrowRight, Check,
 } from 'lucide-react'
 
 // --- Step Components ---
@@ -84,85 +85,13 @@ function ProfileStep({ telefono, setTelefono }: { telefono: string; setTelefono:
 }
 
 function InviteStep({ empresaId }: { empresaId: string | null }) {
-    const [codigo, setCodigo] = useState('')
-    const [link, setLink] = useState('')
-    const [generando, setGenerando] = useState(false)
-    const [copiado, setCopiado] = useState(false)
-    const timersRef = useRef<NodeJS.Timeout[]>([])
-
-    useEffect(() => () => timersRef.current.forEach(clearTimeout), [])
-
-    const generarCodigo = async () => {
-        if (!empresaId) return
-        setGenerando(true)
-        const arr = new Uint8Array(5)
-        crypto.getRandomValues(arr)
-        const cod = Array.from(arr, b => b.toString(36).padStart(2, '0')).join('').substring(0, 8).toUpperCase()
-        const { error } = await supabase.from('invitaciones').insert({ empresa_id: empresaId, codigo: cod })
-        if (error) { showError('Error al generar codigo: ' + error.message); setGenerando(false); return }
-        setCodigo(cod)
-        setLink(`${window.location.origin}/unirse/${cod}`)
-        setGenerando(false)
-    }
-
-    const copiarLink = async () => {
-        if (!link) return
-        try {
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(link)
-            } else {
-                const ta = document.createElement('textarea')
-                ta.value = link
-                document.body.appendChild(ta)
-                ta.select()
-                document.execCommand('copy')
-                document.body.removeChild(ta)
-            }
-            setCopiado(true)
-            timersRef.current.push(setTimeout(() => setCopiado(false), 2000))
-        } catch { showError('No se pudo copiar. Copialo manualmente: ' + link) }
-    }
-
     return (
         <div>
             <CardTitle className="text-xl font-display mb-2">Invita a tu primer chofer</CardTitle>
             <CardDescription className="mb-6">
                 Genera un codigo de invitacion para que un chofer se una a tu equipo.
             </CardDescription>
-
-            {!codigo ? (
-                <div className="text-center py-4">
-                    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                        <Mail className="size-7 text-primary" />
-                    </div>
-                    <p className="text-muted-foreground text-sm mb-6">
-                        Compartile el link o codigo al chofer para que se registre
-                    </p>
-                    <Button onClick={generarCodigo} disabled={generando} className="w-full max-w-xs mx-auto">
-                        {generando ? 'Generando...' : 'Generar Invitacion'}
-                    </Button>
-                </div>
-            ) : (
-                <div className="text-center py-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Codigo de invitacion</p>
-                    <p className="text-2xl font-bold text-primary mb-4 tracking-widest font-mono">{codigo}</p>
-                    {link && (
-                        <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(link)}`}
-                            alt="QR Code"
-                            className="w-36 h-36 mx-auto mb-4 rounded-lg"
-                        />
-                    )}
-                    <p className="text-xs text-muted-foreground mb-3">El chofer puede escanear el QR o usar el link</p>
-                    <div className="bg-muted rounded-lg p-3 mb-4">
-                        <p className="text-xs text-muted-foreground break-all font-mono">{link}</p>
-                    </div>
-                    <Button onClick={copiarLink} className="w-full max-w-xs mx-auto" variant={copiado ? 'outline' : 'default'}>
-                        {copiado ? <><Check className="size-4 mr-1.5" /> Link Copiado</> : <><Copy className="size-4 mr-1.5" /> Copiar Link</>}
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-3">Este codigo expira en 7 dias y solo puede usarse una vez</p>
-                </div>
-            )}
+            <InvitacionQR empresaId={empresaId} />
         </div>
     )
 }
