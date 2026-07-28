@@ -38,14 +38,17 @@ const MONTH_LABELS: Record<string, string> = {
   '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dic',
 }
 
+// Los colores salen de los tokens --chart-*, que ya estan definidos para light
+// y dark. Antes eran literales: el gris de 'gastos' quedaba en ~1.3:1 sobre la
+// card en light mode, o sea invisible, y chillon en dark.
 const chartConfig = {
   ingresos: {
     label: 'Ingresos',
-    color: 'hsl(28, 100%, 50%)',
+    color: 'hsl(var(--chart-1))',
   },
   gastos: {
     label: 'Gastos',
-    color: 'hsl(225, 14%, 85%)',
+    color: 'hsl(var(--chart-2))',
   },
 } satisfies ChartConfig
 

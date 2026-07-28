@@ -115,13 +115,15 @@ export default function TrasladosPage() {
                                 <h3 className="font-semibold text-lg text-foreground">Lista de Traslados</h3>
                                 <div className="flex flex-wrap gap-2 mt-2">
                                     <button onClick={() => { setFiltroTrasladosPendientes(!filtroTrasladosPendientes); setTrasladosPage(1) }}
-                                        className={`filter-btn inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition ${filtroTrasladosPendientes ? 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/30' : 'bg-muted text-muted-foreground border-transparent hover:bg-accent'}`}>
-                                        <span className={`status-dot ${filtroTrasladosPendientes ? 'bg-yellow-500 status-dot-pulse' : 'bg-muted-foreground/40'}`} />
+                                        aria-pressed={filtroTrasladosPendientes}
+                                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition ${filtroTrasladosPendientes ? 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/30' : 'bg-muted text-muted-foreground border-transparent hover:bg-accent'}`}>
+                                        <span aria-hidden="true" className={`status-dot ${filtroTrasladosPendientes ? 'bg-yellow-500 status-dot-pulse' : 'bg-muted-foreground/40'}`} />
                                         Pendientes
                                     </button>
                                     <button onClick={() => { setFiltroPagosPendientes(!filtroPagosPendientes); setTrasladosPage(1) }}
-                                        className={`filter-btn inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition ${filtroPagosPendientes ? 'bg-primary/10 text-primary border-primary/30' : 'bg-muted text-muted-foreground border-transparent hover:bg-accent'}`}>
-                                        <span className={`status-dot ${filtroPagosPendientes ? 'bg-primary status-dot-pulse' : 'bg-muted-foreground/40'}`} />
+                                        aria-pressed={filtroPagosPendientes}
+                                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition ${filtroPagosPendientes ? 'bg-primary/10 text-primary border-primary/30' : 'bg-muted text-muted-foreground border-transparent hover:bg-accent'}`}>
+                                        <span aria-hidden="true" className={`status-dot ${filtroPagosPendientes ? 'bg-primary status-dot-pulse' : 'bg-muted-foreground/40'}`} />
                                         Pagos Pend.
                                     </button>
                                 </div>
@@ -138,7 +140,19 @@ export default function TrasladosPage() {
                                     return (
                                         <div key={t.id} className="rounded-lg border border-border hover:border-border/80 hover:bg-accent/30 p-3 sm:p-4 transition group">
                                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                                                <div className="flex-1 cursor-pointer min-w-0" onClick={() => router.push(`/dashboard/traslado/${t.id}`)}>
+                                                <div
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    aria-label={`Ver traslado ${t.marca_modelo}`}
+                                                    className="flex-1 cursor-pointer min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                    onClick={() => router.push(`/dashboard/traslado/${t.id}`)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' || e.key === ' ') {
+                                                            e.preventDefault()
+                                                            router.push(`/dashboard/traslado/${t.id}`)
+                                                        }
+                                                    }}
+                                                >
                                                     <div className="flex items-center gap-2 mb-1.5">
                                                         <h4 className="font-semibold text-sm sm:text-base text-foreground truncate">{t.marca_modelo}</h4>
                                                         {t.es_0km && <Badge variant="secondary" className="text-xs">0 KM</Badge>}

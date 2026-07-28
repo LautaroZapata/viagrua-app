@@ -14,11 +14,11 @@ export default function Pagination({ currentPage, totalItems, itemsPerPage, onPa
   const to = Math.min(currentPage * itemsPerPage, totalItems)
 
   return (
-    <div className="mt-4 pagination-flex">
+    <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-2">
       <div className="text-sm text-muted-foreground order-2 sm:order-1">
         Mostrando {from} - {to} de {totalItems}
       </div>
-      <div className="pagination-controls flex flex-wrap items-center justify-center sm:justify-end gap-2 order-1 sm:order-2">
+      <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 order-1 sm:order-2">
         <Button
           variant="outline"
           size="sm"

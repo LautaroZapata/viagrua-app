@@ -25,7 +25,7 @@ export default function Login() {
         const password = formData.password
 
         if (!isValidEmail(email)) { showError('Email invalido'); return }
-        if (!password || password.length > LIMITS.password) { showError('Contrase&ntilde;a invalida'); return }
+        if (!password || password.length > LIMITS.password) { showError('Contraseña invalida'); return }
 
         setLoading(true)
 
@@ -89,10 +89,10 @@ export default function Login() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="password">Contrase&ntilde;a</Label>
+                                <Label htmlFor="password">Contraseña</Label>
                                 <div className="relative">
                                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-                                    <Input id="password" type="password" required maxLength={LIMITS.password} placeholder="Tu contrase&ntilde;a" className="pl-10"
+                                    <Input id="password" type="password" required maxLength={LIMITS.password} placeholder="Tu contraseña" className="pl-10"
                                         value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
                                 </div>
                             </div>

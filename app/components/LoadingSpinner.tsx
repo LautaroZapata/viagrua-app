@@ -8,7 +8,7 @@ interface LoadingSpinnerProps {
 
 export default function LoadingSpinner({ message = 'Cargando', submessage = 'Verificando sesion y cargando datos...' }: LoadingSpinnerProps) {
   return (
-    <div className="page-bg flex items-center justify-center min-h-dvh">
+    <div className="bg-background flex items-center justify-center min-h-dvh">
       <div className="flex flex-col items-center gap-4">
         <Loader2 className="w-16 h-16 text-primary animate-spin" />
         <div className="text-center">

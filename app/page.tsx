@@ -132,7 +132,7 @@ export default function RegistroEmpresa() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="password">Contrase&ntilde;a</Label>
+                                <Label htmlFor="password">Contraseña</Label>
                                 <div className="relative">
                                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                                     <Input id="password" type="password" required minLength={6} maxLength={LIMITS.password} placeholder="Minimo 6 caracteres" className="pl-10"
