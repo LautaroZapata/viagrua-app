@@ -113,24 +113,26 @@ export default function PanelChofer() {
         if (!codigo) return
         setErrorCodigo(''); setEmpresaInvitacion(null)
         if (!isValidCodigoInvitacion(codigo)) { setErrorCodigo('Formato invalido'); return }
-        const { data, error } = await supabase.from('invitaciones').select('*, empresas(nombre)').eq('codigo', codigo).single()
-        if (error || !data) { setErrorCodigo('Codigo invalido'); return }
-        if (data.usado) { setErrorCodigo('Codigo ya utilizado'); return }
-        if (new Date(data.expires_at) < new Date()) { setErrorCodigo('Codigo expirado'); return }
-        setEmpresaInvitacion(data.empresas?.nombre || 'Empresa')
+        // Via API: leer invitaciones desde el browser exigiria una policy de
+        // SELECT abierta sobre codigos de todas las empresas.
+        const res = await fetch(`/api/validar-invitacion?codigo=${encodeURIComponent(codigo)}`)
+        const data = await res.json()
+        if (!res.ok) { setErrorCodigo(data.error || 'Codigo invalido'); return }
+        setEmpresaInvitacion(data.empresa_nombre || 'Empresa')
     }
 
     const handleUnirse = async () => {
         const codigo = sanitizeString(codigoInvitacion)
         if (!perfil || !codigo || !isValidCodigoInvitacion(codigo)) return
         setUniendose(true); setErrorCodigo('')
-        const { data: inv, error: invErr } = await supabase.from('invitaciones')
-            .update({ usado: true }).eq('codigo', codigo.trim()).eq('usado', false)
-            .gte('expires_at', new Date().toISOString()).select().single()
-        if (!inv || invErr) { setErrorCodigo('Codigo invalido o expirado'); setUniendose(false); return }
-        const { error: upErr } = await supabase.from('perfiles').update({ empresa_id: inv.empresa_id }).eq('id', perfil.id)
-        if (upErr) { await supabase.from('invitaciones').update({ usado: false }).eq('id', inv.id); setErrorCodigo('Error al unirse'); setUniendose(false); return }
-        const nombre = empresaInvitacion
+        const res = await fetch('/api/unirse-empresa', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codigo }),
+        })
+        const data = await res.json()
+        if (!res.ok) { setErrorCodigo(data.error || 'Codigo invalido o expirado'); setUniendose(false); return }
+        const nombre = data.empresa_nombre || empresaInvitacion
         setUniendose(false); setMostrarFormCodigo(false); setCodigoInvitacion(''); setEmpresaInvitacion(null)
         setMensajeExito(`Te uniste a ${nombre}!`)
         reload()
@@ -259,8 +261,18 @@ export default function PanelChofer() {
                             const estado = estadoConfig[t.estado] || estadoConfig.pendiente
                             const pago = pagoConfig[t.estado_pago] || pagoConfig.pendiente
                             return (
-                                <div key={t.id} className="rounded-lg border border-border bg-card hover:border-border/80 hover:bg-accent/30 p-3 sm:p-4 transition cursor-pointer group"
-                                    onClick={() => router.push(`/chofer/traslado/${t.id}`)}>
+                                <div key={t.id}
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={`Ver traslado ${t.marca_modelo}`}
+                                    className="rounded-lg border border-border bg-card hover:border-border/80 hover:bg-accent/30 p-3 sm:p-4 transition cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    onClick={() => router.push(`/chofer/traslado/${t.id}`)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault()
+                                            router.push(`/chofer/traslado/${t.id}`)
+                                        }
+                                    }}>
                                     <div className="flex items-start sm:items-center justify-between gap-3">
                                         <div className="flex-1 min-w-0">
                                             <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
