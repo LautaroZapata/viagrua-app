@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { auditLog } from '@/lib/audit'
 import { consumirRateLimit, ipDeRequest, respuesta429 } from '@/lib/rateLimit'
+import { verificarRecaptcha, tokenDeRequest, respuestaRecaptcha403 } from '@/lib/recaptcha'
 import { esEmailDuplicado } from '@/lib/validation'
 import { altaEmpresaSchema, parsear } from '@/lib/schemas'
 
@@ -56,6 +57,19 @@ export async function POST(request: Request) {
       `registro:${ipDeRequest(request)}`, 5, 3600
     )
     if (!permitido) return respuesta429(reintentarEn)
+
+    // Aca si se exige token, al reves que en el login.
+    //
+    // Esta ruta crea una empresa y una cuenta admin por llamada, que es
+    // exactamente lo que un script quiere hacer en masa, y el cupo por IP no lo
+    // frena si rota proxies. El costo de equivocarse tambien es distinto: alguien
+    // que se esta dando de alta por primera vez puede desactivar el bloqueador y
+    // reintentar, mientras que un chofer que necesita entrar a trabajar no.
+    const captcha = await verificarRecaptcha(tokenDeRequest(request), 'registro', true)
+    if (!captcha.permitido) {
+      console.warn('recaptcha rechazo un registro:', captcha.motivo)
+      return respuestaRecaptcha403()
+    }
 
     const { data: empresa, error: errorEmpresa } = await supabaseAdmin
       .from('empresas')

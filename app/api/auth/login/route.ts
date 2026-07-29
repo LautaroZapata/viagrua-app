@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { consumirRateLimit, ipDeRequest, respuesta429 } from '@/lib/rateLimit'
+import { verificarRecaptcha, tokenDeRequest, respuestaRecaptcha403 } from '@/lib/recaptcha'
 import { loginSchema, parsear } from '@/lib/schemas'
 import { auditLog } from '@/lib/audit'
 
@@ -41,6 +42,23 @@ export async function POST(request: Request) {
     for (const [clave, max] of [[`login:ip:${ip}`, 10], [`login:email:${email}`, 5]] as const) {
       const { permitido, reintentarEn } = await consumirRateLimit(clave, max, 300)
       if (!permitido) return respuesta429(reintentarEn)
+    }
+
+    // El captcha va DESPUES del cupo: verificar cuesta un round trip a Google, y
+    // no tiene sentido gastarlo (ni gastar cuota de la API) con quien ya se paso
+    // de intentos.
+    //
+    // exigirToken en false, y es la unica ruta donde va asi. Si el navegador no
+    // pudo cargar el script de Google —un bloqueador, una extension de
+    // privacidad, la red del cliente— el pedido pasa igual. Dejar sin login a un
+    // chofer a las tres de la manana por una extension del navegador es peor que
+    // el ataque del que protege: aca abajo ya hay dos cupos, y el de 5 intentos
+    // por email en 5 minutos es lo que realmente frena el credential stuffing.
+    // Un token que SI llega y viene con score bajo se rechaza igual.
+    const captcha = await verificarRecaptcha(tokenDeRequest(request), 'login', false)
+    if (!captcha.permitido) {
+      console.warn('recaptcha rechazo un login:', captcha.motivo)
+      return respuestaRecaptcha403()
     }
 
     const supabase = await createClient()

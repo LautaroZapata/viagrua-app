@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { auditLog } from '@/lib/audit'
 import { consumirRateLimit, ipDeRequest, respuesta429 } from '@/lib/rateLimit'
+import { verificarRecaptcha, tokenDeRequest, respuestaRecaptcha403 } from '@/lib/recaptcha'
 import { esEmailDuplicado } from '@/lib/validation'
 import { unirseConCodigoSchema, parsear } from '@/lib/schemas'
 
@@ -44,6 +45,16 @@ export async function POST(request: Request) {
       `unirse:${ipDeRequest(request)}`, 10, 3600
     )
     if (!permitido) return respuesta429(reintentarEn)
+
+    // Con token obligatorio, igual que el alta de empresa. Aca ademas hay algo
+    // que perder: el UPDATE de mas abajo consume la invitacion, y una invitacion
+    // quemada por un bot es un chofer que no puede sumarse hasta que le generen
+    // otra. El captcha va antes de tocarla.
+    const captcha = await verificarRecaptcha(tokenDeRequest(request), 'unirse', true)
+    if (!captcha.permitido) {
+      console.warn('recaptcha rechazo un alta por invitacion:', captcha.motivo)
+      return respuestaRecaptcha403()
+    }
 
     // Consumir la invitacion PRIMERO, con un UPDATE condicional.
     // Antes se leia, se creaba el usuario y recien al final se marcaba usada:

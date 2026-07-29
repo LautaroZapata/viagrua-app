@@ -9,6 +9,8 @@ import {
   isValidName, isValidCompanyName, LIMITS,
 } from '@/lib/validation'
 import { showError } from '@/lib/swal'
+import { headersConRecaptcha, ACCIONES } from '@/lib/recaptchaCliente'
+import { AvisoRecaptcha } from '@/app/components/AvisoRecaptcha'
 import { Building2, User, Mail, Lock, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,7 +44,7 @@ export function SignupSection() {
 
     const res = await fetch('/api/registro', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await headersConRecaptcha(ACCIONES.registro),
       body: JSON.stringify({
         nombre_empresa: nombreEmpresa,
         nombre_duenio: nombreDuenio,
@@ -133,6 +135,8 @@ export function SignupSection() {
                 <Link href="/terminos" className="underline hover:text-foreground transition-colors">Términos</Link> y{' '}
                 <Link href="/privacidad" className="underline hover:text-foreground transition-colors">Privacidad</Link>
               </p>
+
+              <AvisoRecaptcha className="text-center" />
             </form>
           </div>
         </motion.div>

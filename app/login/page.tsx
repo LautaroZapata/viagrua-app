@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { sanitizeString, isValidEmail, LIMITS } from '@/lib/validation'
 import { showError } from '@/lib/swal'
+import { headersConRecaptcha, ACCIONES } from '@/lib/recaptchaCliente'
+import { AvisoRecaptcha } from '@/app/components/AvisoRecaptcha'
 import { Truck, Mail, Lock, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,7 +58,7 @@ export default function Login() {
 
         const res = await fetch('/api/auth/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: await headersConRecaptcha(ACCIONES.login),
             body: JSON.stringify({ email, password }),
         })
 
@@ -135,6 +137,8 @@ export default function Login() {
                             <Button type="submit" disabled={loading} className="w-full mt-2 py-3">
                                 {loading ? 'Iniciando...' : <><span>Iniciar Sesion</span><ArrowRight className="w-4 h-4" /></>}
                             </Button>
+
+                            <AvisoRecaptcha className="text-center pt-1" />
                         </form>
                     </div>
 

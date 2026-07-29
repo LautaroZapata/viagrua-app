@@ -309,6 +309,22 @@
   }
 }
 
+/*
+ * Badge de reCAPTCHA v3.
+ *
+ * Es un recuadro con position: fixed en la esquina inferior derecha que en
+ * celular se monta encima del boton de enviar. Se oculta con visibility y no
+ * con display: none: el script de Google mide el badge al inicializarse, y si
+ * el elemento no ocupa lugar en el layout, execute() puede quedar colgado.
+ *
+ * Esconderlo obliga a mostrar la leyenda con los links a Google en su lugar;
+ * eso lo hace app/components/AvisoRecaptcha.tsx, que va en los tres
+ * formularios. Si se saca este bloque, sacar tambien ese componente.
+ */
+.grecaptcha-badge {
+  visibility: hidden;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

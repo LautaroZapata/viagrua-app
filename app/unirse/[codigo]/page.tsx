@@ -5,6 +5,8 @@ import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { sanitizeString, isValidEmail, isValidPassword, isValidName, isValidCodigoInvitacion, LIMITS } from '@/lib/validation'
 import { showError } from '@/lib/swal'
+import { headersConRecaptcha, ACCIONES } from '@/lib/recaptchaCliente'
+import { AvisoRecaptcha } from '@/app/components/AvisoRecaptcha'
 import { ArrowLeftRight, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -77,7 +79,7 @@ export default function UnirseEmpresa() {
         try {
             const res = await fetch('/api/unirse', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: await headersConRecaptcha(ACCIONES.unirse),
                 body: JSON.stringify({
                     codigo,
                     email,
@@ -181,6 +183,8 @@ export default function UnirseEmpresa() {
                         <Button type="submit" disabled={registrando} className="w-full py-3 mt-2">
                             {registrando ? 'Creando cuenta...' : 'Unirme al equipo'}
                         </Button>
+
+                        <AvisoRecaptcha className="text-center" />
                     </form>
 
                     <p className="text-center text-xs text-muted-foreground mt-5">
