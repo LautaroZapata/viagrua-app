@@ -5,7 +5,10 @@
  * primitivas de limpieza (que los esquemas usan por dentro) y unos wrappers
  * delgados para validar de a un campo mientras el usuario escribe.
  */
-import { tipoGasto, fechaCalendario } from './schemas'
+// Desde reglas.ts y NO desde schemas.ts: schemas.ts trae zod, y estos
+// validadores los usan los formularios. Importarlos desde allá metía zod entero
+// en el bundle de cualquier página que validara un campo.
+import { esTipoGastoValido, esFechaCalendarioValida } from './reglas'
 
 // Se re-exportan para no tener que tocar los ~20 imports que ya las usaban
 // desde acá. La definición vive en sanitize.ts, que no depende de nada: si
@@ -81,10 +84,5 @@ export function esEmailDuplicado(error: { message?: string; code?: string } | nu
 // esquema: asi no hay dos definiciones de "que es un tipo de gasto valido" que
 // se puedan desincronizar, que es justo lo que paso antes.
 
-export function isValidTipoGasto(value: string): boolean {
-  return tipoGasto.safeParse(value).success
-}
-
-export function isValidFecha(value: string): boolean {
-  return fechaCalendario.safeParse(value).success
-}
+export const isValidTipoGasto = esTipoGastoValido
+export const isValidFecha = esFechaCalendarioValida

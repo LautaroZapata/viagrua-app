@@ -1,5 +1,11 @@
 import { z } from 'zod'
 import { sanitizeString, sanitizeAndLimit, LIMITS } from './sanitize'
+// Las reglas de negocio viven en reglas.ts, en JS plano, y acá se envuelven en
+// zod. Al revés (definirlas con zod y consumirlas desde los formularios) metía
+// zod en el bundle del cliente.
+import { TIPOS_GASTO, esFechaCalendarioValida, esFechaNoFutura } from './reglas'
+
+export { TIPOS_GASTO }
 
 /**
  * Esquemas de entrada, en un solo lugar.
@@ -63,15 +69,7 @@ const nombrePersona = textoLimpio(LIMITS.nombre)
 export const fechaCalendario = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha invalido (se espera YYYY-MM-DD)')
-  .refine((valor) => {
-    const [a, m, d] = valor.split('-').map(Number) as [number, number, number]
-    const fecha = new Date(Date.UTC(a, m - 1, d))
-    return (
-      fecha.getUTCFullYear() === a &&
-      fecha.getUTCMonth() === m - 1 &&
-      fecha.getUTCDate() === d
-    )
-  }, 'Esa fecha no existe')
+  .refine(esFechaCalendarioValida, 'Esa fecha no existe')
 
 /** Importe en pesos. Acepta string porque llega de un <input>. */
 export const importe = z
@@ -82,14 +80,6 @@ export const importe = z
       .min(0, 'El importe no puede ser negativo')
       .max(99_999_999, 'Importe demasiado grande')
   )
-
-/**
- * Los mismos tipos que acepta el CHECK gastos_tipo_check en la base. Si se
- * agrega uno hay que tocar los dos lados; el test de contrato lo verifica.
- */
-export const TIPOS_GASTO = [
-  'combustible', 'seguro', 'mantenimiento', 'peaje', 'patente', 'multa', 'otro',
-] as const
 
 export const tipoGasto = z.enum(TIPOS_GASTO, { message: 'Tipo de gasto inválido' })
 
@@ -155,17 +145,10 @@ export const nuevoTrasladoSchema = z
     hasta: textoOpcional(LIMITS.ubicacion),
     fecha: fechaCalendario.nullish(),
   })
-  .refine(
-    // Un traslado no puede haber ocurrido en el futuro. Se compara contra el
-    // fin del dia de hoy para no rechazar la carga del mismo dia.
-    (d) => {
-      if (!d.fecha) return true
-      const hoy = new Date()
-      hoy.setHours(23, 59, 59, 999)
-      return new Date(d.fecha) <= hoy
-    },
-    { message: 'La fecha no puede ser futura', path: ['fecha'] }
-  )
+  .refine((d) => !d.fecha || esFechaNoFutura(d.fecha), {
+    message: 'La fecha no puede ser futura',
+    path: ['fecha'],
+  })
 export type NuevoTraslado = z.infer<typeof nuevoTrasladoSchema>
 
 // --- Helper para las rutas ---
