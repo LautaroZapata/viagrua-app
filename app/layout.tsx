@@ -19,8 +19,8 @@ const plusJakarta = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-    title: 'ViaGrua — Gestion de Traslados',
-    description: 'Plataforma interna de gestion de traslados de vehiculos',
+    title: 'ViaGrúa — Gestioná tu flota de grúas desde cualquier lado',
+    description: 'ViaGrúa es la plataforma #1 en Uruguay para gestionar tu flota de grúas. Controlá traslados, choferes y gastos desde el celular. Comenzá gratis.',
     appleWebApp: {
         capable: true,
         statusBarStyle: 'black-translucent',
