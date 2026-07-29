@@ -1,9 +1,10 @@
-'use client'
+﻿'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, confirmAction, showError } from '@/lib/swal'
 import { useUser } from '@/app/components/UserContext'
+import { estiloEstado, estiloPago } from '@/lib/trasladoStatus'
 import { useTraslados } from '@/lib/useSupabaseQuery'
 import AppHeader from '@/app/components/AppHeader'
 import Pagination from '@/app/components/Pagination'
@@ -16,18 +17,6 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Download, Trash2, ChevronRight } from 'lucide-react'
 
 const ITEMS_PER_PAGE = 10
-
-const estadoConfig: Record<string, { bg: string; text: string; label: string }> = {
-    pendiente: { bg: 'bg-yellow-500/10 border-yellow-500/20', text: 'text-yellow-700 dark:text-yellow-400', label: 'Pendiente' },
-    en_curso: { bg: 'bg-blue-500/10 border-blue-500/20', text: 'text-blue-700 dark:text-blue-400', label: 'En Curso' },
-    completado: { bg: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-700 dark:text-emerald-400', label: 'Completado' },
-}
-
-const pagoConfig: Record<string, { bg: string; text: string; label: string }> = {
-    pendiente: { bg: 'bg-yellow-500/10', text: 'text-yellow-700 dark:text-yellow-400', label: 'Pendiente' },
-    efectivo: { bg: 'bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400', label: 'Efectivo' },
-    transferencia: { bg: 'bg-blue-500/10', text: 'text-blue-700 dark:text-blue-400', label: 'Transfer.' },
-}
 
 export default function TrasladosPage() {
     const { perfil } = useUser()
@@ -62,9 +51,9 @@ export default function TrasladosPage() {
     }, [perfil?.empresa_id])
 
     const cambiarEstado = async (trasladoId: string, nuevoEstado: string) => {
-        if (!perfil) return
+        if (!perfil?.empresa_id) return
         if (nuevoEstado === 'completado') {
-            const ok = await confirmAction({ title: 'Confirmar', text: '¿Marcar como completado? Esta accion bloqueara el traslado.', icon: 'warning', confirmButtonText: 'Si, completar' })
+            const ok = await confirmAction({ title: 'Confirmar', text: 'Â¿Marcar como completado? Esta accion bloqueara el traslado.', icon: 'warning', confirmButtonText: 'Si, completar' })
             if (!ok) return
         }
         mutate(
@@ -79,8 +68,8 @@ export default function TrasladosPage() {
     }
 
     const eliminarTraslado = async (trasladoId: string) => {
-        if (!perfil) return
-        const ok = await confirmDelete({ title: 'Eliminar traslado', text: '¿Eliminar este traslado? No se puede deshacer.' })
+        if (!perfil?.empresa_id) return
+        const ok = await confirmDelete({ title: 'Eliminar traslado', text: 'Â¿Eliminar este traslado? No se puede deshacer.' })
         if (!ok) return
         mutate(
             prev => prev ? { ...prev, data: prev.data.filter(t => t.id !== trasladoId), count: prev.count - 1 } : prev,
@@ -138,8 +127,8 @@ export default function TrasladosPage() {
                         ) : (
                             <div className="space-y-2 animate-stagger">
                                 {traslados.map((t) => {
-                                    const estado = estadoConfig[t.estado] || estadoConfig.pendiente
-                                    const pago = pagoConfig[t.estado_pago] || pagoConfig.pendiente
+                                    const estado = estiloEstado(t.estado)
+                                    const pago = estiloPago(t.estado_pago)
                                     return (
                                         <div key={t.id} className="rounded-lg border border-border hover:border-border/80 hover:bg-accent/30 p-3 sm:p-4 transition group">
                                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
@@ -175,7 +164,8 @@ export default function TrasladosPage() {
                                                     {t.observaciones && <p className="text-xs text-muted-foreground/60 mt-1.5 italic line-clamp-1">&ldquo;{t.observaciones}&rdquo;</p>}
                                                 </div>
                                                 <div className="flex items-center gap-2 shrink-0">
-                                                    <select value={t.estado} onChange={(e) => cambiarEstado(t.id, e.target.value)}
+                                                    <select value={t.estado ?? 'pendiente'} onChange={(e) => cambiarEstado(t.id, e.target.value)}
+                                                        aria-label={`Estado de ${t.marca_modelo}`}
                                                         disabled={t.estado === 'completado'}
                                                         className={`text-base sm:text-xs font-medium px-3 py-2 rounded-lg border cursor-pointer transition ${estado.bg} ${estado.text} ${t.estado === 'completado' ? 'opacity-60 cursor-not-allowed' : ''}`}>
                                                         <option value="pendiente">Pendiente</option>

@@ -1,4 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+import 'server-only'
+import { createClient } from '@supabase/supabase-js'
+import type { Database } from './database.types';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -22,4 +24,6 @@ if (!keyToUse) {
   throw new Error('supabaseKey is required. Set SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment')
 }
 
-export const supabaseAdmin = createClient(SUPABASE_URL, keyToUse)
+export const supabaseAdmin = createClient<Database>(SUPABASE_URL, keyToUse, {
+  auth: { persistSession: false, autoRefreshToken: false },
+})

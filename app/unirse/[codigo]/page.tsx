@@ -10,10 +10,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+// Lo unico que devuelve /api/validar-invitacion. No expone empresa_id ni el id
+// de la invitacion a proposito: es una ruta publica sin autenticar.
 interface Invitacion {
-    id: string
-    empresa_id: string
-    codigo: string
     empresa_nombre: string
 }
 

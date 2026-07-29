@@ -2,20 +2,18 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import type { Tables } from '@/lib/db'
 
-export interface Perfil {
-    id: string
-    nombre_completo: string
-    rol: string
-    empresa_id: string
-    email?: string
-    onboarding_completed: boolean
-}
+// Derivados del esquema real (lib/database.types.ts, generado con `pnpm db:types`).
+// Escritos a mano decian empresa_id: string, pero en la base es nullable: un
+// chofer expulsado queda sin empresa (expulsar_chofer la pone en NULL) y ve la
+// pantalla para unirse con codigo. El tipo tiene que reflejarlo.
+export type Perfil = Pick<
+    Tables<'perfiles'>,
+    'id' | 'nombre_completo' | 'rol' | 'empresa_id' | 'email' | 'onboarding_completed'
+>
 
-export interface Empresa {
-    id: string
-    nombre: string
-}
+export type Empresa = Pick<Tables<'empresas'>, 'id' | 'nombre'>
 
 export interface SesionInicial {
     user: { id: string; email?: string }

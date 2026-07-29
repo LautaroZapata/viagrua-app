@@ -8,6 +8,8 @@ import { confirmDelete, showError } from '@/lib/swal'
 import { sanitizeString, isValidImporte, isValidTipoGasto, isValidFecha, LIMITS } from '@/lib/validation'
 import ErrorBoundary from '@/app/components/ErrorBoundary'
 import { useUser } from '@/app/components/UserContext'
+import type { Tables } from '@/lib/db'
+import type { Gasto as GastoRow } from '@/lib/useSupabaseQuery'
 import AppHeader from '@/app/components/AppHeader'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,15 +20,13 @@ import {
     Package, Trash2, ChevronDown,
 } from 'lucide-react'
 
-interface Gasto {
-    id: string; tipo: string; importe: number; descripcion: string | null;
-    fecha: string; created_at: string; usuario_id: string;
-    perfiles?: { nombre_completo: string } | { nombre_completo: string }[];
-}
-interface TrasladoCompletado {
-    id: string; marca_modelo: string; matricula: string | null;
-    importe_total: number; estado_pago: string; created_at: string;
-}
+// Derivados del esquema: escritos a mano decian importe: number y
+// created_at: string, cuando en la base los dos pueden ser null.
+type Gasto = GastoRow
+type TrasladoCompletado = Pick<
+    Tables<'traslados'>,
+    'id' | 'marca_modelo' | 'matricula' | 'importe_total' | 'estado_pago' | 'created_at'
+>
 interface Movimiento {
     id: string; tipo: 'ingreso' | 'gasto'; concepto: string; importe: number;
     fecha: string; icon: LucideIcon; descripcion?: string; esTraslado?: boolean; tipoGasto?: string;
@@ -157,17 +157,20 @@ export default function GastosPage() {
         const DollarIcon = Package // placeholder for $ icon
         const ArrowIcon = Package
         const base: Movimiento[] = [
+            // created_at, fecha, importe y tipo son nullables en la base; se
+            // normalizan aca para que el resto del componente trabaje con
+            // valores concretos en vez de repartir chequeos por todos lados.
             ...misTraslados.map(t => ({
                 id: t.id, tipo: 'ingreso' as const, concepto: t.marca_modelo + (t.matricula ? ` (${t.matricula})` : ''),
-                importe: t.importe_total || 0, fecha: t.created_at,
+                importe: t.importe_total ?? 0, fecha: t.created_at ?? '',
                 icon: t.estado_pago === 'efectivo' ? DollarIcon : ArrowIcon,
                 descripcion: t.estado_pago === 'efectivo' ? 'Pago en efectivo' : 'Pago por transferencia',
                 esTraslado: true, tipoGasto: 'traslado'
             })),
             ...gastos.map(g => ({
-                id: g.id, tipo: 'gasto' as const, concepto: getLabelForTipo(g.tipo),
-                importe: g.importe, fecha: g.fecha, icon: getIconForTipo(g.tipo),
-                descripcion: g.descripcion || undefined, esTraslado: false, tipoGasto: g.tipo
+                id: g.id, tipo: 'gasto' as const, concepto: getLabelForTipo(g.tipo ?? ''),
+                importe: g.importe ?? 0, fecha: g.fecha ?? '', icon: getIconForTipo(g.tipo ?? ''),
+                descripcion: g.descripcion || undefined, esTraslado: false, tipoGasto: g.tipo ?? ''
             }))
         ]
         const filtered = filtroTipoGasto === 'todos' ? base

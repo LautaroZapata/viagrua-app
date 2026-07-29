@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { confirmAction, showError } from '@/lib/swal'
 import { sanitizeString, isValidCodigoInvitacion, LIMITS } from '@/lib/validation'
 import { useUser } from '@/app/components/UserContext'
+import { estiloEstado, estiloPago } from '@/lib/trasladoStatus'
 import AppHeader from '@/app/components/AppHeader'
 import Pagination from '@/app/components/Pagination'
 import ErrorBoundary from '@/app/components/ErrorBoundary'
@@ -26,16 +27,6 @@ interface Traslado {
 
 const ITEMS_PER_PAGE = 10
 
-const estadoConfig: Record<string, { bg: string; text: string; label: string }> = {
-    pendiente: { bg: 'bg-yellow-500/10 border-yellow-500/20', text: 'text-yellow-700 dark:text-yellow-400', label: 'Pendiente' },
-    en_curso: { bg: 'bg-blue-500/10 border-blue-500/20', text: 'text-blue-700 dark:text-blue-400', label: 'En curso' },
-    completado: { bg: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-700 dark:text-emerald-400', label: 'Completado' },
-}
-const pagoConfig: Record<string, { bg: string; text: string; label: string }> = {
-    pendiente: { bg: 'bg-yellow-500/10', text: 'text-yellow-700 dark:text-yellow-400', label: 'Pendiente' },
-    efectivo: { bg: 'bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400', label: 'Efectivo' },
-    transferencia: { bg: 'bg-blue-500/10', text: 'text-blue-700 dark:text-blue-400', label: 'Transfer.' },
-}
 
 export default function PanelChofer() {
     const { user, perfil, reload } = useUser()
@@ -259,8 +250,8 @@ export default function PanelChofer() {
                 ) : (
                     <div className="space-y-2 animate-stagger">
                         {traslados.map(t => {
-                            const estado = estadoConfig[t.estado] || estadoConfig.pendiente
-                            const pago = pagoConfig[t.estado_pago] || pagoConfig.pendiente
+                            const estado = estiloEstado(t.estado)
+                            const pago = estiloPago(t.estado_pago)
                             return (
                                 <div key={t.id}
                                     role="button"

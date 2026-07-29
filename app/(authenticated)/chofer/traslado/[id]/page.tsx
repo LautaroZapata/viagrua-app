@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmAction, showError } from '@/lib/swal'
 import { useUser } from '@/app/components/UserContext'
+import type { Tables } from '@/lib/db'
 import AppHeader from '@/app/components/AppHeader'
 import ClientOnly from '@/app/components/ClientOnly'
 import LoadingSpinner from '@/app/components/LoadingSpinner'
@@ -14,13 +15,8 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Camera, AlertTriangle, Info } from 'lucide-react'
 
-interface Traslado {
-    id: string; marca_modelo: string; matricula: string | null; es_0km: boolean;
-    estado: string; estado_pago: string; importe_total: number | null;
-    observaciones: string | null; foto_frontal: string | null; foto_lateral: string | null;
-    foto_trasera: string | null; foto_interior: string | null; created_at: string;
-    departamento: string | null; direccion: string | null; desde?: string | null;
-    hasta?: string | null; empresas?: { nombre: string };
+type Traslado = Tables<'traslados'> & {
+    empresas?: { nombre: string } | null
 }
 
 export default function DetalleTraslado() {

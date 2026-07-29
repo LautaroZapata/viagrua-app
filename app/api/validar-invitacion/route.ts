@@ -28,17 +28,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Este código ha expirado' }, { status: 400 })
   }
 
-  // Fetch empresa name separately
+  if (!data.empresa_id) {
+    return NextResponse.json({ error: 'Código de invitación inválido' }, { status: 404 })
+  }
+
   const { data: empresa } = await supabaseAdmin
     .from('empresas')
     .select('nombre')
     .eq('id', data.empresa_id)
     .single()
 
+  // Solo el nombre. Esta ruta es publica y sin autenticar: devolver empresa_id
+  // o el id de la invitacion la convertia en un oraculo para enumerar empresas
+  // ajenas por UUID. El nombre alcanza para que el invitado sepa a donde entra.
   return NextResponse.json({
-    id: data.id,
-    empresa_id: data.empresa_id,
-    codigo: data.codigo,
     empresa_nombre: empresa?.nombre ?? 'Empresa',
   })
 }

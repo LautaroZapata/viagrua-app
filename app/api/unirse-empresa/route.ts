@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { auditLog } from '@/lib/audit'
@@ -12,7 +12,7 @@ const MAX_BODY_SIZE = 1_000
  * Antes esto se hacia desde el browser con la anon key: se marcaba la
  * invitacion como usada y se escribia perfiles.empresa_id directo. Eso exigia
  * que el cliente pudiera modificar empresa_id, que es la clave de tenancy
- * — el mismo permiso que permitia saltar de empresa a voluntad.
+ * (el mismo permiso que permitia saltar de empresa a voluntad).
  *
  * Ahora la escritura la hace service_role despues de validar del lado del
  * servidor. Ver supabase/migrations/20260729_seguridad_critica.sql.
@@ -81,13 +81,14 @@ export async function POST(request: Request) {
       .select('id, empresa_id')
       .single()
 
-    if (invError || !invitacion) {
+    if (invError || !invitacion?.empresa_id) {
       return NextResponse.json({ error: 'Codigo invalido, usado o expirado' }, { status: 400 })
     }
+    const empresaId = invitacion.empresa_id
 
     const { error: updateError } = await supabaseAdmin
       .from('perfiles')
-      .update({ empresa_id: invitacion.empresa_id })
+      .update({ empresa_id: empresaId })
       .eq('id', user.id)
 
     if (updateError) {
@@ -100,19 +101,19 @@ export async function POST(request: Request) {
     const { data: empresa } = await supabaseAdmin
       .from('empresas')
       .select('nombre')
-      .eq('id', invitacion.empresa_id)
+      .eq('id', empresaId)
       .single()
 
     auditLog({
       userId: user.id,
-      empresaId: invitacion.empresa_id,
+      empresaId: empresaId,
       action: 'join_company',
       details: { codigo },
     })
 
     return NextResponse.json({
       ok: true,
-      empresa_id: invitacion.empresa_id,
+      empresa_id: empresaId,
       empresa_nombre: empresa?.nombre ?? 'Empresa',
     })
   } catch (e) {

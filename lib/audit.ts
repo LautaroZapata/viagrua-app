@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import type { Json } from '@/lib/database.types'
 
 export type AuditAction =
   | 'login'
@@ -16,7 +17,8 @@ interface AuditLogParams {
   userId: string | null
   empresaId: string | null
   action: AuditAction
-  details?: Record<string, unknown>
+  /** Se guarda en una columna jsonb, asi que tiene que ser serializable. */
+  details?: Json
   ip?: string | null
 }
 

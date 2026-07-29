@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, confirmAction, showError } from '@/lib/swal'
 import { useUser } from '@/app/components/UserContext'
+import type { Tables } from '@/lib/db'
 import AppHeader from '@/app/components/AppHeader'
 import ClientOnly from '@/app/components/ClientOnly'
 import LoadingSpinner from '@/app/components/LoadingSpinner'
@@ -14,13 +15,8 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Trash2, Camera, X, AlertTriangle, Info } from 'lucide-react'
 
-interface Traslado {
-    id: string; marca_modelo: string; matricula: string | null; es_0km: boolean;
-    estado: string; estado_pago: string; importe_total: number | null;
-    observaciones: string | null; foto_frontal: string | null; foto_lateral: string | null;
-    foto_trasera: string | null; foto_interior: string | null; created_at: string;
-    chofer_id: string; departamento: string | null; direccion: string | null;
-    perfiles?: { nombre_completo: string }; desde?: string | null; hasta?: string | null;
+type Traslado = Tables<'traslados'> & {
+    perfiles?: { nombre_completo: string | null } | null
 }
 
 export default function DetalleTrasladoAdmin() {
@@ -34,7 +30,7 @@ export default function DetalleTrasladoAdmin() {
     const [actualizando, setActualizando] = useState(false)
 
     const cargarTraslado = useCallback(async () => {
-        if (!perfil) return
+        if (!perfil?.empresa_id) return
         const { data, error } = await supabase.from('traslados').select('*, perfiles(nombre_completo)')
             .eq('id', id).eq('empresa_id', perfil.empresa_id).single()
         if (error || !data) { router.push('/dashboard/traslados'); return }

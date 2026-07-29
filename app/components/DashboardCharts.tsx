@@ -12,14 +12,16 @@ import {
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 
+// Nullables como en la base: created_at, importe y fecha pueden venir en null,
+// y las filas sin fecha se descartan al agrupar por mes.
 interface Traslado {
   importe_total: number | null
-  created_at: string
+  created_at: string | null
 }
 
 interface Gasto {
-  importe: number
-  fecha: string
+  importe: number | null
+  fecha: string | null
 }
 
 interface Props {

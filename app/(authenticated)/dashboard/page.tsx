@@ -1,9 +1,10 @@
-'use client'
+﻿'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, showError } from '@/lib/swal'
 import { useUser } from '@/app/components/UserContext'
+import type { Tables } from '@/lib/db'
 import { useTrasladosCounts } from '@/lib/useSupabaseQuery'
 import AppHeader from '@/app/components/AppHeader'
 import dynamic from 'next/dynamic'
@@ -23,7 +24,7 @@ import {
     MapPin, Clock, Zap, CheckCircle2, Plus, UserPlus, Users,
 } from 'lucide-react'
 
-interface Chofer { id: string; nombre_completo: string; email: string }
+type Chofer = Pick<Tables<'perfiles'>, 'id' | 'nombre_completo' | 'email'>
 
 const statMeta = [
     { key: 'total', label: 'Total Traslados', icon: MapPin, badgeClass: 'bg-primary/10 text-primary' },
@@ -42,15 +43,15 @@ export default function DashboardPage() {
     const { perfil, empresa, role } = useUser()
     const router = useRouter()
     const [choferes, setChoferes] = useState<Chofer[]>([])
-    const [gastos, setGastos] = useState<{ importe: number; fecha: string }[]>([])
-    const [chartTraslados, setChartTraslados] = useState<{ importe_total: number | null; created_at: string }[]>([])
+    const [gastos, setGastos] = useState<Pick<Tables<'gastos'>, 'importe' | 'fecha'>[]>([])
+    const [chartTraslados, setChartTraslados] = useState<Pick<Tables<'traslados'>, 'importe_total' | 'created_at'>[]>([])
     const [modalAbierto, setModalAbierto] = useState(false)
     const { data: counts } = useTrasladosCounts(perfil?.empresa_id ?? null)
 
     // Declaradas antes de los efectos que las usan: al reves, el compilador de
     // React marca acceso a la variable antes de declararla (react-hooks/immutability).
     const cargarChoferes = useCallback(async (empresaId: string) => {
-        const { data } = await supabase.from('perfiles').select('*').eq('empresa_id', empresaId).eq('rol', 'chofer')
+        const { data } = await supabase.from('perfiles').select('id, nombre_completo, email').eq('empresa_id', empresaId).eq('rol', 'chofer')
         setChoferes(data || [])
     }, [])
 
@@ -95,7 +96,7 @@ export default function DashboardPage() {
         const { error } = await supabase.rpc('expulsar_chofer', { chofer_id: choferId })
         if (error) {
             showError('Error al expulsar: ' + error.message)
-            if (perfil) await cargarChoferes(perfil.empresa_id)
+            if (perfil?.empresa_id) await cargarChoferes(perfil.empresa_id)
         }
     }
 
@@ -127,7 +128,7 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* KPI Stats — unified card with dividers */}
+                {/* KPI Stats: card unica con divisores */}
                 <Card className="overflow-hidden">
                     <CardContent className="p-0">
                         <div className="grid grid-cols-2 lg:grid-cols-4">
@@ -184,32 +185,36 @@ export default function DashboardPage() {
                             <EmptyState message="No hay choferes registrados" />
                         ) : (
                             <div className="space-y-1">
-                                {choferes.map((chofer) => (
+                                {choferes.map((chofer) => {
+                                    const nombre = chofer.nombre_completo ?? 'Sin nombre'
+                                    return (
                                     <div key={chofer.id} className="flex items-center justify-between gap-3 p-3 rounded-[10px] hover:bg-accent/50 transition">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <Avatar className="size-9">
                                                 <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
-                                                    {chofer.nombre_completo.charAt(0).toUpperCase()}
+                                                    {nombre.charAt(0).toUpperCase()}
                                                 </AvatarFallback>
                                             </Avatar>
                                             <div className="min-w-0">
-                                                <p className="font-medium text-sm text-foreground truncate">{chofer.nombre_completo}</p>
+                                                <p className="font-medium text-sm text-foreground truncate">{nombre}</p>
                                                 <p className="text-xs text-muted-foreground truncate">{chofer.email}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
                                             <div className="flex items-center gap-1.5">
-                                                <span className="status-dot bg-emerald-500 status-dot-pulse" />
+                                                <span aria-hidden="true" className="status-dot bg-emerald-500 status-dot-pulse" />
                                                 <span className="text-xs text-muted-foreground hidden sm:inline">Disponible</span>
+                                                <span className="sr-only">Disponible</span>
                                             </div>
                                             <Button variant="ghost" size="sm"
-                                                onClick={() => expulsarChofer(chofer.id, chofer.nombre_completo)}
+                                                onClick={() => expulsarChofer(chofer.id, nombre)}
                                                 className="text-muted-foreground hover:text-destructive text-xs">
                                                 Expulsar
                                             </Button>
                                         </div>
                                     </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         )}
                     </CardContent>

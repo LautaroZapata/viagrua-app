@@ -1,28 +1,25 @@
 import useSWR, { type SWRConfiguration } from 'swr'
 import { supabase } from '@/lib/supabase'
+import type { Tables } from '@/lib/db'
 
-interface Gasto {
-  id: string
-  tipo: string
-  importe: number
-  descripcion: string | null
-  fecha: string
-  created_at: string
-  usuario_id: string
-  perfiles?: { nombre_completo: string } | { nombre_completo: string }[]
+/**
+ * Tipos derivados del esquema real. Antes estaban escritos a mano y declaraban
+ * como no-nulas varias columnas que en la base si lo son, con lo cual el
+ * compilador no avisaba de ningun acceso a null.
+ */
+export type Gasto = Pick<
+  Tables<'gastos'>,
+  'id' | 'tipo' | 'importe' | 'descripcion' | 'fecha' | 'created_at' | 'usuario_id'
+> & {
+  perfiles?: { nombre_completo: string | null } | { nombre_completo: string | null }[] | null
 }
 
-interface Traslado {
-  id: string
-  marca_modelo: string
-  matricula: string | null
-  es_0km: boolean
-  estado: string
-  estado_pago: string
-  importe_total: number | null
-  observaciones: string | null
-  created_at: string
-  perfiles?: { nombre_completo: string }
+export type Traslado = Pick<
+  Tables<'traslados'>,
+  | 'id' | 'marca_modelo' | 'matricula' | 'es_0km' | 'estado' | 'estado_pago'
+  | 'importe_total' | 'observaciones' | 'created_at'
+> & {
+  perfiles?: { nombre_completo: string | null } | null
 }
 
 interface TrasladosCounts {
@@ -53,30 +50,19 @@ export function useSupabaseQuery<T>(
   })
 }
 
-export function usePerfil(userId: string | null) {
-  return useSupabaseQuery(
-    userId ? `perfil:${userId}` : null,
-    () => supabase.from('perfiles').select('id, email, nombre_completo, telefono, rol, empresa_id, avatar_url').eq('id', userId!).single(),
-  )
-}
-
 export function useGastos(empresaId: string | null, userId: string | null, isAdmin: boolean) {
   return useSupabaseQuery<Gasto[]>(
     empresaId ? `gastos:${empresaId}:${isAdmin ? 'all' : userId}` : null,
     () => {
-      let query = supabase
+      const query = supabase
         .from('gastos')
         .select('id, tipo, importe, descripcion, fecha, created_at, usuario_id, perfiles(nombre_completo)')
         .order('fecha', { ascending: false })
         .limit(500)
 
-      if (isAdmin) {
-        query = query.eq('empresa_id', empresaId!)
-      } else {
-        query = query.eq('usuario_id', userId!)
-      }
-
-      return query
+      return (isAdmin
+        ? query.eq('empresa_id', empresaId!)
+        : query.eq('usuario_id', userId!)) as unknown as PromiseLike<{ data: Gasto[] | null; error: unknown }>
     },
     { refreshInterval: 30000 }
   )
@@ -85,7 +71,8 @@ export function useGastos(empresaId: string | null, userId: string | null, isAdm
 export function useTrasladosCounts(empresaId: string | null) {
   return useSupabaseQuery<TrasladosCounts>(
     empresaId ? `traslados-counts:${empresaId}` : null,
-    () => supabase.rpc('get_traslados_counts', { p_empresa_id: empresaId! }),
+    () => supabase.rpc('get_traslados_counts', { p_empresa_id: empresaId! }) as unknown as
+      PromiseLike<{ data: TrasladosCounts | null; error: unknown }>,
   )
 }
 
@@ -107,7 +94,7 @@ export function useTraslados(
     async () => {
       let query = supabase
         .from('traslados')
-        .select('*, perfiles(nombre_completo)', { count: 'exact' })
+        .select('id, marca_modelo, matricula, es_0km, estado, estado_pago, importe_total, observaciones, created_at, perfiles(nombre_completo)', { count: 'exact' })
         .eq('empresa_id', empresaId!)
       if (filtroTrasladosPendientes) query = query.eq('estado', 'pendiente')
       if (filtroPagosPendientes) query = query.eq('estado_pago', 'pendiente')
@@ -115,7 +102,7 @@ export function useTraslados(
         .order('created_at', { ascending: false })
         .range(from, to)
       if (error) throw error
-      return { data: data || [], count: count || 0 }
+      return { data: (data ?? []) as unknown as Traslado[], count: count || 0 }
     },
     {
       revalidateOnFocus: true,
@@ -124,4 +111,3 @@ export function useTraslados(
     }
   )
 }
-

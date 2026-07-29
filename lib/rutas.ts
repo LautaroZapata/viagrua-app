@@ -14,8 +14,9 @@
 export const PATHNAME_HEADER = 'x-pathname'
 
 export interface EstadoSesion {
-  rol: string
-  onboardingCompleted: boolean
+  /** Nullable en la base; sin rol se trata como no-admin. */
+  rol: string | null
+  onboardingCompleted: boolean | null
 }
 
 /**

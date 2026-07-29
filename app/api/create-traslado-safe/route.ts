@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { auditLog } from '@/lib/audit'
 import { validateTrasladoInput } from '@/lib/validation'
+import type { Insert } from '@/lib/db'
 
 const MAX_BODY_SIZE = 10_000 // 10KB máximo para el body JSON
 
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
     }
 
     // Insertar con datos ya sanitizados
-    const insertData: Record<string, unknown> = {
+    const insertData: Insert<'traslados'> = {
       empresa_id: input.empresa_id,
       chofer_id: input.chofer_id,
       marca_modelo: input.marca_modelo,

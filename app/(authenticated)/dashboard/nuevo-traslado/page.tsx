@@ -6,6 +6,7 @@ import { compressImage, formatFileSize } from '@/lib/compressImage'
 import { confirmDelete, showError } from '@/lib/swal'
 import { sanitizeString, isValidImporte, isValidMatricula, isValidFecha, LIMITS } from '@/lib/validation'
 import { useUser } from '@/app/components/UserContext'
+import type { Tables, Update } from '@/lib/db'
 import AppHeader from '@/app/components/AppHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { Camera, X } from 'lucide-react'
 
-interface Chofer { id: string; nombre_completo: string; rol?: string }
+type Chofer = Pick<Tables<'perfiles'>, 'id' | 'nombre_completo' | 'rol'>
 interface FotoPreview { file: File; preview: string; compressedSize?: number }
 
 export default function NuevoTraslado() {
@@ -40,10 +41,11 @@ export default function NuevoTraslado() {
     useEffect(() => { return () => { Object.values(fotos).forEach(f => { if (f) URL.revokeObjectURL(f.preview) }) } }, [])
 
     useEffect(() => {
-        if (!perfil?.empresa_id) return
+        const empresaId = perfil?.empresa_id
+        if (!empresaId) return
         const load = async () => {
             const { data } = await supabase.from('perfiles').select('id, nombre_completo, rol')
-                .eq('empresa_id', perfil.empresa_id).in('rol', ['chofer', 'admin'])
+                .eq('empresa_id', empresaId).in('rol', ['chofer', 'admin'])
             setChoferes(data || [])
         }
         load()
@@ -68,17 +70,29 @@ export default function NuevoTraslado() {
         setFotos(p => ({ ...p, [tipo]: null }))
     }
 
-    const subirFotos = async (trasladoId: string) => {
-        const urls: { [key: string]: string } = {}
-        for (const [tipo, d] of Object.entries(fotos)) {
-            if (d) {
+    // En paralelo: antes subia las hasta 4 fotos una tras otra, con el await
+    // adentro del for, y el usuario esperaba la suma de las cuatro.
+    const subirFotos = async (trasladoId: string): Promise<Update<'traslados'>> => {
+        const pendientes = Object.entries(fotos).filter(([, d]) => d !== null)
+
+        const resultados = await Promise.all(
+            pendientes.map(async ([tipo, d]) => {
                 const name = `${trasladoId}/${tipo}_${Date.now()}.jpg`
-                const { error } = await supabase.storage.from('fotos-traslados').upload(name, d.file)
-                if (error) showError(`Error subiendo ${tipo}: ${error.message}`)
-                else { const { data } = supabase.storage.from('fotos-traslados').getPublicUrl(name); urls[`foto_${tipo}`] = data.publicUrl }
-            }
+                const { error } = await supabase.storage.from('fotos-traslados').upload(name, d!.file)
+                if (error) {
+                    showError(`Error subiendo ${tipo}: ${error.message}`)
+                    return null
+                }
+                const { data } = supabase.storage.from('fotos-traslados').getPublicUrl(name)
+                return { columna: `foto_${tipo}` as keyof Update<'traslados'>, url: data.publicUrl }
+            })
+        )
+
+        const urls: Record<string, string> = {}
+        for (const r of resultados) {
+            if (r) urls[r.columna as string] = r.url
         }
-        return urls
+        return urls as Update<'traslados'>
     }
 
     const handleSubmit = async (e: React.FormEvent) => {

@@ -82,6 +82,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Solo administradores pueden exportar datos' }, { status: 403 })
     }
 
+    // empresa_id es nullable: un usuario expulsado se queda sin empresa.
+    if (!perfil.empresa_id) {
+      return NextResponse.json({ error: 'No perteneces a ninguna empresa' }, { status: 403 })
+    }
+
     const empresaId = perfil.empresa_id
     const today = new Date().toISOString().split('T')[0]
     const fileName = `viagrua-respaldo-empresa-${today}.csv`
