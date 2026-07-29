@@ -56,75 +56,64 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 })
     }
 
-    // Look up invitation (use supabaseAdmin to bypass RLS for unauthenticated lookup)
+    // Consumir la invitacion PRIMERO, con un UPDATE condicional.
+    // Antes se leia, se creaba el usuario y recien al final se marcaba usada:
+    // dos requests concurrentes con el mismo codigo pasaban ambos el chequeo y
+    // creaban dos cuentas. Aca el UPDATE es el que arbitra: solo uno recibe fila.
     const { data: invitacion, error: invError } = await supabaseAdmin
       .from('invitaciones')
-      .select('id, empresa_id, usado, expires_at')
+      .update({ usado: true })
       .eq('codigo', codigo)
+      .eq('usado', false)
+      .gte('expires_at', new Date().toISOString())
+      .select('id, empresa_id')
       .single()
 
     if (invError || !invitacion) {
-      return NextResponse.json({ error: 'Invitación no encontrada' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Invitación inválida, ya utilizada o expirada' },
+        { status: 400 },
+      )
     }
 
-    // Check if already used
-    if (invitacion.usado) {
-      return NextResponse.json({ error: 'Esta invitación ya fue utilizada' }, { status: 400 })
+    /** Devuelve la invitacion al pool si el alta no llega a completarse. */
+    const liberarInvitacion = async () => {
+      await supabaseAdmin.from('invitaciones').update({ usado: false }).eq('id', invitacion.id)
     }
 
-    // Check expiration
-    if (invitacion.expires_at && new Date(invitacion.expires_at) < new Date()) {
-      return NextResponse.json({ error: 'Esta invitación ha expirado' }, { status: 400 })
-    }
-
-    // Create user with Supabase Auth (use admin client to bypass email confirmation if needed)
     const { data: authData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Auto-confirm since they were invited
+      email_confirm: true, // Auto-confirmado: viene de una invitacion
     })
 
-    if (signUpError) {
+    if (signUpError || !authData?.user) {
+      await liberarInvitacion()
       console.error('Error creando usuario:', signUpError)
-      // Don't leak internal error details
-      if (signUpError.message?.includes('already registered')) {
+      if (signUpError?.message?.includes('already registered')) {
         return NextResponse.json({ error: 'Este email ya está registrado' }, { status: 409 })
       }
       return NextResponse.json({ error: 'Error al crear la cuenta' }, { status: 500 })
     }
 
-    if (!authData.user) {
-      return NextResponse.json({ error: 'Error al crear la cuenta' }, { status: 500 })
-    }
-
-    // Create profile
+    // UPDATE, no INSERT: el trigger on_auth_user_created ya creo la fila de
+    // perfiles al insertarse el usuario en auth.users. Insertar de nuevo choca
+    // contra la PK (23505) y hacia fallar todo el alta con un 500.
+    // El email lo completa el trigger set_perfil_email.
     const { error: profileError } = await supabaseAdmin
       .from('perfiles')
-      .insert({
-        id: authData.user.id,
-        email,
+      .update({
         nombre_completo: nombre,
         rol: 'chofer',
         empresa_id: invitacion.empresa_id,
       })
+      .eq('id', authData.user.id)
 
     if (profileError) {
-      console.error('Error creando perfil:', profileError)
-      // Rollback: delete the auth user if profile creation fails
+      console.error('Error completando perfil:', profileError)
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+      await liberarInvitacion()
       return NextResponse.json({ error: 'Error al crear el perfil' }, { status: 500 })
-    }
-
-    // Mark invitation as used (atomic update with usado=false check)
-    const { error: markError } = await supabaseAdmin
-      .from('invitaciones')
-      .update({ usado: true })
-      .eq('id', invitacion.id)
-      .eq('usado', false) // Optimistic lock
-
-    if (markError) {
-      console.error('Error marcando invitación:', markError)
-      // Non-critical: profile is already created
     }
 
     auditLog({ userId: authData.user.id, empresaId: invitacion.empresa_id, action: 'join_company', details: { codigo } })
