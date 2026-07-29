@@ -27,7 +27,13 @@ const TIPO_CHECK = 'supabase/migrations/20260728_gastos_tipo_check.sql'
  * cliente manda a POST /api/gastos (solo se usa para comparar contra la sesión).
  * Lo que nunca puede volver es `user_id` como nombre de columna.
  */
-const USOS_PERMITIDOS_EN_ROUTE = [/body\.user_id/g, /'user_id inválido'/g]
+const USOS_PERMITIDOS_EN_ROUTE = [
+  /body\.user_id/g,
+  /'user_id inválido'/g,
+  // Desestructurado del payload ya validado por el esquema y renombrado en el
+  // acto: sigue siendo la key del JSON, no un nombre de columna.
+  /user_id: userId/g,
+]
 
 /** Mismo motivo, del lado del cliente: es la key del JSON, no una columna. */
 const USOS_PERMITIDOS_EN_PAGE = [/user_id: perfil\.id/g]

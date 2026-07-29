@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { consumirRateLimit, ipDeRequest, respuesta429 } from '@/lib/rateLimit'
+import { loginSchema, parsear } from '@/lib/schemas'
 import { auditLog } from '@/lib/audit'
 
 const MAX_BODY_SIZE = 2_000
@@ -28,12 +29,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Se espera un objeto JSON' }, { status: 400 })
     }
 
-    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
-    const password = typeof body.password === 'string' ? body.password : ''
-
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email y contraseña son requeridos' }, { status: 400 })
+    const parseo = parsear(loginSchema, body)
+    if (!parseo.ok || !parseo.data) {
+      return NextResponse.json({ error: parseo.error }, { status: 400 })
     }
+    const { email, password } = parseo.data
 
     // Dos cupos: por IP para frenar el barrido, y por email para que alguien
     // repartido en muchas IPs no pueda martillar una cuenta concreta.

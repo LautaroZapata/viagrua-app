@@ -2,15 +2,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { auditLog } from '@/lib/audit'
-import {
-  sanitizeString,
-  sanitizeAndLimit,
-  isValidUUID,
-  isValidImporte,
-  isValidTipoGasto,
-  isValidFecha,
-  LIMITS,
-} from '@/lib/validation'
+import { isValidUUID } from '@/lib/validation'
+import { nuevoGastoSchema, parsear } from '@/lib/schemas'
 
 const MAX_BODY_SIZE = 5_000
 
@@ -40,28 +33,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Se espera un objeto JSON' }, { status: 400 })
     }
 
-    const empresaId = sanitizeString(body.empresa_id)
-    const tipo = sanitizeString(body.tipo)
-    const importe = body.importe
-    const descripcion = body.descripcion
-      ? sanitizeAndLimit(body.descripcion, LIMITS.descripcion)
-      : null
-    const fecha = sanitizeString(body.fecha)
-    const userId = sanitizeString(body.user_id)
-
-    if (!isValidUUID(empresaId))
-      return NextResponse.json({ error: 'empresa_id inválido' }, { status: 400 })
-    if (!isValidUUID(userId))
-      return NextResponse.json({ error: 'user_id inválido' }, { status: 400 })
-    if (!isValidTipoGasto(tipo))
-      return NextResponse.json({ error: 'Tipo de gasto inválido' }, { status: 400 })
-    if (!isValidImporte(importe))
-      return NextResponse.json({ error: 'Importe inválido' }, { status: 400 })
-    if (!fecha || !isValidFecha(fecha))
-      return NextResponse.json(
-        { error: 'Fecha inválida (YYYY-MM-DD)' },
-        { status: 400 },
-      )
+    // El esquema sanitiza y valida de una: no hay forma de usar un campo sin
+    // que haya pasado por ahi.
+    const parseo = parsear(nuevoGastoSchema, body)
+    if (!parseo.ok || !parseo.data) {
+      return NextResponse.json({ error: parseo.error }, { status: 400 })
+    }
+    const { empresa_id: empresaId, user_id: userId, tipo, importe, fecha, descripcion } = parseo.data
 
     const supabase = await createClient()
     const {
@@ -106,7 +84,7 @@ export async function POST(request: Request) {
         empresa_id: empresaId,
         usuario_id: user.id,
         tipo,
-        importe: Number(importe),
+        importe,
         descripcion,
         fecha,
       })
@@ -121,7 +99,7 @@ export async function POST(request: Request) {
       )
     }
 
-    auditLog({ userId: user.id, empresaId, action: 'create_gasto', details: { tipo, importe: Number(importe) } })
+    auditLog({ userId: user.id, empresaId, action: 'create_gasto', details: { tipo, importe } })
 
     return NextResponse.json({ gasto })
   } catch (e) {

@@ -2,16 +2,8 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { auditLog } from '@/lib/audit'
 import { consumirRateLimit, ipDeRequest, respuesta429 } from '@/lib/rateLimit'
-import {
-  sanitizeString,
-  sanitizeAndLimit,
-  isValidEmail,
-  isValidPassword,
-  isValidName,
-  isValidCompanyName,
-  esEmailDuplicado,
-  LIMITS,
-} from '@/lib/validation'
+import { esEmailDuplicado } from '@/lib/validation'
+import { altaEmpresaSchema, parsear } from '@/lib/schemas'
 
 const MAX_BODY_SIZE = 2_000
 
@@ -52,23 +44,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Se espera un objeto JSON' }, { status: 400 })
     }
 
-    const nombreEmpresa = sanitizeAndLimit(body.nombre_empresa, LIMITS.empresa)
-    const nombreDuenio = sanitizeAndLimit(body.nombre_duenio, LIMITS.nombre)
-    const email = sanitizeString(body.email).toLowerCase()
-    const password = typeof body.password === 'string' ? body.password : ''
-
-    if (!isValidCompanyName(nombreEmpresa)) {
-      return NextResponse.json({ error: 'Nombre de empresa invalido' }, { status: 400 })
+    const parseo = parsear(altaEmpresaSchema, body)
+    if (!parseo.ok || !parseo.data) {
+      return NextResponse.json({ error: parseo.error }, { status: 400 })
     }
-    if (!isValidName(nombreDuenio)) {
-      return NextResponse.json({ error: 'Nombre invalido' }, { status: 400 })
-    }
-    if (!isValidEmail(email)) {
-      return NextResponse.json({ error: 'Email invalido' }, { status: 400 })
-    }
-    if (!isValidPassword(password)) {
-      return NextResponse.json({ error: 'La contraseña debe tener entre 6 y 128 caracteres' }, { status: 400 })
-    }
+    const { nombre_empresa: nombreEmpresa, nombre_duenio: nombreDuenio, email, password } = parseo.data
 
     // Ruta publica que crea empresas y cuentas. Sin cupo, se puede llenar la
     // base de altas basura desde un script.

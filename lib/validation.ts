@@ -1,22 +1,17 @@
 /**
- * Utilidades de validación y sanitización de inputs.
- * Se usan tanto en client-side (forms) como server-side (API routes).
+ * Sanitización de inputs y chequeos sueltos por campo para los formularios.
+ *
+ * Las reglas de negocio viven en lib/schemas.ts; lo que hay acá son las
+ * primitivas de limpieza (que los esquemas usan por dentro) y unos wrappers
+ * delgados para validar de a un campo mientras el usuario escribe.
  */
+import { tipoGasto, fechaCalendario } from './schemas'
 
-// --- Sanitización ---
-
-/** Elimina caracteres de control (excepto newline/tab) y recorta espacios */
-export function sanitizeString(value: unknown): string {
-  if (typeof value !== 'string') return ''
-  // Elimina caracteres de control salvo \n y \t. El rango \x00-\x1F es
-  // intencional: son de control, no texto.
-  return value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim()
-}
-
-/** Sanitiza y limita la longitud de un string */
-export function sanitizeAndLimit(value: unknown, maxLength: number): string {
-  return sanitizeString(value).slice(0, maxLength)
-}
+// Se re-exportan para no tener que tocar los ~20 imports que ya las usaban
+// desde acá. La definición vive en sanitize.ts, que no depende de nada: si
+// viviera acá, schemas.ts y validation.ts se importarían mutuamente y LIMITS
+// quedaba en undefined al evaluar los esquemas.
+export { sanitizeString, sanitizeAndLimit, LIMITS } from './sanitize'
 
 // --- Validaciones ---
 
@@ -64,22 +59,6 @@ export function isValidCodigoInvitacion(value: string): boolean {
   return CODIGO_REGEX.test(value)
 }
 
-// --- Límites de longitud para campos de texto libre ---
-
-export const LIMITS = {
-  nombre: 100,
-  email: 254,
-  password: 128,
-  empresa: 150,
-  marcaModelo: 100,
-  matricula: 15,
-  observaciones: 1000,
-  descripcion: 500,
-  ubicacion: 200,  // desde/hasta
-  codigoInvitacion: 50,
-  telefono: 30,    // espeja el CHECK perfiles_telefono_largo
-} as const
-
 /**
  * Detecta el error de email duplicado de Supabase Auth.
  *
@@ -95,114 +74,17 @@ export function esEmailDuplicado(error: { message?: string; code?: string } | nu
   return msg.includes('already') && msg.includes('registered')
 }
 
-// --- Validación server-side para create-traslado-safe ---
-
-export interface TrasladoInput {
-  user_id: string
-  empresa_id: string
-  chofer_id: string
-  marca_modelo: string
-  matricula?: string | null
-  es_0km?: boolean
-  importe_total?: string | number | null
-  observaciones?: string | null
-  desde?: string | null
-  hasta?: string | null
-  fecha?: string | null
-}
-
-export function validateTrasladoInput(body: Record<string, unknown>): { valid: true; data: TrasladoInput } | { valid: false; error: string } {
-  const userId = sanitizeString(body.user_id)
-  const empresaId = sanitizeString(body.empresa_id)
-  const choferId = sanitizeString(body.chofer_id)
-  const marcaModelo = sanitizeAndLimit(body.marca_modelo, LIMITS.marcaModelo)
-
-  // UUIDs requeridos
-  if (!isValidUUID(userId)) return { valid: false, error: 'user_id inválido' }
-  if (!isValidUUID(empresaId)) return { valid: false, error: 'empresa_id inválido' }
-  if (!isValidUUID(choferId)) return { valid: false, error: 'chofer_id inválido' }
-
-  // marca_modelo requerido
-  if (!marcaModelo) return { valid: false, error: 'marca_modelo es requerido' }
-
-  // Matrícula opcional
-  const es0km = !!body.es_0km
-  let matricula: string | null = null
-  if (!es0km && body.matricula) {
-    matricula = sanitizeAndLimit(body.matricula, LIMITS.matricula)
-    if (matricula && !isValidMatricula(matricula)) {
-      return { valid: false, error: 'Formato de matrícula inválido' }
-    }
-  }
-
-  // Importe opcional pero si viene, debe ser válido
-  let importeTotal: string | number | null = null
-  if (body.importe_total !== undefined && body.importe_total !== null && body.importe_total !== '') {
-    if (!isValidImporte(body.importe_total)) {
-      return { valid: false, error: 'Importe inválido (debe ser un número positivo)' }
-    }
-    importeTotal = body.importe_total as string | number
-  }
-
-  // Textos opcionales con límite
-  const observaciones = body.observaciones ? sanitizeAndLimit(body.observaciones, LIMITS.observaciones) : null
-  const desde = body.desde ? sanitizeAndLimit(body.desde, LIMITS.ubicacion) : null
-  const hasta = body.hasta ? sanitizeAndLimit(body.hasta, LIMITS.ubicacion) : null
-
-  // Fecha opcional: debe ser YYYY-MM-DD y no puede ser futura
-  let fecha: string | null = null
-  if (body.fecha) {
-    const fechaStr = sanitizeString(body.fecha)
-    if (!isValidFecha(fechaStr)) {
-      return { valid: false, error: 'Formato de fecha inválido (se esperaba YYYY-MM-DD)' }
-    }
-    const fechaDate = new Date(fechaStr)
-    const hoy = new Date()
-    hoy.setHours(23, 59, 59, 999)
-    if (fechaDate > hoy) {
-      return { valid: false, error: 'La fecha no puede ser futura' }
-    }
-    fecha = fechaStr
-  }
-
-  return {
-    valid: true,
-    data: {
-      user_id: userId,
-      empresa_id: empresaId,
-      chofer_id: choferId,
-      marca_modelo: marcaModelo,
-      matricula,
-      es_0km: es0km,
-      importe_total: importeTotal,
-      observaciones,
-      desde,
-      hasta,
-      fecha,
-    },
-  }
-}
-
-// --- Validación para gastos ---
-
-const TIPOS_GASTO_VALIDOS = ['combustible', 'seguro', 'mantenimiento', 'peaje', 'patente', 'multa', 'otro']
+// --- Validaciones derivadas de los esquemas ---
+//
+// Estas envuelven lo que ya define lib/schemas.ts. Existen porque los
+// formularios las usan como chequeo suelto por campo, pero la regla vive en el
+// esquema: asi no hay dos definiciones de "que es un tipo de gasto valido" que
+// se puedan desincronizar, que es justo lo que paso antes.
 
 export function isValidTipoGasto(value: string): boolean {
-  return TIPOS_GASTO_VALIDOS.includes(value)
+  return tipoGasto.safeParse(value).success
 }
 
 export function isValidFecha(value: string): boolean {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-  if (!match) return false
-
-  const year = Number(match[1])
-  const month = Number(match[2])
-  const day = Number(match[3])
-
-  const date = new Date(Date.UTC(year, month - 1, day))
-  return (
-    date.getUTCFullYear() == year &&
-    date.getUTCMonth() == month - 1 &&
-    date.getUTCDate() == day
-  )
+  return fechaCalendario.safeParse(value).success
 }

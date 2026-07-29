@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { auditLog } from '@/lib/audit'
-import { validateTrasladoInput } from '@/lib/validation'
+import { nuevoTrasladoSchema, parsear } from '@/lib/schemas'
 import type { Insert } from '@/lib/db'
 
 const MAX_BODY_SIZE = 10_000 // 10KB máximo para el body JSON
@@ -32,13 +32,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Se espera un objeto JSON' }, { status: 400 })
     }
 
-    // Validar y sanitizar todos los campos
-    const validation = validateTrasladoInput(body)
-    if (!validation.valid) {
-      return NextResponse.json({ error: validation.error }, { status: 400 })
+    const parseo = parsear(nuevoTrasladoSchema, body)
+    if (!parseo.ok || !parseo.data) {
+      return NextResponse.json({ error: parseo.error }, { status: 400 })
     }
-
-    const { data: input } = validation
+    const input = parseo.data
 
     // Autenticación
     const supabase = await createClient()

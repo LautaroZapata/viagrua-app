@@ -2,15 +2,8 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { auditLog } from '@/lib/audit'
 import { consumirRateLimit, ipDeRequest, respuesta429 } from '@/lib/rateLimit'
-import {
-  sanitizeString,
-  sanitizeAndLimit,
-  isValidEmail,
-  isValidPassword,
-  isValidCodigoInvitacion,
-  esEmailDuplicado,
-  LIMITS,
-} from '@/lib/validation'
+import { esEmailDuplicado } from '@/lib/validation'
+import { unirseConCodigoSchema, parsear } from '@/lib/schemas'
 
 const MAX_BODY_SIZE = 5_000
 
@@ -39,24 +32,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Se espera un objeto JSON' }, { status: 400 })
     }
 
-    // Validate inputs
-    const codigo = sanitizeString(body.codigo)
-    const email = sanitizeString(body.email)
-    const password = sanitizeString(body.password)
-    const nombre = sanitizeAndLimit(body.nombre, LIMITS.nombre)
-
-    if (!isValidCodigoInvitacion(codigo)) {
-      return NextResponse.json({ error: 'Código de invitación inválido' }, { status: 400 })
+    const parseo = parsear(unirseConCodigoSchema, body)
+    if (!parseo.ok || !parseo.data) {
+      return NextResponse.json({ error: parseo.error }, { status: 400 })
     }
-    if (!isValidEmail(email)) {
-      return NextResponse.json({ error: 'Email inválido' }, { status: 400 })
-    }
-    if (!isValidPassword(password)) {
-      return NextResponse.json({ error: 'La contraseña debe tener entre 6 y 128 caracteres' }, { status: 400 })
-    }
-    if (!nombre) {
-      return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 })
-    }
+    const { codigo, email, password, nombre } = parseo.data
 
     // Ruta publica que crea cuentas confirmadas. El cupo va antes de tocar la
     // invitacion para que un ataque de fuerza bruta no consuma codigos validos.
