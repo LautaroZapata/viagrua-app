@@ -26,11 +26,32 @@ export const config = {
  * style-src conserva 'unsafe-inline': Next inyecta <style> sin nonce y Radix
  * escribe estilos inline para posicionar popovers y sheets.
  */
+/**
+ * Hash del <script> inline que inyecta next-themes en el <head>.
+ *
+ * Ese script aplica la clase del tema antes del primer pintado, para que quien
+ * tenga modo oscuro no vea un flash blanco. Lo genera la libreria, asi que no
+ * pasa por el nonce. Se autoriza por hash: 'strict-dynamic' ignora 'self' y
+ * 'unsafe-inline', pero sigue respetando nonces y hashes.
+ *
+ * La alternativa era pasarle el nonce a ThemeProvider, pero para eso hay que
+ * leer headers() en el layout raiz y eso vuelve dinamica tambien a la landing,
+ * que hoy se sirve estatica.
+ *
+ * OJO: el hash sale del texto exacto del script, que depende de la version de
+ * next-themes y de los props de <ThemeProvider> en app/providers.tsx
+ * (attribute, defaultTheme, enableSystem). Si se toca cualquiera de esas cosas,
+ * el hash deja de coincidir y vuelve el flash de tema en el area autenticada.
+ * Se saca de la consola del navegador: la violacion de CSP reporta el hash que
+ * corresponde.
+ */
+const HASH_SCRIPT_TEMA = "'sha256-n46vPwSWuMC0W703pBofImv82Z26xo4LXymv0E9caPk='"
+
 function construirCsp(nonce: string | null): string {
   return [
     "default-src 'self'",
     nonce
-      ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`
+      ? `script-src 'self' 'nonce-${nonce}' ${HASH_SCRIPT_TEMA} 'strict-dynamic'`
       : "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data: https://*.supabase.co",
