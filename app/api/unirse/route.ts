@@ -7,6 +7,7 @@ import {
   isValidEmail,
   isValidPassword,
   isValidCodigoInvitacion,
+  esEmailDuplicado,
   LIMITS,
 } from '@/lib/validation'
 
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
     if (signUpError || !authData?.user) {
       await liberarInvitacion()
       console.error('Error creando usuario:', signUpError)
-      if (signUpError?.message?.includes('already registered')) {
+      if (esEmailDuplicado(signUpError)) {
         return NextResponse.json({ error: 'Este email ya está registrado' }, { status: 409 })
       }
       return NextResponse.json({ error: 'Error al crear la cuenta' }, { status: 500 })

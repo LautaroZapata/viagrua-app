@@ -35,43 +35,24 @@ export default function RegistroEmpresa() {
 
         setLoading(true)
 
-        const { data: empresa, error: errorEmpresa } = await supabase
-            .from('empresas')
-            .insert([{ nombre: nombreEmpresa }])
-            .select()
-            .single()
-
-        if (errorEmpresa || !empresa) {
-            showError('Error al crear empresa: ' + errorEmpresa?.message)
-            setLoading(false)
-            return
-        }
-
-        let empresaCreada = true
-        try {
-            const { error: errorAuth } = await supabase.auth.signUp({
+        // El alta la hace el servidor: crear la empresa desde el navegador
+        // exigia policies sobre empresas abiertas a anon, y con el SELECT en
+        // USING(true) cualquiera podia listar todas las empresas del sistema.
+        // La ruta tambien resuelve el rollback si falla la creacion del usuario.
+        const res = await fetch('/api/registro', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nombre_empresa: nombreEmpresa,
+                nombre_duenio: nombreDuenio,
                 email,
                 password,
-                options: {
-                    data: {
-                        nombre_completo: nombreDuenio,
-                        empresa_id: empresa.id
-                    }
-                }
-            })
+            }),
+        })
 
-            if (errorAuth) {
-                showError('Error en el registro: ' + errorAuth.message)
-                setLoading(false)
-                await supabase.from('empresas').delete().eq('id', empresa.id)
-                empresaCreada = false
-                return
-            }
-        } catch {
-            if (empresaCreada) {
-                await supabase.from('empresas').delete().eq('id', empresa.id)
-            }
-            showError('Error inesperado al registrar')
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+            showError(data.error || 'No se pudo completar el registro')
             setLoading(false)
             return
         }

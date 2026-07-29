@@ -80,6 +80,21 @@ export const LIMITS = {
   telefono: 30,    // espeja el CHECK perfiles_telefono_largo
 } as const
 
+/**
+ * Detecta el error de email duplicado de Supabase Auth.
+ *
+ * El mensaje real es "A user with this email address has already been
+ * registered", asi que buscar la subcadena 'already registered' no matchea y el
+ * alta terminaba devolviendo un 500 generico en vez de un 409 con un mensaje
+ * util. Se chequea tambien el code, que es lo estable.
+ */
+export function esEmailDuplicado(error: { message?: string; code?: string } | null | undefined): boolean {
+  if (!error) return false
+  if (error.code === 'email_exists') return true
+  const msg = (error.message ?? '').toLowerCase()
+  return msg.includes('already') && msg.includes('registered')
+}
+
 // --- Validación server-side para create-traslado-safe ---
 
 export interface TrasladoInput {

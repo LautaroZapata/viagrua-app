@@ -155,6 +155,15 @@ try {
   check('NO lee codigos de invitacion ajenos',
     !invLeak || !invLeak.some((i) => i.codigo === invA?.codigo), `filas=${invLeak?.length}`)
 
+  // 8b. Listado de empresas ajenas
+  const { data: empLeak } = await cliB.from('empresas').select('id, nombre')
+  check('NO lista empresas ajenas',
+    !empLeak || !empLeak.some((e) => e.id === empA.id), `filas=${empLeak?.length}`)
+
+  const anonCli = createClient(URL, ANON, { auth: { persistSession: false } })
+  const { data: empAnon } = await anonCli.from('empresas').select('id')
+  check('anon NO lista empresas', !empAnon || empAnon.length === 0, `filas=${empAnon?.length}`)
+
   // 9. Expulsar a alguien de otra empresa
   const { error: errExp } = await cliB.rpc('expulsar_chofer', { chofer_id: uA.id })
   const { data: pA } = await admin.from('perfiles').select('empresa_id').eq('id', uA.id).single()
@@ -167,6 +176,12 @@ try {
 
   const { data: propios } = await cliA.from('traslados').select('id').eq('empresa_id', empA.id)
   check('admin lee los traslados de SU empresa', propios?.length > 0, `filas=${propios?.length}`)
+
+  // El layout autenticado hace este join para poblar el contexto y el sidebar.
+  const { data: perfilJoin, error: errJoin } = await cliA
+    .from('perfiles').select('id, empresa_id, empresas(id, nombre)').eq('id', uA.id).single()
+  check('el usuario lee SU empresa por el join del layout',
+    !errJoin && !!perfilJoin?.empresas, errJoin?.message ?? JSON.stringify(perfilJoin?.empresas))
 
   const { error: errUpd } = await cliA.from('traslados')
     .update({ estado_pago: 'efectivo' }).eq('id', trasA.id)
