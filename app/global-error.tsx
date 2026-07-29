@@ -1,5 +1,6 @@
 'use client'
 import { useEffect } from 'react'
+import * as Sentry from '@sentry/nextjs'
 
 /**
  * Ultima red de contencion: se usa cuando el error ocurre en el layout raiz,
@@ -17,8 +18,10 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    // En produccion esto va a los logs del servidor. Es el punto natural donde
-    // enchufar Sentry o similar cuando se sume.
+    // El error del layout raiz no pasa por onRequestError ni por el error.tsx
+    // de ninguna ruta, asi que si no se reporta aca no se reporta en ningun
+    // lado: la app queda rota y en Sentry no aparece nada.
+    Sentry.captureException(error)
     console.error('Error global:', error)
   }, [error])
 
