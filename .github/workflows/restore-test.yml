@@ -1,0 +1,138 @@
+name: Probar restore
+
+# Solo a mano. Nunca en cron: esto escribe una base entera y no es algo que
+# deba pasar solo mientras nadie mira.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmar:
+        description: 'Escribir "restaurar" para confirmar que el destino es un proyecto vacio y descartable'
+        required: true
+        type: string
+
+# Un backup que nunca se restauro no es un backup. Este workflow baja el ultimo
+# .tar.gz del bucket, lo aplica sobre un proyecto vacio y despues compara fila
+# por fila contra lo que decia el dump.
+#
+# Secrets, ademas de los de backup.yml:
+#   SUPABASE_RESTORE_DB_URL  Session pooler del proyecto DESCARTABLE. No la
+#                            conexion directa (db.<ref>.supabase.co): esa es
+#                            IPv6 y los runners de GitHub son IPv4.
+
+jobs:
+  restore:
+    name: Restaurar el ultimo backup en un proyecto vacio
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Confirmar la intencion
+        env:
+          CONFIRMAR: ${{ inputs.confirmar }}
+        run: |
+          set -euo pipefail
+          if [ "$CONFIRMAR" != "restaurar" ]; then
+            echo "Hay que escribir exactamente: restaurar" >&2
+            exit 1
+          fi
+
+      # Tres frenos antes de escribir una sola fila. El destino se pasa por
+      # secret y un secret se puede editar mal; produccion la usa gente con
+      # datos reales y este workflow la sobreescribiria entera.
+      - name: Verificar que el destino NO es produccion
+        env:
+          RESTORE_DB_URL: ${{ secrets.SUPABASE_RESTORE_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${RESTORE_DB_URL:-}" ]; then
+            echo "Falta el secret SUPABASE_RESTORE_DB_URL." >&2
+            exit 1
+          fi
+
+          # El ref de produccion sale de su propio secret y no esta escrito aca:
+          # si algun dia cambia el proyecto, el freno sigue apuntando bien.
+          REF_PROD=$(echo "$SUPABASE_URL" | sed -E 's#https?://([^.]+)\..*#\1#')
+
+          if [ -z "$REF_PROD" ]; then
+            echo "No se pudo deducir el ref de produccion desde SUPABASE_URL." >&2
+            exit 1
+          fi
+
+          if echo "$RESTORE_DB_URL" | grep -q "$REF_PROD"; then
+            echo "FRENO: el destino del restore apunta al proyecto de produccion." >&2
+            echo "Este workflow sobreescribe la base entera. Abortado." >&2
+            exit 1
+          fi
+
+          echo "El destino es un proyecto distinto al de produccion."
+
+      - name: Verificar que el destino esta vacio
+        env:
+          RESTORE_DB_URL: ${{ secrets.SUPABASE_RESTORE_DB_URL }}
+        run: |
+          set -euo pipefail
+
+          # Un proyecto recien creado no tiene nada en public. Si hay tablas,
+          # o el secret apunta a otro lado o alguien ya lo uso para algo.
+          TABLAS=$(psql "$RESTORE_DB_URL" -tAc \
+            "select count(*) from information_schema.tables where table_schema = 'public';")
+
+          echo "Tablas en public del destino: $TABLAS"
+
+          if [ "$TABLAS" -ne 0 ]; then
+            echo "FRENO: el destino ya tiene $TABLAS tabla(s) en public." >&2
+            echo "Este workflow espera un proyecto vacio. Abortado." >&2
+            exit 1
+          fi
+
+      - name: Bajar el ultimo backup
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          node scripts/bajar-backup.mjs restore | tee salida.txt
+          ARCHIVO=$(grep '^ARCHIVO=' salida.txt | cut -d= -f2)
+          tar -xzf "restore/$ARCHIVO" -C restore
+          ls -la restore/
+
+      # roles.sql se aplica sin ON_ERROR_STOP: en un proyecto de Supabase los
+      # roles ya existen y algunos ALTER ROLE fallan por permisos. No es lo que
+      # este workflow prueba, pero se deja ver en el log.
+      - name: Aplicar roles
+        env:
+          RESTORE_DB_URL: ${{ secrets.SUPABASE_RESTORE_DB_URL }}
+        run: psql "$RESTORE_DB_URL" -f restore/roles.sql || echo "::warning::roles.sql tuvo errores (esperable en un proyecto gestionado)."
+
+      - name: Aplicar schema
+        env:
+          RESTORE_DB_URL: ${{ secrets.SUPABASE_RESTORE_DB_URL }}
+        run: psql "$RESTORE_DB_URL" -v ON_ERROR_STOP=1 -f restore/schema.sql
+
+      - name: Aplicar datos
+        env:
+          RESTORE_DB_URL: ${{ secrets.SUPABASE_RESTORE_DB_URL }}
+        run: psql "$RESTORE_DB_URL" -v ON_ERROR_STOP=1 -f restore/data.sql
+
+      # Que psql no se queje no prueba nada: aplica un schema entero y un
+      # data.sql vacio sin un solo error. Lo que prueba es que las filas esten.
+      - name: Verificar que las filas llegaron
+        env:
+          RESTORE_DB_URL: ${{ secrets.SUPABASE_RESTORE_DB_URL }}
+        run: |
+          set -euo pipefail
+          node scripts/verificar-restore.mjs restore/data.sql > verificar.sql
+          psql "$RESTORE_DB_URL" -v ON_ERROR_STOP=1 -f verificar.sql
+
+      - name: Resumen
+        run: |
+          echo "Restore probado de punta a punta sobre un proyecto vacio."
+          echo "El destino quedo con los datos: borralo o vacialo cuando termines."
