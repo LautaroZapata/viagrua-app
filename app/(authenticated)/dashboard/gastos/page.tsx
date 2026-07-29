@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { useGastos } from '@/lib/useSupabaseQuery'
+import { useGastos, useTotalIngresos } from '@/lib/useSupabaseQuery'
 import ClientOnly from '@/app/components/ClientOnly'
 import ListState from '@/app/components/ListState'
 import { supabase } from '@/lib/supabase'
@@ -51,7 +51,6 @@ export default function GastosPage() {
     const isAdmin = role === 'admin'
     const [misTraslados, setMisTraslados] = useState<TrasladoCompletado[]>([])
     const [guardando, setGuardando] = useState(false)
-    const [totalIngresos, setTotalIngresos] = useState(0)
     const [verTodos, setVerTodos] = useState(true)
     const [expandedId, setExpandedId] = useState<string | null>(null)
     const [paginaActual, setPaginaActual] = useState(1)
@@ -74,12 +73,6 @@ export default function GastosPage() {
         setMisTraslados(data || [])
     }, [])
 
-    const cargarIngresos = useCallback(async (empresaId: string) => {
-        const { data } = await supabase.from('traslados').select('importe_total')
-            .eq('empresa_id', empresaId).eq('estado', 'completado').neq('estado_pago', 'pendiente').limit(1000)
-        setTotalIngresos(data?.reduce((s, t) => s + (t.importe_total || 0), 0) || 0)
-    }, [])
-
     // Ojo con las deps de estos dos efectos: 'perfil' es un objeto nuevo en cada
     // reload() del UserContext. Como el canal tiene nombre fijo, depender del
     // objeto hacia re-suscribir antes de terminar el cleanup y llegaban eventos
@@ -87,10 +80,16 @@ export default function GastosPage() {
     const perfilId = perfil?.id
     const empresaId = perfil?.empresa_id
 
+    // Agregado en Postgres. Antes traia 1000 traslados para hacer un reduce()
+    // y mostrar un solo numero, y ese limite truncaba en silencio.
+    const { data: ingresosData, mutate: recargarIngresos } = useTotalIngresos(
+        isAdmin ? empresaId ?? null : null
+    )
+    const totalIngresos = Number(ingresosData ?? 0)
+
     useEffect(() => {
-        if (isAdmin && empresaId) cargarIngresos(empresaId)
-        else if (!isAdmin && user?.id) cargarMisTraslados(user.id)
-    }, [empresaId, user?.id, isAdmin, cargarIngresos, cargarMisTraslados])
+        if (!isAdmin && user?.id) cargarMisTraslados(user.id)
+    }, [user?.id, isAdmin, cargarMisTraslados])
 
     useEffect(() => {
         if (!perfilId || !empresaId) return
@@ -99,10 +98,10 @@ export default function GastosPage() {
                 const u = payload.new as { id?: string; estado_pago?: string; chofer_id?: string; empresa_id?: string }
                 if (!isAdmin && u.chofer_id === perfilId && u.id)
                     setMisTraslados(prev => prev.map(t => t.id === u.id ? { ...t, estado_pago: u.estado_pago || t.estado_pago } : t))
-                else if (isAdmin) cargarIngresos(empresaId)
+                else if (isAdmin) recargarIngresos()
             }).subscribe()
         return () => { supabase.removeChannel(sub) }
-    }, [perfilId, empresaId, isAdmin, cargarIngresos])
+    }, [perfilId, empresaId, isAdmin, recargarIngresos])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

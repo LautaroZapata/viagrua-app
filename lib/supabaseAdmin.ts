@@ -1,29 +1,48 @@
 import 'server-only'
-import { createClient } from '@supabase/supabase-js'
-import type { Database } from './database.types';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from './database.types'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+/**
+ * Cliente con service_role: ignora RLS. Solo del lado del servidor, nunca
+ * importar desde un componente cliente (lo impide 'server-only').
+ *
+ * Se crea perezosamente, en el primer uso, por dos razones:
+ *
+ * 1. El build no tiene la service role key (CI compila con placeholders), y
+ *    crearlo al importar el modulo hacia fallar el build.
+ * 2. Antes, para no romper el build, si faltaba la key se caia a la anon key
+ *    "solo en desarrollo". Eso significaba que en local las escrituras de
+ *    supabaseAdmin pasaban por RLS y en produccion no: dos comportamientos
+ *    distintos para el mismo codigo. Es exactamente la clase de divergencia
+ *    que ya rompio cosas en este proyecto, asi que ahora falta la key y falla,
+ *    en todos los entornos por igual.
+ */
+let cliente: SupabaseClient<Database> | null = null
 
-if (!SUPABASE_URL) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
-}
+function crearCliente(): SupabaseClient<Database> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-let keyToUse = SERVICE_ROLE_KEY
-if (!SERVICE_ROLE_KEY) {
-  // Fallback to anon key only in development to allow local testing.
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required in production')
+  if (!url) {
+    throw new Error('Falta NEXT_PUBLIC_SUPABASE_URL')
   }
-  console.warn('Warning: SUPABASE_SERVICE_ROLE_KEY not set — falling back to NEXT_PUBLIC_SUPABASE_ANON_KEY for local development')
-  keyToUse = ANON_KEY
+  if (!serviceKey) {
+    throw new Error(
+      'Falta SUPABASE_SERVICE_ROLE_KEY. Es obligatoria: sin ella las rutas que ' +
+      'escriben con permisos elevados no pueden funcionar. Agregala a .env.local ' +
+      'para desarrollo y a las variables de entorno del deploy.'
+    )
+  }
+
+  return createClient<Database>(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
 }
 
-if (!keyToUse) {
-  throw new Error('supabaseKey is required. Set SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment')
-}
-
-export const supabaseAdmin = createClient<Database>(SUPABASE_URL, keyToUse, {
-  auth: { persistSession: false, autoRefreshToken: false },
+export const supabaseAdmin = new Proxy({} as SupabaseClient<Database>, {
+  get(_target, prop) {
+    cliente ??= crearCliente()
+    // El receiver va como el cliente real para que los metodos conserven su this.
+    return Reflect.get(cliente, prop, cliente)
+  },
 })

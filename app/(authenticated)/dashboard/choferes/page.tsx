@@ -42,14 +42,18 @@ export default function ChoferesPage() {
     }, [perfil?.empresa_id, cargarChoferes])
 
     useEffect(() => {
-        if (!perfil?.empresa_id) return
-        const sub = supabase.channel('choferes-page')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'perfiles' }, (payload) => {
-                const n = payload.new as { empresa_id?: string }
-                const o = payload.old as { empresa_id?: string }
-                if (n?.empresa_id === perfil.empresa_id || o?.empresa_id === perfil.empresa_id)
-                    cargarChoferes(perfil.empresa_id)
-            }).subscribe()
+        const empresaId = perfil?.empresa_id
+        if (!empresaId) return
+        // Ver la nota del canal equivalente en dashboard/page.tsx: filtrado en
+        // el servidor, y las expulsiones no llegan por aca a proposito.
+        // Nombre por empresa: con uno fijo, dos pestañas abiertas comparten
+        // topic y los eventos se duplican.
+        const sub = supabase.channel(`choferes-page-${empresaId}`)
+            .on('postgres_changes', {
+                event: '*', schema: 'public', table: 'perfiles',
+                filter: `empresa_id=eq.${empresaId}`,
+            }, () => { cargarChoferes(empresaId) })
+            .subscribe()
         return () => { supabase.removeChannel(sub) }
     }, [perfil?.empresa_id, cargarChoferes])
 

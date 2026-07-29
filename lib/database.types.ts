@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -365,6 +365,15 @@ export type Database = {
     Functions: {
       expulsar_chofer: { Args: { chofer_id: string }; Returns: boolean }
       get_empresa_id: { Args: never; Returns: string }
+      get_resumen_mensual: {
+        Args: { p_empresa_id: string; p_meses?: number }
+        Returns: {
+          gastos: number
+          ingresos: number
+          mes: string
+        }[]
+      }
+      get_total_ingresos: { Args: { p_empresa_id: string }; Returns: number }
       get_traslados_counts: { Args: { p_empresa_id: string }; Returns: Json }
     }
     Enums: {

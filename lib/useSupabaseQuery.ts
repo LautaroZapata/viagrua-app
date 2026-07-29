@@ -64,7 +64,39 @@ export function useGastos(empresaId: string | null, userId: string | null, isAdm
         ? query.eq('empresa_id', empresaId!)
         : query.eq('usuario_id', userId!)) as unknown as PromiseLike<{ data: Gasto[] | null; error: unknown }>
     },
-    { refreshInterval: 30000 }
+    // Sin refreshInterval: hacia polling contra la base cada 30 segundos de
+    // forma indefinida, encima de revalidateOnFocus, que ya cubre el caso real
+    // (volver a la pestaña). Los gastos los carga el propio usuario y ya se
+    // revalidan al mutar.
+  )
+}
+
+export interface MesResumen {
+  mes: string
+  ingresos: number
+  gastos: number
+}
+
+/**
+ * Serie mensual de ingresos y gastos, agregada en Postgres.
+ *
+ * Antes el dashboard traia hasta 2000 filas para dibujar seis barras, y el
+ * limit(1000) truncaba en silencio a las empresas con mas movimiento.
+ */
+export function useResumenMensual(empresaId: string | null, meses = 6) {
+  return useSupabaseQuery<MesResumen[]>(
+    empresaId ? `resumen-mensual:${empresaId}:${meses}` : null,
+    () => supabase.rpc('get_resumen_mensual', { p_empresa_id: empresaId!, p_meses: meses }) as unknown as
+      PromiseLike<{ data: MesResumen[] | null; error: unknown }>,
+  )
+}
+
+/** Total cobrado de la empresa. Antes eran 1000 filas para un reduce(). */
+export function useTotalIngresos(empresaId: string | null) {
+  return useSupabaseQuery<number>(
+    empresaId ? `total-ingresos:${empresaId}` : null,
+    () => supabase.rpc('get_total_ingresos', { p_empresa_id: empresaId! }) as unknown as
+      PromiseLike<{ data: number | null; error: unknown }>,
   )
 }
 

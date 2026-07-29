@@ -1,5 +1,6 @@
 'use client'
 import { useMemo } from 'react'
+import type { MesResumen } from '@/lib/useSupabaseQuery'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import {
   ChartConfig,
@@ -12,26 +13,9 @@ import {
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 
-// Nullables como en la base: created_at, importe y fecha pueden venir en null,
-// y las filas sin fecha se descartan al agrupar por mes.
-interface Traslado {
-  importe_total: number | null
-  created_at: string | null
-}
-
-interface Gasto {
-  importe: number | null
-  fecha: string | null
-}
-
 interface Props {
-  traslados: Traslado[]
-  gastos: Gasto[]
-}
-
-function getMonthKey(dateStr: string): string {
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  /** Serie ya agregada por get_resumen_mensual, en orden cronologico. */
+  resumen: MesResumen[]
 }
 
 const MONTH_LABELS: Record<string, string> = {
@@ -54,36 +38,19 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-export default function DashboardCharts({ traslados, gastos }: Props) {
+export default function DashboardCharts({ resumen }: Props) {
   const { chartData, totalIngresos, totalGastos, balance, trend } = useMemo(() => {
-    const monthlyData: Record<string, { ingresos: number; gastos: number }> = {}
-
-    for (const t of traslados) {
-      if (!t.created_at) continue
-      const key = getMonthKey(t.created_at)
-      if (!monthlyData[key]) monthlyData[key] = { ingresos: 0, gastos: 0 }
-      monthlyData[key].ingresos += t.importe_total || 0
-    }
-
-    for (const g of gastos) {
-      if (!g.fecha) continue
-      const key = getMonthKey(g.fecha)
-      if (!monthlyData[key]) monthlyData[key] = { ingresos: 0, gastos: 0 }
-      monthlyData[key].gastos += g.importe || 0
-    }
-
-    const data = Object.entries(monthlyData)
-      .map(([key, d]) => {
-        const [year, month] = key.split('-')
-        return {
-          month: `${MONTH_LABELS[month]} ${year.slice(2)}`,
-          ingresos: Math.round(d.ingresos),
-          gastos: Math.round(d.gastos),
-          key,
-        }
-      })
-      .sort((a, b) => a.key.localeCompare(b.key))
-      .slice(-6)
+    // La serie ya viene agrupada por mes y ordenada desde get_resumen_mensual.
+    // Aca solo queda darle formato a la etiqueta y calcular los totales.
+    const data = resumen.map((r) => {
+      const [year, month] = r.mes.split('-')
+      return {
+        month: `${MONTH_LABELS[month] ?? month} ${year.slice(2)}`,
+        ingresos: Math.round(Number(r.ingresos)),
+        gastos: Math.round(Number(r.gastos)),
+        key: r.mes,
+      }
+    })
 
     const tI = data.reduce((s, d) => s + d.ingresos, 0)
     const tG = data.reduce((s, d) => s + d.gastos, 0)
@@ -91,13 +58,13 @@ export default function DashboardCharts({ traslados, gastos }: Props) {
 
     let tr: 'up' | 'down' | 'neutral' = 'neutral'
     if (data.length >= 2) {
-      const last = data[data.length - 1].ingresos - data[data.length - 1].gastos
-      const prev = data[data.length - 2].ingresos - data[data.length - 2].gastos
+      const last = data[data.length - 1]!.ingresos - data[data.length - 1]!.gastos
+      const prev = data[data.length - 2]!.ingresos - data[data.length - 2]!.gastos
       tr = last > prev ? 'up' : last < prev ? 'down' : 'neutral'
     }
 
     return { chartData: data, totalIngresos: tI, totalGastos: tG, balance: bal, trend: tr }
-  }, [traslados, gastos])
+  }, [resumen])
 
   const fmt = (v: number) => `$${v.toLocaleString('es-AR')}`
 

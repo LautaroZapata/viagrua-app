@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { confirmDelete, showError } from '@/lib/swal'
 import { useUser } from '@/app/components/UserContext'
 import type { Tables } from '@/lib/db'
-import { useTrasladosCounts } from '@/lib/useSupabaseQuery'
+import { useTrasladosCounts, useResumenMensual } from '@/lib/useSupabaseQuery'
 import AppHeader from '@/app/components/AppHeader'
 import dynamic from 'next/dynamic'
 
@@ -43,12 +43,13 @@ export default function DashboardPage() {
     const { perfil, empresa, role } = useUser()
     const router = useRouter()
     const [choferes, setChoferes] = useState<Chofer[]>([])
-    const [gastos, setGastos] = useState<Pick<Tables<'gastos'>, 'importe' | 'fecha'>[]>([])
-    const [chartTraslados, setChartTraslados] = useState<Pick<Tables<'traslados'>, 'importe_total' | 'created_at'>[]>([])
     const [modalAbierto, setModalAbierto] = useState(false)
     const [cargandoChoferes, setCargandoChoferes] = useState(true)
     const [errorChoferes, setErrorChoferes] = useState<unknown>(null)
     const { data: counts } = useTrasladosCounts(perfil?.empresa_id ?? null)
+    // Agregado en Postgres: antes eran 2000 filas viajando al navegador para
+    // dibujar seis barras.
+    const { data: resumen } = useResumenMensual(perfil?.empresa_id ?? null)
 
     // Declaradas antes de los efectos que las usan: al reves, el compilador de
     // React marca acceso a la variable antes de declararla (react-hooks/immutability).
@@ -62,37 +63,27 @@ export default function DashboardPage() {
         setCargandoChoferes(false)
     }, [])
 
-    const cargarDatosGrafico = useCallback(async (empresaId: string) => {
-        const [gastosRes, trasladosRes] = await Promise.all([
-            supabase.from('gastos').select('importe, fecha').eq('empresa_id', empresaId).limit(1000),
-            supabase.from('traslados').select('importe_total, created_at').eq('empresa_id', empresaId).eq('estado', 'completado').neq('estado_pago', 'pendiente').limit(1000),
-        ])
-        setGastos(gastosRes.data || [])
-        setChartTraslados(trasladosRes.data || [])
-    }, [])
-
-    const cargarDatos = useCallback(async (empresaId: string) => {
-        await Promise.all([
-            cargarChoferes(empresaId),
-            cargarDatosGrafico(empresaId),
-        ])
-    }, [cargarChoferes, cargarDatosGrafico])
-
     useEffect(() => {
         if (!perfil?.empresa_id) return
-        cargarDatos(perfil.empresa_id)
-    }, [perfil?.empresa_id, cargarDatos])
+        cargarChoferes(perfil.empresa_id)
+    }, [perfil?.empresa_id, cargarChoferes])
 
     useEffect(() => {
-        if (!perfil?.empresa_id) return
-        const sub = supabase.channel('choferes-changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'perfiles' }, (payload) => {
-                const n = payload.new as { empresa_id?: string }
-                const o = payload.old as { empresa_id?: string }
-                if (n?.empresa_id === perfil.empresa_id || o?.empresa_id === perfil.empresa_id) {
-                    cargarChoferes(perfil.empresa_id)
-                }
-            }).subscribe()
+        const empresaId = perfil?.empresa_id
+        if (!empresaId) return
+        // Filtrado en el servidor. Sin el, cada cambio en perfiles de cualquier
+        // empresa despertaba a todos los admins conectados y se descartaba en JS.
+        //
+        // El filtro se evalua contra la fila nueva, asi que una expulsion
+        // (empresa_id pasa a NULL) no llega por aca. No hace falta: el admin que
+        // expulsa ya actualiza la lista al toque, y para otro admin mirando en
+        // paralelo se corrige en la proxima carga.
+        const sub = supabase.channel(`choferes-${empresaId}`)
+            .on('postgres_changes', {
+                event: '*', schema: 'public', table: 'perfiles',
+                filter: `empresa_id=eq.${empresaId}`,
+            }, () => { cargarChoferes(empresaId) })
+            .subscribe()
         return () => { supabase.removeChannel(sub) }
     }, [perfil?.empresa_id, cargarChoferes])
 
@@ -175,7 +166,7 @@ export default function DashboardPage() {
 
                 {/* Charts */}
                 {role === 'admin' && (
-                    <DashboardCharts traslados={chartTraslados} gastos={gastos} />
+                    <DashboardCharts resumen={resumen ?? []} />
                 )}
 
                 {/* Team section */}
