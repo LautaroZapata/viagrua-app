@@ -57,6 +57,32 @@ const DESCONOCIDO: EstiloEstado = {
   label: 'Sin estado',
 }
 
+/**
+ * Estilos de los botones que cambian el estado en la pantalla de detalle. Es
+ * otra forma que la del badge de las listas: ahi el estado se muestra, aca se
+ * elige, y el seleccionado va en color solido.
+ */
+export interface OpcionToggle {
+  valor: string
+  label: string
+  activo: string
+  inactivo: string
+}
+
+const INACTIVO = 'bg-muted text-muted-foreground hover:bg-accent'
+
+export const OPCIONES_ESTADO: OpcionToggle[] = [
+  { valor: 'pendiente', label: 'Pendiente', activo: 'bg-yellow-500 text-white', inactivo: INACTIVO },
+  { valor: 'en_curso', label: 'En curso', activo: 'bg-blue-500 text-white', inactivo: INACTIVO },
+  { valor: 'completado', label: 'Completado', activo: 'bg-emerald-500 text-white', inactivo: INACTIVO },
+]
+
+export const OPCIONES_PAGO: OpcionToggle[] = [
+  { valor: 'pendiente', label: 'Pendiente', activo: 'bg-yellow-500 text-white', inactivo: INACTIVO },
+  { valor: 'efectivo', label: 'Efectivo', activo: 'bg-emerald-500 text-white', inactivo: INACTIVO },
+  { valor: 'transferencia', label: 'Transferencia', activo: 'bg-blue-500 text-white', inactivo: INACTIVO },
+]
+
 export function estiloEstado(estado: string | null | undefined): EstiloEstado {
   if (!estado) return DESCONOCIDO
   return ESTADOS[estado] ?? DESCONOCIDO

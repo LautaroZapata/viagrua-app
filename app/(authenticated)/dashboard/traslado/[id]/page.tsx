@@ -8,12 +8,13 @@ import type { Tables } from '@/lib/db'
 import AppHeader from '@/app/components/AppHeader'
 import ClientOnly from '@/app/components/ClientOnly'
 import LoadingSpinner from '@/app/components/LoadingSpinner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import FotosTraslado from '@/app/components/traslado/FotosTraslado'
+import ToggleEstado from '@/app/components/traslado/ToggleEstado'
+import { OPCIONES_ESTADO, OPCIONES_PAGO } from '@/lib/trasladoStatus'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Trash2, Camera, X, AlertTriangle, Info } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 
 type Traslado = Tables<'traslados'> & {
     perfiles?: { nombre_completo: string | null } | null
@@ -26,7 +27,6 @@ export default function DetalleTrasladoAdmin() {
     const { perfil } = useUser()
     const [traslado, setTraslado] = useState<Traslado | null>(null)
     const [loading, setLoading] = useState(true)
-    const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null)
     const [actualizando, setActualizando] = useState(false)
 
     const cargarTraslado = useCallback(async () => {
@@ -87,22 +87,6 @@ export default function DetalleTrasladoAdmin() {
         const { error } = await supabase.from('traslados').delete().eq('id', traslado.id)
         if (error) { showError('Error: ' + error.message); return }
         router.push('/dashboard/traslados')
-    }
-
-    const fotos = traslado ? [
-        { tipo: 'Frontal', url: traslado.foto_frontal }, { tipo: 'Lateral', url: traslado.foto_lateral },
-        { tipo: 'Trasera', url: traslado.foto_trasera }, { tipo: 'Interior', url: traslado.foto_interior }
-    ].filter(f => f.url) : []
-
-    const estadoConfig: Record<string, { active: string; inactive: string; label: string }> = {
-        pendiente: { active: 'bg-yellow-500 text-white', inactive: 'bg-muted text-muted-foreground hover:bg-accent', label: 'Pendiente' },
-        en_curso: { active: 'bg-blue-500 text-white', inactive: 'bg-muted text-muted-foreground hover:bg-accent', label: 'En Curso' },
-        completado: { active: 'bg-emerald-500 text-white', inactive: 'bg-muted text-muted-foreground hover:bg-accent', label: 'Completado' },
-    }
-    const pagoConfig: Record<string, { active: string; inactive: string; label: string }> = {
-        pendiente: { active: 'bg-yellow-500 text-white', inactive: 'bg-muted text-muted-foreground hover:bg-accent', label: 'Pendiente' },
-        efectivo: { active: 'bg-emerald-500 text-white', inactive: 'bg-muted text-muted-foreground hover:bg-accent', label: 'Efectivo' },
-        transferencia: { active: 'bg-blue-500 text-white', inactive: 'bg-muted text-muted-foreground hover:bg-accent', label: 'Transferencia' },
     }
 
     if (loading) return <div className="flex h-dvh items-center justify-center"><LoadingSpinner /></div>
@@ -182,75 +166,34 @@ export default function DetalleTrasladoAdmin() {
                     </CardContent>
                 </Card>
 
-                {/* Fotos */}
-                {fotos.length > 0 && (
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm flex items-center gap-2"><Camera className="size-4 text-muted-foreground" />Fotos de Inspeccion</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-2 gap-2">
-                                {fotos.map((f) => (
-                                    <div key={f.tipo} className="relative">
-                                        <img src={f.url!} alt={f.tipo} className="w-full h-28 sm:h-36 object-cover rounded-lg cursor-pointer hover:opacity-90 transition" onClick={() => setFotoAmpliada(f.url)} />
-                                        <span className="absolute bottom-1.5 left-1.5 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">{f.tipo}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
+                <FotosTraslado traslado={traslado} />
 
-                {/* Estado */}
-                <Card>
-                    <CardHeader className="pb-3"><CardTitle className="text-sm">Cambiar Estado</CardTitle></CardHeader>
-                    <CardContent>
-                        {estadoBloqueado && (
-                            <Alert variant="destructive" className="mb-3">
-                                <AlertTriangle className="size-4" />
-                                <AlertDescription>El traslado esta <b>completado</b> y no puede ser modificado.</AlertDescription>
-                            </Alert>
-                        )}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            {(['pendiente', 'en_curso', 'completado'] as const).map((e) => {
-                                const cfg = estadoConfig[e]
-                                return <Button key={e} variant="ghost" onClick={() => cambiarEstado(e)} disabled={actualizando || estadoBloqueado}
-                                    className={`min-h-[44px] ${traslado.estado === e ? cfg.active : cfg.inactive} ${estadoBloqueado ? 'opacity-50' : ''}`}>{cfg.label}</Button>
-                            })}
-                        </div>
-                    </CardContent>
-                </Card>
+                <ToggleEstado
+                    titulo="Cambiar estado"
+                    opciones={OPCIONES_ESTADO}
+                    valorActual={traslado.estado}
+                    onCambiar={cambiarEstado}
+                    actualizando={actualizando}
+                    bloqueado={estadoBloqueado ? {
+                        tono: 'destructive',
+                        mensaje: <>El traslado esta <b>completado</b> y no puede modificarse.</>,
+                    } : undefined}
+                />
 
-                {/* Pago */}
                 {traslado.importe_total != null && (
-                    <Card>
-                        <CardHeader className="pb-3"><CardTitle className="text-sm">Estado de Pago</CardTitle></CardHeader>
-                        <CardContent>
-                            {pagoBloqueado && (
-                                <Alert className="mb-3">
-                                    <Info className="size-4" />
-                                    <AlertDescription>El estado de pago ya fue definido.</AlertDescription>
-                                </Alert>
-                            )}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                {(['pendiente', 'efectivo', 'transferencia'] as const).map((p) => {
-                                    const cfg = pagoConfig[p]
-                                    return <Button key={p} variant="ghost" onClick={() => cambiarPago(p)} disabled={actualizando || pagoBloqueado}
-                                        className={`min-h-[44px] ${traslado.estado_pago === p ? cfg.active : cfg.inactive} ${pagoBloqueado ? 'opacity-50' : ''}`}>{cfg.label}</Button>
-                                })}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <ToggleEstado
+                        titulo="Estado de pago"
+                        opciones={OPCIONES_PAGO}
+                        valorActual={traslado.estado_pago}
+                        onCambiar={cambiarPago}
+                        actualizando={actualizando}
+                        bloqueado={pagoBloqueado ? {
+                            tono: 'info',
+                            mensaje: 'El estado de pago ya fue definido.',
+                        } : undefined}
+                    />
                 )}
             </div>
-
-            {/* Photo Dialog */}
-            <Dialog open={!!fotoAmpliada} onOpenChange={() => setFotoAmpliada(null)}>
-                <DialogContent className="max-w-4xl p-0 bg-black/95 border-none">
-                    <DialogTitle className="sr-only">Foto ampliada</DialogTitle>
-                    {fotoAmpliada && <img src={fotoAmpliada} alt="Foto ampliada" className="w-full max-h-[90vh] object-contain" />}
-                </DialogContent>
-            </Dialog>
         </>
     )
 }
