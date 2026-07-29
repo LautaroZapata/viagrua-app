@@ -1,0 +1,112 @@
+name: Backup
+
+# Respaldo tecnico diario de la base de produccion.
+#
+# Corre en GitHub Actions y no en Vercel Cron a proposito: el dump lo hace
+# pg_dump, un binario que el runtime de Vercel no incluye y que ademas tendria
+# que terminar dentro del limite de una funcion. El runner de Ubuntu ya trae
+# postgresql-client y no tiene ese techo.
+#
+# Secrets que hay que cargar en Settings > Secrets and variables > Actions:
+#
+#   SUPABASE_DB_URL            Cadena de conexion del "Session pooler", no la
+#                              directa. La directa (db.<ref>.supabase.co) hoy
+#                              resuelve solo a IPv6 y los runners de GitHub son
+#                              IPv4, asi que falla con "network unreachable".
+#                              Se copia de Supabase > Project Settings >
+#                              Database > Connection string > Session pooler.
+#   SUPABASE_URL               https://<ref>.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY  Project Settings > API > service_role.
+#
+# Restaurar: bajar el .tar.gz del bucket, descomprimir y aplicar en orden
+# roles.sql, schema.sql, data.sql sobre un proyecto Supabase vacio.
+#
+#   psql "$URL_DESTINO" -f roles.sql
+#   psql "$URL_DESTINO" -f schema.sql
+#   psql "$URL_DESTINO" -f data.sql
+
+on:
+  schedule:
+    # 06:00 UTC = 03:00 en Argentina. De madrugada para no competir con el uso
+    # real de la app.
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+# Dos backups a la vez escribirian el mismo nombre de archivo y podarian sobre
+# una lista desactualizada.
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  dump:
+    name: Volcar la base al bucket privado
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # El CLI de Supabase envuelve a pg_dump con las particularidades del
+      # servicio: se saltea los schemas internos que no se pueden restaurar y
+      # separa roles, schema y datos en tres archivos que se aplican en orden.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Volcar roles, schema y datos
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "Falta el secret SUPABASE_DB_URL." >&2
+            exit 1
+          fi
+          mkdir -p dump
+          supabase db dump --db-url "$SUPABASE_DB_URL" --role-only -f dump/roles.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" --data-only --use-copy -f dump/data.sql
+
+      # Un dump vacio que se sube sin chistar es peor que un backup que falla:
+      # el workflow queda en verde y el respaldo no sirve. Recien se descubre el
+      # dia que hay que restaurar.
+      - name: Verificar que el dump no venga vacio
+        run: |
+          set -euo pipefail
+          for f in dump/roles.sql dump/schema.sql dump/data.sql; do
+            [ -s "$f" ] || { echo "$f quedo vacio." >&2; exit 1; }
+          done
+          grep -q 'CREATE TABLE' dump/schema.sql || {
+            echo "schema.sql no tiene ni un CREATE TABLE." >&2; exit 1; }
+          grep -q '^COPY ' dump/data.sql || {
+            echo "data.sql no tiene ni un COPY: la base salio sin datos." >&2; exit 1; }
+          echo "Dump verificado:"
+          wc -c dump/*.sql
+
+      - name: Comprimir
+        run: |
+          set -euo pipefail
+          ARCHIVO="viagrua-$(date -u +%F).tar.gz"
+          tar -czf "$ARCHIVO" -C dump roles.sql schema.sql data.sql
+          echo "ARCHIVO=$ARCHIVO" >> "$GITHUB_ENV"
+
+          # El plan actual de Supabase corta en 50 MB por archivo. Pasado ese
+          # techo la subida falla y el dia queda sin backup, asi que conviene
+          # enterarse mientras todavia sobra margen y no el dia que revienta.
+          BYTES=$(stat -c%s "$ARCHIVO")
+          echo "$ARCHIVO: $((BYTES / 1024)) KB"
+          if [ "$BYTES" -gt 41943040 ]; then
+            echo "::warning::El backup va por $((BYTES / 1048576)) MB y el techo del plan es 50 MB. Hay que subir de plan o partir el dump."
+          fi
+
+      - name: Subir al bucket y podar los vencidos
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RETENCION_DIAS: '30'
+        run: node scripts/backup-storage.mjs "$ARCHIVO"
