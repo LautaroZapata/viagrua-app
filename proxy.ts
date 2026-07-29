@@ -47,12 +47,22 @@ export const config = {
  */
 const HASH_SCRIPT_TEMA = "'sha256-n46vPwSWuMC0W703pBofImv82Z26xo4LXymv0E9caPk='"
 
+/**
+ * En desarrollo hace falta 'unsafe-eval': Turbopack envuelve cada modulo en
+ * eval() para el hot-reload y los source maps. Sin esto, la consola en local se
+ * llena de violaciones que no existen en produccion —verificado: el build no
+ * tiene un solo eval( en sus chunks— y esconderian a las de verdad.
+ *
+ * Nunca se agrega en produccion.
+ */
+const EVAL_EN_DEV = process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"
+
 function construirCsp(nonce: string | null): string {
   return [
     "default-src 'self'",
     nonce
-      ? `script-src 'self' 'nonce-${nonce}' ${HASH_SCRIPT_TEMA} 'strict-dynamic'`
-      : "script-src 'self' 'unsafe-inline'",
+      ? `script-src 'self' 'nonce-${nonce}' ${HASH_SCRIPT_TEMA} 'strict-dynamic'${EVAL_EN_DEV}`
+      : `script-src 'self' 'unsafe-inline'${EVAL_EN_DEV}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data: https://*.supabase.co",
     "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
