@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { auditLog } from '@/lib/audit'
+import { consumirRateLimit, ipDeRequest, respuesta429 } from '@/lib/rateLimit'
 import {
   sanitizeString,
   sanitizeAndLimit,
@@ -68,6 +69,13 @@ export async function POST(request: Request) {
     if (!isValidPassword(password)) {
       return NextResponse.json({ error: 'La contraseña debe tener entre 6 y 128 caracteres' }, { status: 400 })
     }
+
+    // Ruta publica que crea empresas y cuentas. Sin cupo, se puede llenar la
+    // base de altas basura desde un script.
+    const { permitido, reintentarEn } = await consumirRateLimit(
+      `registro:${ipDeRequest(request)}`, 5, 3600
+    )
+    if (!permitido) return respuesta429(reintentarEn)
 
     const { data: empresa, error: errorEmpresa } = await supabaseAdmin
       .from('empresas')

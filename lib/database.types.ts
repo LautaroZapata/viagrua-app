@@ -277,6 +277,24 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          clave: string
+          contador: number
+          ventana_inicio: string
+        }
+        Insert: {
+          clave: string
+          contador?: number
+          ventana_inicio?: string
+        }
+        Update: {
+          clave?: string
+          contador?: number
+          ventana_inicio?: string
+        }
+        Relationships: []
+      }
       traslados: {
         Row: {
           chofer_id: string | null
@@ -363,6 +381,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consumir_rate_limit: {
+        Args: { p_clave: string; p_max: number; p_ventana_segundos: number }
+        Returns: {
+          permitido: boolean
+          reintentar_en: number
+        }[]
+      }
       expulsar_chofer: { Args: { chofer_id: string }; Returns: boolean }
       get_empresa_id: { Args: never; Returns: string }
       get_resumen_mensual: {

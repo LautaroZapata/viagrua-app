@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { auditLog } from '@/lib/audit'
+import { consumirRateLimit, ipDeRequest, respuesta429 } from '@/lib/rateLimit'
 import {
   sanitizeString,
   sanitizeAndLimit,
@@ -56,6 +57,13 @@ export async function POST(request: Request) {
     if (!nombre) {
       return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 })
     }
+
+    // Ruta publica que crea cuentas confirmadas. El cupo va antes de tocar la
+    // invitacion para que un ataque de fuerza bruta no consuma codigos validos.
+    const { permitido, reintentarEn } = await consumirRateLimit(
+      `unirse:${ipDeRequest(request)}`, 10, 3600
+    )
+    if (!permitido) return respuesta429(reintentarEn)
 
     // Consumir la invitacion PRIMERO, con un UPDATE condicional.
     // Antes se leia, se creaba el usuario y recien al final se marcaba usada:

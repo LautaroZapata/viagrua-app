@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { sanitizeString, isValidCodigoInvitacion } from '@/lib/validation'
+import { consumirRateLimit, ipDeRequest, respuesta429 } from '@/lib/rateLimit'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -9,6 +10,13 @@ export async function GET(request: Request) {
   if (!isValidCodigoInvitacion(codigo)) {
     return NextResponse.json({ error: 'Código de invitación inválido' }, { status: 400 })
   }
+
+  // Publica y sin autenticar: sin cupo se puede barrer el espacio de codigos
+  // probando uno por request hasta encontrar una invitacion viva.
+  const { permitido, reintentarEn } = await consumirRateLimit(
+    `validar-invitacion:${ipDeRequest(request)}`, 20, 600
+  )
+  if (!permitido) return respuesta429(reintentarEn)
 
   const { data, error } = await supabaseAdmin
     .from('invitaciones')

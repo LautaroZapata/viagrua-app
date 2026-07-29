@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { checkRateLimit } from '@/lib/rateLimit'
+import { consumirRateLimit, ipDeRequest, respuesta429 } from '@/lib/rateLimit'
 import { auditLog } from '@/lib/audit'
 
 const MAX_BODY_SIZE = 2_000
@@ -35,20 +35,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email y contraseña son requeridos' }, { status: 400 })
     }
 
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-    const rateLimitKey = `login:${ip}`
-    const { allowed, retryAfterMs } = checkRateLimit(rateLimitKey, 5, 60_000)
-
-    if (!allowed) {
-      return NextResponse.json(
-        { error: 'Demasiados intentos. Esperá un momento.' },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': String(Math.ceil(retryAfterMs / 1000)),
-          },
-        }
-      )
+    // Dos cupos: por IP para frenar el barrido, y por email para que alguien
+    // repartido en muchas IPs no pueda martillar una cuenta concreta.
+    const ip = ipDeRequest(request)
+    for (const [clave, max] of [[`login:ip:${ip}`, 10], [`login:email:${email}`, 5]] as const) {
+      const { permitido, reintentarEn } = await consumirRateLimit(clave, max, 300)
+      if (!permitido) return respuesta429(reintentarEn)
     }
 
     const supabase = await createClient()
