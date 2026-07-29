@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { sanitizeString, isValidEmail, isValidPassword, isValidName, isValidCodigoInvitacion, LIMITS } from '@/lib/validation'
@@ -32,11 +33,7 @@ export default function UnirseEmpresa() {
         password: ''
     })
 
-    useEffect(() => {
-        validarInvitacion()
-    }, [codigo])
-
-    const validarInvitacion = async () => {
+    const validarInvitacion = useCallback(async () => {
         if (!codigo || !isValidCodigoInvitacion(codigo)) {
             setError('Código de invitación inválido')
             setLoading(false)
@@ -58,7 +55,11 @@ export default function UnirseEmpresa() {
             setError('Error de conexión')
         }
         setLoading(false)
-    }
+    }, [codigo])
+
+    useEffect(() => {
+        validarInvitacion()
+    }, [validarInvitacion])
 
     const handleRegistro = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -136,7 +137,7 @@ export default function UnirseEmpresa() {
                     <h1 className="text-xl font-semibold text-foreground mb-2">Invitación Inválida</h1>
                     <p className="text-sm text-muted-foreground mb-6">{error}</p>
                     <Button asChild>
-                        <a href="/">Ir al Inicio</a>
+                        <Link href="/">Ir al Inicio</Link>
                     </Button>
                 </div>
             </div>

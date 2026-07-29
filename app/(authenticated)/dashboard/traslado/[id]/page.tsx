@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, confirmAction, showError } from '@/lib/swal'
@@ -33,25 +33,25 @@ export default function DetalleTrasladoAdmin() {
     const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null)
     const [actualizando, setActualizando] = useState(false)
 
-    useEffect(() => { if (perfil?.empresa_id) cargarTraslado() }, [id, perfil?.empresa_id])
-
-    useEffect(() => {
-        if (!id) return
-        const ch = supabase.channel('traslado-' + id)
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'traslados', filter: `id=eq.${id}` },
-                (p) => setTraslado(prev => prev ? { ...prev, ...p.new } as Traslado : p.new as Traslado))
-            .subscribe()
-        return () => { supabase.removeChannel(ch) }
-    }, [id])
-
-    const cargarTraslado = async () => {
+    const cargarTraslado = useCallback(async () => {
         if (!perfil) return
         const { data, error } = await supabase.from('traslados').select('*, perfiles(nombre_completo)')
             .eq('id', id).eq('empresa_id', perfil.empresa_id).single()
         if (error || !data) { router.push('/dashboard/traslados'); return }
         setTraslado(data)
         setLoading(false)
-    }
+    }, [id, perfil, router])
+
+    useEffect(() => { if (perfil?.empresa_id) cargarTraslado() }, [perfil?.empresa_id, cargarTraslado])
+
+    useEffect(() => {
+        if (!id) return
+        const ch = supabase.channel('traslado-admin-' + id)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'traslados', filter: `id=eq.${id}` },
+                (p) => setTraslado(prev => prev ? { ...prev, ...p.new } as Traslado : p.new as Traslado))
+            .subscribe()
+        return () => { supabase.removeChannel(ch) }
+    }, [id])
 
     const estadoBloqueado = traslado?.estado === 'completado'
     const pagoBloqueado = traslado?.estado_pago !== 'pendiente'

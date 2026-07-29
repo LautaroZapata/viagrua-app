@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, showError } from '@/lib/swal'
@@ -47,10 +47,33 @@ export default function DashboardPage() {
     const [modalAbierto, setModalAbierto] = useState(false)
     const { data: counts } = useTrasladosCounts(perfil?.empresa_id ?? null)
 
+    // Declaradas antes de los efectos que las usan: al reves, el compilador de
+    // React marca acceso a la variable antes de declararla (react-hooks/immutability).
+    const cargarChoferes = useCallback(async (empresaId: string) => {
+        const { data } = await supabase.from('perfiles').select('*').eq('empresa_id', empresaId).eq('rol', 'chofer')
+        setChoferes(data || [])
+    }, [])
+
+    const cargarDatosGrafico = useCallback(async (empresaId: string) => {
+        const [gastosRes, trasladosRes] = await Promise.all([
+            supabase.from('gastos').select('importe, fecha').eq('empresa_id', empresaId).limit(1000),
+            supabase.from('traslados').select('importe_total, created_at').eq('empresa_id', empresaId).eq('estado', 'completado').neq('estado_pago', 'pendiente').limit(1000),
+        ])
+        setGastos(gastosRes.data || [])
+        setChartTraslados(trasladosRes.data || [])
+    }, [])
+
+    const cargarDatos = useCallback(async (empresaId: string) => {
+        await Promise.all([
+            cargarChoferes(empresaId),
+            cargarDatosGrafico(empresaId),
+        ])
+    }, [cargarChoferes, cargarDatosGrafico])
+
     useEffect(() => {
         if (!perfil?.empresa_id) return
         cargarDatos(perfil.empresa_id)
-    }, [perfil?.empresa_id])
+    }, [perfil?.empresa_id, cargarDatos])
 
     useEffect(() => {
         if (!perfil?.empresa_id) return
@@ -63,28 +86,7 @@ export default function DashboardPage() {
                 }
             }).subscribe()
         return () => { supabase.removeChannel(sub) }
-    }, [perfil?.empresa_id])
-
-    const cargarDatos = async (empresaId: string) => {
-        await Promise.all([
-            cargarChoferes(empresaId),
-            cargarDatosGrafico(empresaId),
-        ])
-    }
-
-    const cargarChoferes = async (empresaId: string) => {
-        const { data } = await supabase.from('perfiles').select('*').eq('empresa_id', empresaId).eq('rol', 'chofer')
-        setChoferes(data || [])
-    }
-
-    const cargarDatosGrafico = async (empresaId: string) => {
-        const [gastosRes, trasladosRes] = await Promise.all([
-            supabase.from('gastos').select('importe, fecha').eq('empresa_id', empresaId).limit(1000),
-            supabase.from('traslados').select('importe_total, created_at').eq('empresa_id', empresaId).eq('estado', 'completado').neq('estado_pago', 'pendiente').limit(1000),
-        ])
-        setGastos(gastosRes.data || [])
-        setChartTraslados(trasladosRes.data || [])
-    }
+    }, [perfil?.empresa_id, cargarChoferes])
 
     const expulsarChofer = async (choferId: string, nombre: string) => {
         const ok = await confirmDelete({ title: 'Expulsar chofer', text: `¿Expulsar a ${nombre}?`, confirmButtonText: 'Si, expulsar' })

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { useGastos } from '@/lib/useSupabaseQuery'
 import ClientOnly from '@/app/components/ClientOnly'
@@ -65,35 +65,41 @@ export default function GastosPage() {
     const { data: gastosData, mutate: mutateGastos } = useGastos(perfil?.empresa_id ?? null, perfil?.id ?? null, isAdmin)
     const gastos: Gasto[] = gastosData || []
 
-    useEffect(() => {
-        if (!perfil) return
-        if (isAdmin) cargarIngresos(perfil.empresa_id)
-        else if (user) cargarMisTraslados(user.id)
-    }, [perfil, user, isAdmin])
-
-    useEffect(() => {
-        if (!perfil) return
-        const sub = supabase.channel('traslados-pago-changes')
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'traslados' }, (payload) => {
-                const u = payload.new as { id?: string; estado_pago?: string; chofer_id?: string; empresa_id?: string }
-                if (!isAdmin && u.chofer_id === perfil.id && u.id)
-                    setMisTraslados(prev => prev.map(t => t.id === u.id ? { ...t, estado_pago: u.estado_pago || t.estado_pago } : t))
-                else if (isAdmin && u.empresa_id === perfil.empresa_id) cargarIngresos(perfil.empresa_id)
-            }).subscribe()
-        return () => { supabase.removeChannel(sub) }
-    }, [perfil, isAdmin])
-
-    const cargarMisTraslados = async (userId: string) => {
+    const cargarMisTraslados = useCallback(async (userId: string) => {
         const { data } = await supabase.from('traslados').select('id, marca_modelo, matricula, importe_total, estado_pago, created_at')
             .eq('chofer_id', userId).eq('estado', 'completado').neq('estado_pago', 'pendiente').order('created_at', { ascending: false }).limit(500)
         setMisTraslados(data || [])
-    }
+    }, [])
 
-    const cargarIngresos = async (empresaId: string) => {
+    const cargarIngresos = useCallback(async (empresaId: string) => {
         const { data } = await supabase.from('traslados').select('importe_total')
             .eq('empresa_id', empresaId).eq('estado', 'completado').neq('estado_pago', 'pendiente').limit(1000)
         setTotalIngresos(data?.reduce((s, t) => s + (t.importe_total || 0), 0) || 0)
-    }
+    }, [])
+
+    // Ojo con las deps de estos dos efectos: 'perfil' es un objeto nuevo en cada
+    // reload() del UserContext. Como el canal tiene nombre fijo, depender del
+    // objeto hacia re-suscribir antes de terminar el cleanup y llegaban eventos
+    // duplicados. Por eso se depende de los ids, que son estables.
+    const perfilId = perfil?.id
+    const empresaId = perfil?.empresa_id
+
+    useEffect(() => {
+        if (isAdmin && empresaId) cargarIngresos(empresaId)
+        else if (!isAdmin && user?.id) cargarMisTraslados(user.id)
+    }, [empresaId, user?.id, isAdmin, cargarIngresos, cargarMisTraslados])
+
+    useEffect(() => {
+        if (!perfilId || !empresaId) return
+        const sub = supabase.channel(`traslados-pago-${empresaId}`)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'traslados', filter: `empresa_id=eq.${empresaId}` }, (payload) => {
+                const u = payload.new as { id?: string; estado_pago?: string; chofer_id?: string; empresa_id?: string }
+                if (!isAdmin && u.chofer_id === perfilId && u.id)
+                    setMisTraslados(prev => prev.map(t => t.id === u.id ? { ...t, estado_pago: u.estado_pago || t.estado_pago } : t))
+                else if (isAdmin) cargarIngresos(empresaId)
+            }).subscribe()
+        return () => { supabase.removeChannel(sub) }
+    }, [perfilId, empresaId, isAdmin, cargarIngresos])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

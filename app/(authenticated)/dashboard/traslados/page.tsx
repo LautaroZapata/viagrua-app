@@ -45,14 +45,17 @@ export default function TrasladosPage() {
     const traslados = trasladosData?.data ?? []
     const trasladosTotal = trasladosData?.count ?? 0
 
-    // Stable Realtime subscription — only depends on empresa_id
+    // La suscripcion depende solo de empresa_id: mutate cambia de identidad en
+    // cada render y volveria a suscribir. El ref se asigna dentro de un efecto,
+    // no durante el render (react-hooks/refs).
     const mutateRef = useRef(mutate)
-    mutateRef.current = mutate
+    useEffect(() => { mutateRef.current = mutate }, [mutate])
 
     useEffect(() => {
         if (!perfil?.empresa_id) return
-        const sub = supabase.channel('traslados-list')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'traslados' }, () => {
+        const empresaId = perfil.empresa_id
+        const sub = supabase.channel(`traslados-list-${empresaId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'traslados', filter: `empresa_id=eq.${empresaId}` }, () => {
                 mutateRef.current()
             }).subscribe()
         return () => { supabase.removeChannel(sub) }

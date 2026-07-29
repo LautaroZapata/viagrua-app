@@ -8,8 +8,8 @@
 /** Elimina caracteres de control (excepto newline/tab) y recorta espacios */
 export function sanitizeString(value: unknown): string {
   if (typeof value !== 'string') return ''
-  // Eliminar caracteres de control excepto \n y \t
-  // eslint-disable-next-line no-control-regex
+  // Elimina caracteres de control salvo \n y \t. El rango \x00-\x1F es
+  // intencional: son de control, no texto.
   return value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim()
 }
 

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmAction, showError } from '@/lib/swal'
@@ -33,25 +33,27 @@ export default function DetalleTraslado() {
     const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null)
     const [actualizando, setActualizando] = useState(false)
 
-    useEffect(() => { if (user?.id) cargarTraslado() }, [id, user?.id])
-
-    useEffect(() => {
-        if (!id) return
-        const ch = supabase.channel('traslado-' + id)
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'traslados', filter: `id=eq.${id}` },
-                (p) => setTraslado(prev => prev ? { ...prev, ...p.new, empresas: (p.new as Record<string, unknown>).empresas ?? prev.empresas } as Traslado : null))
-            .subscribe()
-        return () => { supabase.removeChannel(ch) }
-    }, [id])
-
-    const cargarTraslado = async () => {
+    const cargarTraslado = useCallback(async () => {
         if (!user) return
         const { data, error } = await supabase.from('traslados').select('*, empresas(nombre)')
             .eq('id', id).eq('chofer_id', user.id).single()
         if (error || !data) { router.push('/chofer'); return }
         setTraslado(data)
         setLoading(false)
-    }
+    }, [id, user, router])
+
+    useEffect(() => { if (user?.id) cargarTraslado() }, [user?.id, cargarTraslado])
+
+    useEffect(() => {
+        if (!id) return
+        // Nombre distinto al de la vista admin: un admin que abre el mismo
+        // traslado en ambas vistas tendria dos canales con el mismo topic.
+        const ch = supabase.channel('traslado-chofer-' + id)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'traslados', filter: `id=eq.${id}` },
+                (p) => setTraslado(prev => prev ? { ...prev, ...p.new, empresas: (p.new as Record<string, unknown>).empresas ?? prev.empresas } as Traslado : null))
+            .subscribe()
+        return () => { supabase.removeChannel(ch) }
+    }, [id])
 
     const estadoBloqueado = traslado?.estado === 'completado'
     const pagoBloqueado = traslado?.estado_pago !== 'pendiente'

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, showError } from '@/lib/swal'
@@ -22,9 +22,14 @@ export default function ChoferesPage() {
     const [choferes, setChoferes] = useState<Chofer[]>([])
     const [modalAbierto, setModalAbierto] = useState(false)
 
+    const cargarChoferes = useCallback(async (empresaId: string) => {
+        const { data } = await supabase.from('perfiles').select('*').eq('empresa_id', empresaId).eq('rol', 'chofer')
+        setChoferes(data || [])
+    }, [])
+
     useEffect(() => {
         if (perfil?.empresa_id) cargarChoferes(perfil.empresa_id)
-    }, [perfil?.empresa_id])
+    }, [perfil?.empresa_id, cargarChoferes])
 
     useEffect(() => {
         if (!perfil?.empresa_id) return
@@ -36,12 +41,7 @@ export default function ChoferesPage() {
                     cargarChoferes(perfil.empresa_id)
             }).subscribe()
         return () => { supabase.removeChannel(sub) }
-    }, [perfil?.empresa_id])
-
-    const cargarChoferes = async (empresaId: string) => {
-        const { data } = await supabase.from('perfiles').select('*').eq('empresa_id', empresaId).eq('rol', 'chofer')
-        setChoferes(data || [])
-    }
+    }, [perfil?.empresa_id, cargarChoferes])
 
     const expulsarChofer = async (id: string, nombre: string) => {
         const ok = await confirmDelete({ title: 'Expulsar chofer', text: `¿Expulsar a ${nombre}?`, confirmButtonText: 'Si, expulsar' })

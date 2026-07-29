@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmAction, showError } from '@/lib/swal'
@@ -64,9 +64,26 @@ export default function PanelChofer() {
         } else { setNombreEmpresa(null) }
     }, [perfil?.empresa_id])
 
+    const cargarTraslados = useCallback(async (choferId: string, page: number, soloTP: boolean, soloPP: boolean) => {
+        const from = (page - 1) * ITEMS_PER_PAGE
+        const to = page * ITEMS_PER_PAGE - 1
+        let query = supabase.from('traslados')
+            .select('id, marca_modelo, matricula, es_0km, estado, estado_pago, importe_total, observaciones, created_at, departamento, direccion, empresas(nombre), desde, hasta', { count: 'exact' })
+            .eq('chofer_id', choferId)
+        if (soloTP) query = query.eq('estado', 'pendiente')
+        if (soloPP) query = query.eq('estado_pago', 'pendiente')
+        const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, to)
+        if (error) { setTraslados([]); setTrasladosTotal(0); return }
+        const norm = (data || []).map((t: Record<string, unknown>) => ({
+            ...t, empresas: t.empresas && Array.isArray(t.empresas) ? t.empresas[0] : t.empresas
+        })) as Traslado[]
+        setTraslados(norm)
+        setTrasladosTotal(count || 0)
+    }, [])
+
     useEffect(() => {
         if (user?.id) cargarTraslados(user.id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
-    }, [user?.id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes])
+    }, [user?.id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes, cargarTraslados])
 
     useEffect(() => {
         if (!user?.id) return
@@ -91,22 +108,6 @@ export default function PanelChofer() {
         return () => { supabase.removeChannel(sub) }
     }, [user?.id, reload])
 
-    const cargarTraslados = async (choferId: string, page: number, soloTP: boolean, soloPP: boolean) => {
-        const from = (page - 1) * ITEMS_PER_PAGE
-        const to = page * ITEMS_PER_PAGE - 1
-        let query = supabase.from('traslados')
-            .select('id, marca_modelo, matricula, es_0km, estado, estado_pago, importe_total, observaciones, created_at, departamento, direccion, empresas(nombre), desde, hasta', { count: 'exact' })
-            .eq('chofer_id', choferId)
-        if (soloTP) query = query.eq('estado', 'pendiente')
-        if (soloPP) query = query.eq('estado_pago', 'pendiente')
-        const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, to)
-        if (error) { setTraslados([]); setTrasladosTotal(0); return }
-        const norm = (data || []).map((t: Record<string, unknown>) => ({
-            ...t, empresas: t.empresas && Array.isArray(t.empresas) ? t.empresas[0] : t.empresas
-        })) as Traslado[]
-        setTraslados(norm)
-        setTrasladosTotal(count || 0)
-    }
 
     const validarCodigo = async () => {
         const codigo = sanitizeString(codigoInvitacion)
