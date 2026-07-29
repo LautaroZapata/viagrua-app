@@ -63,8 +63,8 @@ export default function PrivacidadPage() {
                 </Seccion>
 
                 <Seccion titulo="Las fotos de los traslados">
-                    <p>Las fotos que suben los choferes se guardan en un almacenamiento cuyas direcciones son públicas: quien tenga el enlace exacto de una foto puede verla sin iniciar sesión. Los enlaces no están listados en ningún lado ni son adivinables, pero tampoco están protegidos por tu sesión.</p>
-                    <p>Tenelo en cuenta si en las fotos aparecen matrículas u otros datos que preferirías mantener reservados. Estamos trabajando para que estas fotos requieran sesión.</p>
+                    <p>Las fotos que suben los choferes están protegidas: para verlas hay que tener sesión iniciada y pertenecer a la empresa dueña del traslado. No existe una dirección permanente que permita abrirlas desde afuera; cada vez que se muestran se genera un enlace temporal que vence en una hora.</p>
+                    <p>Las fotos cargadas antes de agosto de 2026 están alojadas en un servicio externo de imágenes y todavía tienen direcciones públicas: quien tenga el enlace exacto puede verlas sin iniciar sesión. Estamos migrándolas al almacenamiento protegido.</p>
                 </Seccion>
 
                 <Seccion titulo="Con quién compartimos los datos">
