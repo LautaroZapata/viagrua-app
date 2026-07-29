@@ -1,6 +1,6 @@
 'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { sanitizeString, isValidEmail, LIMITS } from '@/lib/validation'
@@ -9,6 +9,31 @@ import { Truck, Mail, Lock, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+
+/**
+ * /auth/confirm manda aca cuando el link del mail no sirve. No aclara si vencio
+ * o si nunca existio: eso convertiria la pantalla en un oraculo.
+ *
+ * Va aparte y dentro de un Suspense porque useSearchParams obliga a la pagina
+ * entera a renderizarse en el cliente si se usa en el componente de nivel
+ * superior, y el build falla al prerenderizar /login.
+ */
+function AvisoLinkInvalido() {
+    const searchParams = useSearchParams()
+    if (searchParams?.get('error') !== 'link_invalido') return null
+
+    return (
+        <div role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+            <p className="text-sm text-foreground">
+                Ese link ya no sirve.{' '}
+                <Link href="/recuperar" className="text-primary font-medium hover:text-primary/80">
+                    Pedí uno nuevo
+                </Link>
+                .
+            </p>
+        </div>
+    )
+}
 
 export default function Login() {
     const router = useRouter()
@@ -78,6 +103,10 @@ export default function Login() {
                         <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-1">Inicia sesion</h2>
                         <p className="text-muted-foreground text-sm mb-6">Accede a tu cuenta</p>
 
+                        <Suspense fallback={null}>
+                            <AvisoLinkInvalido />
+                        </Suspense>
+
                         <form onSubmit={handleLogin} className="space-y-4">
                             <div className="space-y-1.5">
                                 <Label htmlFor="email">Email</Label>
@@ -95,6 +124,12 @@ export default function Login() {
                                     <Input id="password" type="password" required maxLength={LIMITS.password} placeholder="Tu contraseña" className="pl-10"
                                         value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
                                 </div>
+                            </div>
+
+                            <div className="text-right -mt-1">
+                                <Link href="/recuperar" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                                    ¿Olvidaste tu contraseña?
+                                </Link>
                             </div>
 
                             <Button type="submit" disabled={loading} className="w-full mt-2 py-3">
