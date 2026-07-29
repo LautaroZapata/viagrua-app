@@ -110,3 +110,15 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RETENCION_DIAS: '30'
         run: node scripts/backup-storage.mjs "$ARCHIVO"
+
+      # El dump de la base no incluye los archivos del storage, solo las filas
+      # que los describen. Sin este paso, restaurar deja cada traslado con sus
+      # fotos listadas y ningun archivo detras.
+      #
+      # Va despues del dump y no antes: si el bucket de fotos llegara a fallar,
+      # el backup de la base ya esta arriba.
+      - name: Respaldar las fotos
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/backup-fotos.mjs

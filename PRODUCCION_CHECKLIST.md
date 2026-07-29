@@ -11,8 +11,8 @@ Hay código en el repo que no hace nada hasta que cargues estas credenciales.
 Todo degrada solo (la app funciona sin ellas), así que nada de esto rompe el
 deploy si falta — pero tampoco protege nada.
 
-**1. Secrets de GitHub** (Settings → Secrets and variables → Actions) — sin esto
-no corre ni un backup:
+**1. Secrets de GitHub** — ✅ **hecho** (29/07/2026). Los tres cargados y
+verificados con una corrida real del workflow:
 
 | Secret | De dónde sale |
 |---|---|
@@ -20,8 +20,8 @@ no corre ni un backup:
 | `SUPABASE_URL` | `https://<ref>.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → `service_role` |
 
-Después: Actions → Backup → *Run workflow*, para no esperar al cron y confirmar
-que el primer dump sube bien.
+Ojo con el primero: es una cadena `postgresql://`, no la URL `https://` del
+proyecto. Confundirlas hace fallar el dump con un error poco claro.
 
 **2. Sentry** — crear proyecto (plan gratis) y cargar en Vercel:
 
@@ -113,7 +113,8 @@ corras el resto de las migraciones pendientes.
 ## 4. Base de datos & Backup
 
 - [x] **🔴 Backup técnico (pg_dump)** — `.github/workflows/backup.yml`, diario a
-      las 06:00 UTC (03:00 ART). **Faltan los secrets** (ver arriba).
+      las 06:00 UTC (03:00 ART). Secrets cargados y **verificado con una corrida
+      real**: 2373 filas, 922 traslados, `auth.users` incluido.
   - **GitHub Actions, no Vercel Cron.** El runtime de Vercel no trae el binario
     `pg_dump` y el dump tendría que terminar dentro del límite de una función.
   - Vuelca roles + schema + datos con el CLI de Supabase, los comprime en un
@@ -126,6 +127,26 @@ corras el resto de las migraciones pendientes.
     sobra, y el workflow avisa a partir de 40 MB.
   - Restaurar: bajar el `.tar.gz` y aplicar `roles.sql`, `schema.sql` y
     `data.sql` en ese orden sobre un proyecto vacío.
+- [x] **🔴 Backup de las fotos** — `scripts/backup-fotos.mjs`, mismo workflow.
+  - `pg_dump` **no guarda archivos**: guarda las filas de `storage.objects`, que
+    dicen qué foto va con qué traslado, pero no los bytes. Restaurar solo el
+    dump dejaba 922 traslados con sus fotos listadas y ningún archivo detrás.
+    Hasta la migración de Cloudinary (`74e60fa`) ese servicio era una segunda
+    copia de hecho; desde entonces el bucket es la única.
+  - Copia `fotos-traslados` → `backups/fotos/` del lado del servidor (endpoint
+    `object/copy`), así los bytes no pasan por el runner. Si la instalación de
+    Storage no soporta copia entre buckets, baja y sube.
+  - Incremental: compara por ruta completa y copia solo lo que falta. Las fotos
+    están aisladas por empresa y `frontal.jpg` se repite en todas, así que
+    comparar por nombre de archivo dejaría sin copia a todas menos una.
+  - Tope de 2000 por corrida (`FOTOS_MAX_POR_CORRIDA`). Un bucket que creció
+    mucho avanza un pedazo por día en vez de pasarse del límite del job y no
+    dejar nada.
+  - Primera corrida: 528 fotos copiadas, verificadas byte a byte contra el
+    original. La poda de dumps no toca el prefijo `fotos/`.
+- [ ] **🔴 Probar el restore** — levantar un proyecto Supabase vacío y aplicar el
+      dump. Está verificado que el `.tar.gz` tiene los datos; falta verificar que
+      Postgres los traga. Un backup que nunca se restauró no es un backup.
 - [ ] **🟡 Análisis de queries lentas** — revisar `pg_stat_statements`, ver si faltan índices
 - [ ] **🟢 Database branching para PRs** — preview branches con datos reales
 
@@ -184,14 +205,17 @@ corras el resto de las migraciones pendientes.
 
 ## Qué sigue
 
-Los cinco 🔴 del plan original están cerrados salvo el E2E. En orden:
+El backup quedó cerrado de punta a punta: base + fotos, corrido y verificado.
+En orden:
 
-1. **Cargar las credenciales de la sección de arriba.** Hasta que no estén, el
-   backup no corre y ni Sentry ni reCAPTCHA hacen nada.
-2. **Correr el backup a mano una vez** y bajar el `.tar.gz` para confirmar que
-   se puede restaurar. Un backup que nunca se probó no es un backup.
-3. **Pasar la CSP a bloqueante** (`CSP_ENFORCE=1`) después de recorrer el
+1. **Probar el restore** sobre un proyecto Supabase vacío. Es lo único que
+   confirma que el backup sirve, y va antes de tocar las migraciones.
+2. **Aplicar las migraciones pendientes** hasta `20260808_backups_bucket.sql`,
+   recién con el restore probado.
+3. **Cargar Sentry y reCAPTCHA en Vercel.** Hasta que no estén, ese código está
+   deployado y no hace nada.
+4. **Pasar la CSP a bloqueante** (`CSP_ENFORCE=1`) después de recorrer el
    dashboard sin violaciones en consola.
-4. **E2E del flujo crítico** contra Supabase local.
-5. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
+5. **E2E del flujo crítico** contra Supabase local.
+6. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
    un traslado si no abre la app.
