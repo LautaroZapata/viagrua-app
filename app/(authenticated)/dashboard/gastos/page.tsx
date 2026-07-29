@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { useGastos } from '@/lib/useSupabaseQuery'
 import ClientOnly from '@/app/components/ClientOnly'
+import ListState from '@/app/components/ListState'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, showError } from '@/lib/swal'
 import { sanitizeString, isValidImporte, isValidTipoGasto, isValidFecha, LIMITS } from '@/lib/validation'
@@ -62,8 +63,10 @@ export default function GastosPage() {
     const ITEMS_POR_PAGINA = 10
     const [formData, setFormData] = useState({ tipo: '', importe: '', descripcion: '', fecha: new Date().toISOString().split('T')[0] })
 
-    const { data: gastosData, mutate: mutateGastos } = useGastos(perfil?.empresa_id ?? null, perfil?.id ?? null, isAdmin)
+    const { data: gastosData, mutate: mutateGastos, isLoading: cargandoGastos, error: errorGastos } =
+        useGastos(perfil?.empresa_id ?? null, perfil?.id ?? null, isAdmin)
     const gastos: Gasto[] = gastosData || []
+    const sinDatosTodavia = cargandoGastos && !gastosData
 
     const cargarMisTraslados = useCallback(async (userId: string) => {
         const { data } = await supabase.from('traslados').select('id, marca_modelo, matricula, importe_total, estado_pago, created_at')
@@ -322,12 +325,16 @@ export default function GastosPage() {
                         </div>
 
                         {/* Admin list */}
-                        {isAdmin && (gastosOrdenadosAdmin.length === 0 ? (
-                            <div className="text-center py-12">
-                                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-3"><FileText className="size-7 text-muted-foreground" /></div>
-                                <p className="text-muted-foreground text-sm">No hay gastos registrados</p>
-                            </div>
-                        ) : (
+                        {isAdmin && (
+                            <ListState
+                                isLoading={sinDatosTodavia}
+                                error={errorGastos}
+                                isEmpty={gastosOrdenadosAdmin.length === 0}
+                                emptyMessage="No hay gastos registrados"
+                                emptyIcon={<FileText className="size-7 text-muted-foreground" />}
+                                onRetry={() => mutateGastos()}
+                                skeletonRows={4}
+                            >
                             <>
                                 <div className="space-y-2">
                                     {gastosPaginados.map(gasto => {
@@ -378,15 +385,20 @@ export default function GastosPage() {
                                     </div>
                                 )}
                             </>
-                        ))}
+                            </ListState>
+                        )}
 
                         {/* Chofer list */}
-                        {!isAdmin && (movimientos.length === 0 ? (
-                            <div className="text-center py-12">
-                                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-3"><FileText className="size-7 text-muted-foreground" /></div>
-                                <p className="text-muted-foreground text-sm">No hay movimientos</p>
-                            </div>
-                        ) : (
+                        {!isAdmin && (
+                            <ListState
+                                isLoading={sinDatosTodavia}
+                                error={errorGastos}
+                                isEmpty={movimientos.length === 0}
+                                emptyMessage="No hay movimientos"
+                                emptyIcon={<FileText className="size-7 text-muted-foreground" />}
+                                onRetry={() => mutateGastos()}
+                                skeletonRows={4}
+                            >
                             <>
                                 <div className="space-y-2">
                                     {movimientosPaginados.map(mov => {
@@ -444,7 +456,8 @@ export default function GastosPage() {
                                     </div>
                                 )}
                             </>
-                        ))}
+                            </ListState>
+                        )}
                     </CardContent>
                 </Card>
             </div>

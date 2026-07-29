@@ -6,6 +6,7 @@ import { confirmAction, showError } from '@/lib/swal'
 import { sanitizeString, isValidCodigoInvitacion, LIMITS } from '@/lib/validation'
 import { useUser } from '@/app/components/UserContext'
 import { estiloEstado, estiloPago } from '@/lib/trasladoStatus'
+import ListState from '@/app/components/ListState'
 import AppHeader from '@/app/components/AppHeader'
 import Pagination from '@/app/components/Pagination'
 import ErrorBoundary from '@/app/components/ErrorBoundary'
@@ -32,6 +33,8 @@ export default function PanelChofer() {
     const { user, perfil, reload } = useUser()
     const router = useRouter()
     const [traslados, setTraslados] = useState<Traslado[]>([])
+    const [cargando, setCargando] = useState(true)
+    const [errorCarga, setErrorCarga] = useState<unknown>(null)
     const [trasladosPage, setTrasladosPage] = useState(1)
     const [trasladosTotal, setTrasladosTotal] = useState(0)
     const [nombreEmpresa, setNombreEmpresa] = useState<string | null>(null)
@@ -56,6 +59,8 @@ export default function PanelChofer() {
     }, [perfil?.empresa_id])
 
     const cargarTraslados = useCallback(async (choferId: string, page: number, soloTP: boolean, soloPP: boolean) => {
+        setCargando(true)
+        setErrorCarga(null)
         const from = (page - 1) * ITEMS_PER_PAGE
         const to = page * ITEMS_PER_PAGE - 1
         let query = supabase.from('traslados')
@@ -64,12 +69,15 @@ export default function PanelChofer() {
         if (soloTP) query = query.eq('estado', 'pendiente')
         if (soloPP) query = query.eq('estado_pago', 'pendiente')
         const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, to)
-        if (error) { setTraslados([]); setTrasladosTotal(0); return }
+        // Antes el error se descartaba y la lista quedaba vacia: el chofer veia
+        // "No hay traslados asignados" cuando en realidad habia fallado la query.
+        if (error) { setTraslados([]); setTrasladosTotal(0); setErrorCarga(error); setCargando(false); return }
         const norm = (data || []).map((t: Record<string, unknown>) => ({
             ...t, empresas: t.empresas && Array.isArray(t.empresas) ? t.empresas[0] : t.empresas
         })) as Traslado[]
         setTraslados(norm)
         setTrasladosTotal(count || 0)
+        setCargando(false)
     }, [])
 
     useEffect(() => {
@@ -238,16 +246,16 @@ export default function PanelChofer() {
                 </div>
 
                 {/* Transfer list */}
-                {traslados.length === 0 ? (
-                    <Card>
-                        <CardContent className="text-center py-12 sm:py-16">
-                            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                                <Truck className="size-7 text-muted-foreground/50" />
-                            </div>
-                            <p className="text-sm text-muted-foreground">No hay traslados asignados</p>
-                        </CardContent>
-                    </Card>
-                ) : (
+                <ListState
+                    isLoading={cargando}
+                    error={errorCarga}
+                    isEmpty={traslados.length === 0}
+                    emptyMessage="No hay traslados asignados"
+                    emptyIcon={<Truck className="size-7 text-muted-foreground" />}
+                    onRetry={() => {
+                        if (user?.id) cargarTraslados(user.id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
+                    }}
+                >
                     <div className="space-y-2 animate-stagger">
                         {traslados.map(t => {
                             const estado = estiloEstado(t.estado)
@@ -295,7 +303,7 @@ export default function PanelChofer() {
                             )
                         })}
                     </div>
-                )}
+                </ListState>
                 <Pagination currentPage={trasladosPage} totalItems={trasladosTotal} itemsPerPage={ITEMS_PER_PAGE} onPageChange={setTrasladosPage} />
             </div>
         </ErrorBoundary>

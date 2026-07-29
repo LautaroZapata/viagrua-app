@@ -8,7 +8,7 @@ import { estiloEstado, estiloPago } from '@/lib/trasladoStatus'
 import { useTraslados } from '@/lib/useSupabaseQuery'
 import AppHeader from '@/app/components/AppHeader'
 import Pagination from '@/app/components/Pagination'
-import EmptyState from '@/app/components/EmptyState'
+import ListState from '@/app/components/ListState'
 import ErrorBoundary from '@/app/components/ErrorBoundary'
 import ClientOnly from '@/app/components/ClientOnly'
 import { Card, CardContent } from '@/components/ui/card'
@@ -25,7 +25,7 @@ export default function TrasladosPage() {
     const [filtroTrasladosPendientes, setFiltroTrasladosPendientes] = useState(false)
     const [filtroPagosPendientes, setFiltroPagosPendientes] = useState(false)
 
-    const { data: trasladosData, mutate } = useTraslados(
+    const { data: trasladosData, mutate, isLoading, error } = useTraslados(
         perfil?.empresa_id ?? null,
         trasladosPage,
         filtroTrasladosPendientes,
@@ -33,6 +33,9 @@ export default function TrasladosPage() {
     )
     const traslados = trasladosData?.data ?? []
     const trasladosTotal = trasladosData?.count ?? 0
+    // isLoading distingue "todavia no llego" de "no hay nada", y error
+    // distingue "fallo" de "cuenta vacia". Antes las tres cosas se veian igual.
+    const sinDatosTodavia = isLoading && !trasladosData
 
     // La suscripcion depende solo de empresa_id: mutate cambia de identidad en
     // cada render y volveria a suscribir. El ref se asigna dentro de un efecto,
@@ -122,9 +125,18 @@ export default function TrasladosPage() {
                             </div>
                         </div>
 
-                        {traslados.length === 0 ? (
-                            <EmptyState message="No hay traslados registrados" />
-                        ) : (
+                        <ListState
+                            isLoading={sinDatosTodavia}
+                            error={error}
+                            isEmpty={traslados.length === 0}
+                            emptyMessage="No hay traslados registrados"
+                            onRetry={() => mutate()}
+                            emptyAction={
+                                <Button size="sm" onClick={() => router.push('/dashboard/nuevo-traslado')}>
+                                    Crear el primer traslado
+                                </Button>
+                            }
+                        >
                             <div className="space-y-2 animate-stagger">
                                 {traslados.map((t) => {
                                     const estado = estiloEstado(t.estado)
@@ -182,8 +194,10 @@ export default function TrasladosPage() {
                                     )
                                 })}
                             </div>
+                        </ListState>
+                        {trasladosTotal > 0 && (
+                            <Pagination currentPage={trasladosPage} totalItems={trasladosTotal} itemsPerPage={ITEMS_PER_PAGE} onPageChange={setTrasladosPage} />
                         )}
-                        <Pagination currentPage={trasladosPage} totalItems={trasladosTotal} itemsPerPage={ITEMS_PER_PAGE} onPageChange={setTrasladosPage} />
                     </CardContent>
                 </Card>
             </div>

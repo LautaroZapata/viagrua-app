@@ -6,7 +6,7 @@ import { confirmDelete, showError } from '@/lib/swal'
 import { useUser } from '@/app/components/UserContext'
 import type { Tables } from '@/lib/db'
 import AppHeader from '@/app/components/AppHeader'
-import EmptyState from '@/app/components/EmptyState'
+import ListState from '@/app/components/ListState'
 import ErrorBoundary from '@/app/components/ErrorBoundary'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -22,12 +22,19 @@ export default function ChoferesPage() {
     const { perfil } = useUser()
     const [choferes, setChoferes] = useState<Chofer[]>([])
     const [modalAbierto, setModalAbierto] = useState(false)
+    const [cargando, setCargando] = useState(true)
+    const [errorCarga, setErrorCarga] = useState<unknown>(null)
 
     const cargarChoferes = useCallback(async (empresaId: string) => {
+        setCargando(true)
+        setErrorCarga(null)
         // Columnas explicitas: select('*') traia todo el perfil para mostrar
         // solo nombre y email.
-        const { data } = await supabase.from('perfiles').select('id, nombre_completo, email').eq('empresa_id', empresaId).eq('rol', 'chofer')
+        const { data, error } = await supabase.from('perfiles').select('id, nombre_completo, email').eq('empresa_id', empresaId).eq('rol', 'chofer')
+        // El error se descartaba: una query fallida se veia igual que un equipo vacio.
+        if (error) setErrorCarga(error)
         setChoferes(data || [])
+        setCargando(false)
     }, [])
 
     useEffect(() => {
@@ -66,9 +73,20 @@ export default function ChoferesPage() {
                         <CardTitle>Equipo de Choferes ({choferes.length})</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {choferes.length === 0 ? (
-                            <EmptyState message="No hay choferes registrados" />
-                        ) : (
+                        <ListState
+                            isLoading={cargando}
+                            error={errorCarga}
+                            isEmpty={choferes.length === 0}
+                            emptyMessage="No hay choferes registrados"
+                            onRetry={() => { if (perfil?.empresa_id) cargarChoferes(perfil.empresa_id) }}
+                            skeletonRows={3}
+                            emptyAction={
+                                <Button size="sm" onClick={() => setModalAbierto(true)}>
+                                    <UserPlus className="size-4 mr-1.5" />
+                                    Invitar al primer chofer
+                                </Button>
+                            }
+                        >
                             <div className="space-y-2">
                                 {choferes.map((c) => {
                                     // nombre_completo es nullable: el trigger de alta lo deja en
@@ -96,7 +114,7 @@ export default function ChoferesPage() {
                                     )
                                 })}
                             </div>
-                        )}
+                        </ListState>
                     </CardContent>
                 </Card>
             </div>

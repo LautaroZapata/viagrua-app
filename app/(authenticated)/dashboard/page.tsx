@@ -14,7 +14,7 @@ const DashboardCharts = dynamic(() => import('@/app/components/DashboardCharts')
     ssr: false,
 })
 const InviteModal = dynamic(() => import('@/app/components/InviteModal'), { ssr: false })
-import EmptyState from '@/app/components/EmptyState'
+import ListState from '@/app/components/ListState'
 import ErrorBoundary from '@/app/components/ErrorBoundary'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -46,13 +46,20 @@ export default function DashboardPage() {
     const [gastos, setGastos] = useState<Pick<Tables<'gastos'>, 'importe' | 'fecha'>[]>([])
     const [chartTraslados, setChartTraslados] = useState<Pick<Tables<'traslados'>, 'importe_total' | 'created_at'>[]>([])
     const [modalAbierto, setModalAbierto] = useState(false)
+    const [cargandoChoferes, setCargandoChoferes] = useState(true)
+    const [errorChoferes, setErrorChoferes] = useState<unknown>(null)
     const { data: counts } = useTrasladosCounts(perfil?.empresa_id ?? null)
 
     // Declaradas antes de los efectos que las usan: al reves, el compilador de
     // React marca acceso a la variable antes de declararla (react-hooks/immutability).
     const cargarChoferes = useCallback(async (empresaId: string) => {
-        const { data } = await supabase.from('perfiles').select('id, nombre_completo, email').eq('empresa_id', empresaId).eq('rol', 'chofer')
+        setCargandoChoferes(true)
+        setErrorChoferes(null)
+        const { data, error } = await supabase.from('perfiles').select('id, nombre_completo, email').eq('empresa_id', empresaId).eq('rol', 'chofer')
+        // El error se descartaba: una query fallida se veia igual que un equipo vacio.
+        if (error) setErrorChoferes(error)
         setChoferes(data || [])
+        setCargandoChoferes(false)
     }, [])
 
     const cargarDatosGrafico = useCallback(async (empresaId: string) => {
@@ -181,9 +188,20 @@ export default function DashboardPage() {
                         </Button>
                     </CardHeader>
                     <CardContent>
-                        {choferes.length === 0 ? (
-                            <EmptyState message="No hay choferes registrados" />
-                        ) : (
+                        <ListState
+                            isLoading={cargandoChoferes}
+                            error={errorChoferes}
+                            isEmpty={choferes.length === 0}
+                            emptyMessage="No hay choferes registrados"
+                            onRetry={() => { if (perfil?.empresa_id) cargarChoferes(perfil.empresa_id) }}
+                            skeletonRows={3}
+                            emptyAction={
+                                <Button size="sm" onClick={() => setModalAbierto(true)}>
+                                    <UserPlus className="size-4 mr-1.5" />
+                                    Invitar al primer chofer
+                                </Button>
+                            }
+                        >
                             <div className="space-y-1">
                                 {choferes.map((chofer) => {
                                     const nombre = chofer.nombre_completo ?? 'Sin nombre'
@@ -216,7 +234,7 @@ export default function DashboardPage() {
                                     )
                                 })}
                             </div>
-                        )}
+                        </ListState>
                     </CardContent>
                 </Card>
             </div>
