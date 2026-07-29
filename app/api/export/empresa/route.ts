@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { escapeCsvValue } from '@/lib/csv'
 
 export const dynamic = 'force-dynamic'
 
@@ -212,14 +213,6 @@ async function streamFetchGastos(
     if (data.length < PAGE_SIZE) break
     from += PAGE_SIZE
   }
-}
-
-function escapeCsvValue(value: string | number): string {
-  const text = String(value)
-  if (/[;"\r\n]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`
-  }
-  return text
 }
 
 function formatDate(value: string | null | undefined): string {
