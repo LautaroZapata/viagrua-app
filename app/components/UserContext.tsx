@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo } 
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-interface Perfil {
+export interface Perfil {
     id: string
     nombre_completo: string
     rol: string
@@ -12,9 +12,15 @@ interface Perfil {
     onboarding_completed: boolean
 }
 
-interface Empresa {
+export interface Empresa {
     id: string
     nombre: string
+}
+
+export interface SesionInicial {
+    user: { id: string; email?: string }
+    perfil: Perfil
+    empresa: Empresa | null
 }
 
 interface UserContextType {
@@ -22,6 +28,11 @@ interface UserContextType {
     perfil: Perfil | null
     empresa: Empresa | null
     role: string | null
+    /**
+     * Solo es true mientras corre un reload() explicito. El primer render ya
+     * llega con los datos resueltos en el servidor, asi que nunca arranca en
+     * true: no hace falta tapar la pagina con un spinner.
+     */
     loading: boolean
     reload: () => Promise<void>
     logout: () => Promise<void>
@@ -32,7 +43,7 @@ const UserCtx = createContext<UserContextType>({
     perfil: null,
     empresa: null,
     role: null,
-    loading: true,
+    loading: false,
     reload: async () => {},
     logout: async () => {},
 })
@@ -41,22 +52,36 @@ export function useUser() {
     return useContext(UserCtx)
 }
 
-export function UserProvider({ children }: { children: React.ReactNode }) {
+export function UserProvider({
+    sesion,
+    children,
+}: {
+    sesion: SesionInicial
+    children: React.ReactNode
+}) {
     const router = useRouter()
-    const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
-    const [perfil, setPerfil] = useState<Perfil | null>(null)
-    const [empresa, setEmpresa] = useState<Empresa | null>(null)
-    const [loading, setLoading] = useState(true)
+    const [user, setUser] = useState<UserContextType['user']>(sesion.user)
+    const [perfil, setPerfil] = useState<Perfil | null>(sesion.perfil)
+    const [empresa, setEmpresa] = useState<Empresa | null>(sesion.empresa)
+    const [loading, setLoading] = useState(false)
 
+    // El layout servidor vuelve a correr en cada navegacion; si cambio el perfil
+    // (por ejemplo tras completar el onboarding) hay que tomar el valor nuevo.
+    useEffect(() => {
+        setUser(sesion.user)
+        setPerfil(sesion.perfil)
+        setEmpresa(sesion.empresa)
+    }, [sesion])
+
+    /** Re-lee el perfil desde el cliente tras una mutacion propia. */
     const load = useCallback(async () => {
+        setLoading(true)
         try {
             const { data: { user: authUser } } = await supabase.auth.getUser()
             if (!authUser) {
                 router.replace('/login')
                 return
             }
-
-            setUser({ id: authUser.id, email: authUser.email })
 
             const { data: perfilData } = await supabase
                 .from('perfiles')
@@ -70,7 +95,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             }
 
             const { empresas, ...perfilOnly } = perfilData as typeof perfilData & { empresas: Empresa | null }
-            setPerfil(perfilOnly)
+            setUser({ id: authUser.id, email: authUser.email })
+            setPerfil(perfilOnly as Perfil)
             setEmpresa(empresas ?? null)
         } catch {
             router.replace('/login')
@@ -78,8 +104,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             setLoading(false)
         }
     }, [router])
-
-    useEffect(() => { load() }, [load])
 
     const logout = useCallback(async () => {
         await supabase.auth.signOut()
