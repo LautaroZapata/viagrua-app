@@ -10,6 +10,67 @@ export const config = {
 };
 
 /**
+ * CSP estricta, con nonce, para el area autenticada.
+ *
+ * 'strict-dynamic' hace que un script ya autorizado por el nonce pueda cargar
+ * otros, que es lo que permite sacar 'unsafe-inline' sin romper el arranque de
+ * Next.
+ *
+ * Solo se aplica al area autenticada, y es a proposito: el nonce cambia en cada
+ * request, asi que la pagina deja de poder servirse cacheada. Ponerlo en la
+ * landing la volveria dinamica y le costaria el rendimiento de una pagina
+ * estatica, que es lo primero que ve alguien que todavia no es cliente. La
+ * landing no muestra datos de nadie ni recibe input, asi que ahi 'unsafe-inline'
+ * no le compra nada a un atacante; donde hay datos de empresas, va la estricta.
+ *
+ * style-src conserva 'unsafe-inline': Next inyecta <style> sin nonce y Radix
+ * escribe estilos inline para posicionar popovers y sheets.
+ */
+function construirCsp(nonce: string | null): string {
+  return [
+    "default-src 'self'",
+    nonce
+      ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`
+      : "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' blob: data: https://*.supabase.co",
+    "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+    "frame-src 'none'",
+    "frame-ancestors 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    "object-src 'none'",
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+  ].join('; ')
+}
+
+function esAreaAutenticada(pathname: string): boolean {
+  return (
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/chofer') ||
+    pathname === '/onboarding'
+  )
+}
+
+/**
+ * Arranca en modo reporte.
+ *
+ * Con Content-Security-Policy-Report-Only el navegador anota en consola lo que
+ * habria bloqueado, pero no bloquea nada. Si la propagacion del nonce fallara,
+ * en modo bloqueante el dashboard se quedaria sin cargar un solo script: una
+ * caida total, y no hay forma de comprobarlo sin abrir un navegador.
+ *
+ * Para pasar a bloqueante: CSP_ENFORCE=1 en las variables de entorno del
+ * deploy. Antes de hacerlo, recorrer el dashboard con la consola abierta y
+ * confirmar que no aparece ninguna violacion.
+ */
+const CSP_HEADER = process.env.CSP_ENFORCE === '1'
+  ? 'Content-Security-Policy'
+  : 'Content-Security-Policy-Report-Only'
+
+/**
  * Refresca la sesion de Supabase y resuelve lo unico que se puede decidir sin
  * tocar la base: si hay usuario o no.
  *
@@ -21,15 +82,34 @@ export const config = {
 export async function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
+  // Toda la CSP se arma aca y no en next.config.js: emitirla en los dos lados
+  // manda dos headers, y el navegador exige que la request pase por ambos.
+  // Ademas obligaba a repetir la lista de rutas autenticadas en dos archivos.
+  const nonce = esAreaAutenticada(pathname) ? crypto.randomUUID().replace(/-/g, '') : null;
+  const csp = construirCsp(nonce);
+
   // req.cookies.set() actualiza el header 'cookie' del request, asi que hay que
   // releer req.headers despues de que Supabase refresque la sesion.
-  const conPathname = () => {
+  const construirRespuesta = () => {
     const headers = new Headers(req.headers);
     headers.set(PATHNAME_HEADER, pathname);
-    return NextResponse.next({ request: { headers } });
+
+    if (nonce) {
+      // Next lee estos dos del request para ponerle el nonce a sus propios
+      // scripts. Aca va siempre como Content-Security-Policy, sin -Report-Only:
+      // es la senal que Next busca, y de este header no depende el bloqueo.
+      headers.set('x-nonce', nonce);
+      headers.set('Content-Security-Policy', csp);
+    }
+
+    const respuesta = NextResponse.next({ request: { headers } });
+    // El que ve el navegador. La estricta arranca en modo reporte; la base, que
+    // es la que ya regia, se sigue aplicando de verdad.
+    respuesta.headers.set(nonce ? CSP_HEADER : 'Content-Security-Policy', csp);
+    return respuesta;
   };
 
-  let res = conPathname();
+  let res = construirRespuesta();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,7 +124,7 @@ export async function proxy(req: NextRequest) {
             req.cookies.set(name, value);
           });
 
-          res = conPathname();
+          res = construirRespuesta();
 
           cookiesToSet.forEach(({ name, value, options }) => {
             res.cookies.set(name, value, options);

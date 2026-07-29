@@ -25,33 +25,12 @@ const nextConfig = {
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-          {
-            // Notas:
-            // - 'unsafe-evaluate' no es una keyword valida de CSP (la real es
-            //   'unsafe-eval'); el browser la descartaba. Se elimina: no
-            //   necesitamos eval.
-            // - img-src estaba en https://*, o sea cualquier host HTTPS. Ya no
-            //   quedan imagenes de terceros (el QR se genera local), asi que se
-            //   acota a Supabase Storage.
-            // - 'unsafe-inline' en script-src sigue porque Next inyecta scripts
-            //   inline; sacarlo requiere pasar a nonce desde proxy.ts.
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' blob: data: https://*.supabase.co",
-              "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-              "frame-src 'none'",
-              "frame-ancestors 'none'",
-              "base-uri 'none'",
-              "form-action 'self'",
-              "object-src 'none'",
-              "worker-src 'self' blob:",
-              "manifest-src 'self'",
-            ].join('; '),
-          },
+          // La Content-Security-Policy NO va aca: la arma proxy.ts por request.
+          // El area autenticada lleva una estricta con nonce, y el nonce cambia
+          // en cada request, asi que no puede vivir en un header estatico.
+          // Emitirla en los dos lados mandaba dos headers CSP y el navegador
+          // exige que la request pase por ambos, ademas de obligar a repetir la
+          // lista de rutas en dos archivos.
         ],
       },
     ]
