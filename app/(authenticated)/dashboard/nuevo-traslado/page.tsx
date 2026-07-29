@@ -7,6 +7,7 @@ import { confirmDelete, showError } from '@/lib/swal'
 import { sanitizeString, isValidImporte, isValidMatricula, isValidFecha, LIMITS } from '@/lib/validation'
 import { useUser } from '@/app/components/UserContext'
 import type { Tables, Update } from '@/lib/db'
+import { BUCKET_FOTOS } from '@/lib/fotos'
 import AppHeader from '@/app/components/AppHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -72,27 +73,31 @@ export default function NuevoTraslado() {
 
     // En paralelo: antes subia las hasta 4 fotos una tras otra, con el await
     // adentro del for, y el usuario esperaba la suma de las cuatro.
+    //
+    // Se guarda la RUTA dentro del bucket, no la URL. El bucket es privado, asi
+    // que no hay URL permanente: se firma una temporal al mostrar la foto.
+    // La carpeta es el id del traslado, y de eso dependen las policies de
+    // storage para saber a que empresa pertenece el archivo.
     const subirFotos = async (trasladoId: string): Promise<Update<'traslados'>> => {
         const pendientes = Object.entries(fotos).filter(([, d]) => d !== null)
 
         const resultados = await Promise.all(
             pendientes.map(async ([tipo, d]) => {
-                const name = `${trasladoId}/${tipo}_${Date.now()}.jpg`
-                const { error } = await supabase.storage.from('fotos-traslados').upload(name, d!.file)
+                const ruta = `${trasladoId}/${tipo}_${Date.now()}.jpg`
+                const { error } = await supabase.storage.from(BUCKET_FOTOS).upload(ruta, d!.file)
                 if (error) {
                     showError(`Error subiendo ${tipo}: ${error.message}`)
                     return null
                 }
-                const { data } = supabase.storage.from('fotos-traslados').getPublicUrl(name)
-                return { columna: `foto_${tipo}` as keyof Update<'traslados'>, url: data.publicUrl }
+                return { columna: `foto_${tipo}` as keyof Update<'traslados'>, ruta }
             })
         )
 
-        const urls: Record<string, string> = {}
+        const rutas: Record<string, string> = {}
         for (const r of resultados) {
-            if (r) urls[r.columna as string] = r.url
+            if (r) rutas[r.columna as string] = r.ruta
         }
-        return urls as Update<'traslados'>
+        return rutas as Update<'traslados'>
     }
 
     const handleSubmit = async (e: React.FormEvent) => {

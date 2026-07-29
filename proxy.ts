@@ -64,7 +64,10 @@ function construirCsp(nonce: string | null): string {
       ? `script-src 'self' 'nonce-${nonce}' ${HASH_SCRIPT_TEMA} 'strict-dynamic'${EVAL_EN_DEV}`
       : `script-src 'self' 'unsafe-inline'${EVAL_EN_DEV}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' blob: data: https://*.supabase.co",
+    // res.cloudinary.com: 236 traslados tienen sus fotos ahi, de una version
+    // anterior de la aplicacion. Sin esto la CSP las bloquea. Se puede sacar
+    // cuando esas fotos esten migradas a nuestro storage.
+    "img-src 'self' blob: data: https://*.supabase.co https://res.cloudinary.com",
     "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
     "frame-src 'none'",
