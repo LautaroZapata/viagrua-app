@@ -294,13 +294,20 @@ export default function GastosPage() {
                                             <button onClick={() => { setVerTodos(false); setPaginaGastosAdmin(1) }}
                                                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${!verTodos ? 'bg-card shadow text-primary' : 'text-muted-foreground'}`}>Solo mios</button>
                                         </div>
+                                        {/* aria-label: sin nombre accesible el lector de pantalla
+                                            los anuncia solo como "combo box".
+                                            md:text-xs y no sm:: por debajo de 16px iOS hace zoom
+                                            al enfocar, y sm: (640px) alcanza a un telefono
+                                            apaisado. input.tsx usa el mismo corte. */}
                                         <select value={filtroTipoGastoAdmin} onChange={e => { setFiltroTipoGastoAdmin(e.target.value); setPaginaGastosAdmin(1) }}
-                                            className="bg-muted hover:bg-accent text-foreground text-base sm:text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
+                                            aria-label="Filtrar por tipo de gasto"
+                                            className="bg-muted hover:bg-accent text-foreground text-base md:text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
                                             <option value="todos">Todos los tipos</option>
                                             {tiposGasto.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                                         </select>
                                         <select value={filtroOrdenAdmin} onChange={e => { setFiltroOrdenAdmin(e.target.value); setPaginaGastosAdmin(1) }}
-                                            className="bg-muted hover:bg-accent text-foreground text-base sm:text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
+                                            aria-label="Ordenar gastos"
+                                            className="bg-muted hover:bg-accent text-foreground text-base md:text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
                                             <optgroup label="Por fecha"><option value="fecha_desc">Mas recientes</option><option value="fecha_asc">Mas antiguos</option></optgroup>
                                             <optgroup label="Por importe"><option value="mayor_importe">Mayor importe</option><option value="menor_importe">Menor importe</option></optgroup>
                                         </select>
@@ -309,12 +316,14 @@ export default function GastosPage() {
                                 {!isAdmin && (
                                     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                                         <select value={filtroTipoGasto} onChange={e => { setFiltroTipoGasto(e.target.value); setPaginaActual(1) }}
-                                            className="bg-muted hover:bg-accent text-foreground text-base sm:text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
+                                            aria-label="Filtrar movimientos por tipo"
+                                            className="bg-muted hover:bg-accent text-foreground text-base md:text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
                                             <option value="todos">Todos</option><option value="solo_ingresos">Solo Ingresos</option><option value="solo_gastos">Solo Gastos</option>
                                             <optgroup label="Por tipo">{tiposGasto.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</optgroup>
                                         </select>
                                         <select value={filtroMovimientos} onChange={e => { setFiltroMovimientos(e.target.value); setPaginaActual(1) }}
-                                            className="bg-muted hover:bg-accent text-foreground text-base sm:text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
+                                            aria-label="Ordenar movimientos"
+                                            className="bg-muted hover:bg-accent text-foreground text-base md:text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition border-0 focus:ring-1 focus:ring-ring focus:outline-none w-full sm:w-auto">
                                             <optgroup label="Por fecha"><option value="fecha_desc">Mas recientes</option><option value="fecha_asc">Mas antiguos</option></optgroup>
                                             <optgroup label="Por importe"><option value="mayor_importe">Mayor importe</option><option value="menor_importe">Menor importe</option></optgroup>
                                         </select>

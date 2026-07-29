@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -56,7 +56,7 @@ export default function TrasladosPage() {
     const cambiarEstado = async (trasladoId: string, nuevoEstado: string) => {
         if (!perfil?.empresa_id) return
         if (nuevoEstado === 'completado') {
-            const ok = await confirmAction({ title: 'Confirmar', text: 'Â¿Marcar como completado? Esta accion bloqueara el traslado.', icon: 'warning', confirmButtonText: 'Si, completar' })
+            const ok = await confirmAction({ title: 'Confirmar', text: '¿Marcar como completado? Esta accion bloqueara el traslado.', icon: 'warning', confirmButtonText: 'Si, completar' })
             if (!ok) return
         }
         mutate(
@@ -72,7 +72,7 @@ export default function TrasladosPage() {
 
     const eliminarTraslado = async (trasladoId: string) => {
         if (!perfil?.empresa_id) return
-        const ok = await confirmDelete({ title: 'Eliminar traslado', text: 'Â¿Eliminar este traslado? No se puede deshacer.' })
+        const ok = await confirmDelete({ title: 'Eliminar traslado', text: '¿Eliminar este traslado? No se puede deshacer.' })
         if (!ok) return
         mutate(
             prev => prev ? { ...prev, data: prev.data.filter(t => t.id !== trasladoId), count: prev.count - 1 } : prev,
@@ -160,7 +160,7 @@ export default function TrasladosPage() {
                                                     <div className="flex items-center gap-2 mb-1.5">
                                                         <h4 className="font-semibold text-sm sm:text-base text-foreground truncate">{t.marca_modelo}</h4>
                                                         {t.es_0km && <Badge variant="secondary" className="text-xs">0 KM</Badge>}
-                                                        <ChevronRight className="size-4 text-muted-foreground/50 group-hover:text-primary transition shrink-0 ml-auto lg:ml-0" />
+                                                        <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary transition shrink-0 ml-auto lg:ml-0" />
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                                                         {t.matricula && <span># {t.matricula}</span>}
@@ -173,7 +173,7 @@ export default function TrasladosPage() {
                                                         <span>{t.perfiles?.nombre_completo || 'Sin asignar'}</span>
                                                         <ClientOnly>{t.created_at ? new Date(t.created_at).toLocaleDateString() : ''}</ClientOnly>
                                                     </div>
-                                                    {t.observaciones && <p className="text-xs text-muted-foreground/60 mt-1.5 italic line-clamp-1">&ldquo;{t.observaciones}&rdquo;</p>}
+                                                    {t.observaciones && <p className="text-xs text-muted-foreground mt-1.5 italic line-clamp-1">&ldquo;{t.observaciones}&rdquo;</p>}
                                                 </div>
                                                 <div className="flex items-center gap-2 shrink-0">
                                                     <select value={t.estado ?? 'pendiente'} onChange={(e) => cambiarEstado(t.id, e.target.value)}
@@ -185,7 +185,7 @@ export default function TrasladosPage() {
                                                         <option value="completado">Completado</option>
                                                     </select>
                                                     <Button variant="ghost" size="icon" onClick={() => eliminarTraslado(t.id)}
-                                                        className="text-muted-foreground/50 hover:text-destructive" aria-label="Eliminar traslado">
+                                                        className="text-muted-foreground hover:text-destructive" aria-label="Eliminar traslado">
                                                         <Trash2 className="size-4" />
                                                     </Button>
                                                 </div>

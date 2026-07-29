@@ -221,9 +221,13 @@ export default function NuevoTraslado() {
                                         <input ref={inputRefs[tipo]} type="file" accept="image/*" className="hidden" onChange={e => handleFotoChange(tipo, e)} />
                                         {fotos[tipo] ? (
                                             <div className="relative">
-                                                <img src={fotos[tipo]!.preview} alt={tipo} className="w-full h-24 object-cover rounded-lg border-2 border-emerald-500" />
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img src={fotos[tipo]!.preview} alt={`Vista previa de la foto ${tipo}`} className="w-full h-24 object-cover rounded-lg border-2 border-emerald-500" />
+                                                {/* El circulo mide 24px, muy por debajo de los 44 que pide WCAG 2.5.5
+                                                    para algo que se toca con el dedo. El ::after transparente estira
+                                                    el area sensible a 44 sin agrandar el boton a la vista. */}
                                                 <button type="button" onClick={() => eliminarFoto(tipo)}
-                                                    className="absolute top-1 right-1 size-6 bg-destructive hover:bg-destructive/80 rounded-full flex items-center justify-center shadow-md transition"
+                                                    className="absolute top-1 right-1 size-6 bg-destructive hover:bg-destructive/80 rounded-full flex items-center justify-center shadow-md transition after:absolute after:-inset-[10px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                                     aria-label={`Eliminar foto ${tipo}`}><X className="size-3.5 text-white" /></button>
                                                 <p className="text-xs text-center text-muted-foreground mt-1">{formatFileSize(fotos[tipo]!.compressedSize || 0)}</p>
                                             </div>
@@ -231,7 +235,7 @@ export default function NuevoTraslado() {
                                             <button type="button" onClick={() => inputRefs[tipo].current?.click()} disabled={comprimiendo === tipo}
                                                 className="w-full h-24 border-2 border-dashed border-border rounded-lg hover:border-primary/50 hover:bg-primary/5 transition text-center flex flex-col items-center justify-center">
                                                 {comprimiendo === tipo ? <p className="text-xs text-muted-foreground">Comprimiendo...</p> : (
-                                                    <><Camera className="size-5 text-muted-foreground/50 mb-1" /><p className="font-medium text-xs text-muted-foreground capitalize">{tipo}</p></>
+                                                    <><Camera className="size-5 text-muted-foreground mb-1" /><p className="font-medium text-xs text-muted-foreground capitalize">{tipo}</p></>
                                                 )}
                                             </button>
                                         )}

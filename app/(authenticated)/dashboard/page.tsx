@@ -7,6 +7,7 @@ import { useUser } from '@/app/components/UserContext'
 import type { Tables } from '@/lib/db'
 import { useTrasladosCounts, useResumenMensual } from '@/lib/useSupabaseQuery'
 import AppHeader from '@/app/components/AppHeader'
+import ClientOnly from '@/app/components/ClientOnly'
 import dynamic from 'next/dynamic'
 
 const DashboardCharts = dynamic(() => import('@/app/components/DashboardCharts'), {
@@ -33,10 +34,19 @@ const statMeta = [
     { key: 'completado', label: 'Completados', icon: CheckCircle2, badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
 ] as const
 
-function formatDate() {
+function fechaDeHoy() {
     return new Date().toLocaleDateString('es-AR', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     })
+}
+
+/** El saludo estaba fijo en "Buenos dias", incluso a las 11 de la noche. */
+function saludo() {
+    const hora = new Date().getHours()
+    if (hora < 6) return 'Buenas noches'
+    if (hora < 13) return 'Buenos dias'
+    if (hora < 20) return 'Buenas tardes'
+    return 'Buenas noches'
 }
 
 export default function DashboardPage() {
@@ -107,11 +117,17 @@ export default function DashboardPage() {
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                     <div>
-                        <p className="text-[13px] text-muted-foreground uppercase tracking-wide">
-                            {formatDate()}
+                        {/* ClientOnly porque los dos dependen del reloj y de la
+                            zona horaria del navegador: renderizarlos en el
+                            servidor da un texto distinto al del cliente y
+                            React reporta hydration mismatch. Todas las demas
+                            fechas del app ya lo hacen; a esta se le habia
+                            escapado. */}
+                        <p className="text-[13px] text-muted-foreground uppercase tracking-wide min-h-[1.2em]">
+                            <ClientOnly>{fechaDeHoy()}</ClientOnly>
                         </p>
                         <h1 className="font-display text-[26px] font-bold text-foreground mt-1">
-                            Buenos dias, {firstName}
+                            <ClientOnly>{saludo()}</ClientOnly>, {firstName}
                         </h1>
                     </div>
                     <div className="flex items-center gap-2">

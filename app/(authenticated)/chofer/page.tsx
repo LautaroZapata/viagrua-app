@@ -278,7 +278,7 @@ export default function PanelChofer() {
                                             <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                                                 <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-medium">{t.empresas?.nombre || 'Empresa'}</span>
                                                 {t.departamento && <span className="text-xs bg-blue-500/10 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-medium">{t.departamento}</span>}
-                                                <span className="text-xs text-muted-foreground/50"><ClientOnly>{t.created_at ? new Date(t.created_at).toLocaleDateString() : ''}</ClientOnly></span>
+                                                <span className="text-xs text-muted-foreground"><ClientOnly>{t.created_at ? new Date(t.created_at).toLocaleDateString() : ''}</ClientOnly></span>
                                             </div>
                                             <h3 className="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
                                                 {t.marca_modelo}

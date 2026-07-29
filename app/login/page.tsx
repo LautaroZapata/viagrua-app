@@ -111,7 +111,7 @@ export default function Login() {
                             <div className="space-y-1.5">
                                 <Label htmlFor="email">Email</Label>
                                 <div className="relative">
-                                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+                                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                     <Input id="email" type="email" required maxLength={LIMITS.email} placeholder="tu@empresa.com" className="pl-10"
                                         value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                                 </div>
@@ -120,7 +120,7 @@ export default function Login() {
                             <div className="space-y-1.5">
                                 <Label htmlFor="password">Contraseña</Label>
                                 <div className="relative">
-                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                     <Input id="password" type="password" required maxLength={LIMITS.password} placeholder="Tu contraseña" className="pl-10"
                                         value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
                                 </div>
