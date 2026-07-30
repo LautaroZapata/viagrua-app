@@ -144,9 +144,34 @@ corras el resto de las migraciones pendientes.
     dejar nada.
   - Primera corrida: 528 fotos copiadas, verificadas byte a byte contra el
     original. La poda de dumps no toca el prefijo `fotos/`.
-- [ ] **🔴 Probar el restore** — levantar un proyecto Supabase vacío y aplicar el
-      dump. Está verificado que el `.tar.gz` tiene los datos; falta verificar que
-      Postgres los traga. Un backup que nunca se restauró no es un backup.
+- [x] **🔴 Probar el restore** — `.github/workflows/restore-test.yml`, a mano.
+  - Probado el 29/07/2026 sobre un Postgres 17.6 descartable con la misma
+    imagen que usa Supabase. **Las 10 tablas de `public` restauran exactas**:
+    922 traslados, 724 fotos_urls_respaldo, 139 gastos, 22 policies de RLS en 8
+    tablas, 11 funciones, 11 claves foráneas.
+  - Tres frenos antes de escribir una fila: hay que tipear `restaurar`, se aborta
+    si el destino contiene el ref de producción (sale de `SUPABASE_URL`, no está
+    escrito en el workflow) y se aborta si el destino tiene alguna tabla en
+    `public`.
+  - **`roles.sql` falla parcialmente y es esperable**: `supabase_admin` es un rol
+    reservado que solo un superusuario puede modificar. No es lo que el backup
+    prueba, así que se aplica sin `ON_ERROR_STOP` y queda en el log.
+  - **Los datos de `auth` y `storage` dependen de que el destino tenga la misma
+    versión de esos schemas.** `supabase db dump` no incluye su DDL en
+    `schema.sql` porque los gestiona Supabase, pero sí sus datos en `data.sql`.
+    Contra una imagen más vieja fallaron 29 `COPY` (`auth.users` entre ellos).
+    En un proyecto Supabase recién creado no debería pasar; contra uno viejo, sí.
+  - **`data.sql` arranca con `SET session_replication_role = replica`**, que apaga
+    la comprobación de claves foráneas durante la carga. Es lo correcto para
+    cargar un dump, pero significa que un restore puede terminar en verde con
+    filas huérfanas: en la prueba entraron 5 `perfiles` y 4 `audit_log`
+    apuntando a un `auth.users` vacío, sin un solo error.
+  - Por eso el workflow corre `scripts/verificar-integridad.sql` al final, que
+    recorre `pg_constraint` y falla si alguna FK quedó apuntando al vacío. Es lo
+    que convierte "psql no se quejó" en "el restore sirve".
+  - Falta el secret `SUPABASE_RESTORE_DB_URL` para poder correrlo en CI: tiene
+    que ser el **Session pooler** del proyecto descartable, no la conexión
+    directa (`db.<ref>.supabase.co` es IPv6 y los runners son IPv4).
 - [ ] **🟡 Análisis de queries lentas** — revisar `pg_stat_statements`, ver si faltan índices
 - [ ] **🟢 Database branching para PRs** — preview branches con datos reales
 
@@ -205,17 +230,18 @@ corras el resto de las migraciones pendientes.
 
 ## Qué sigue
 
-El backup quedó cerrado de punta a punta: base + fotos, corrido y verificado.
-En orden:
+El backup quedó cerrado de punta a punta: base + fotos, corrido, restaurado y
+verificado. En orden:
 
-1. **Probar el restore** sobre un proyecto Supabase vacío. Es lo único que
-   confirma que el backup sirve, y va antes de tocar las migraciones.
-2. **Aplicar las migraciones pendientes** hasta `20260808_backups_bucket.sql`,
-   recién con el restore probado.
-3. **Cargar Sentry y reCAPTCHA en Vercel.** Hasta que no estén, ese código está
+1. **Aplicar las migraciones pendientes** hasta `20260808_backups_bucket.sql`.
+   Ya hay red: el backup diario corre y el restore está probado.
+2. **Cargar Sentry y reCAPTCHA en Vercel.** Hasta que no estén, ese código está
    deployado y no hace nada.
-4. **Pasar la CSP a bloqueante** (`CSP_ENFORCE=1`) después de recorrer el
+3. **Pasar la CSP a bloqueante** (`CSP_ENFORCE=1`) después de recorrer el
    dashboard sin violaciones en consola.
-5. **E2E del flujo crítico** contra Supabase local.
-6. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
+4. **E2E del flujo crítico** contra Supabase local.
+5. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
    un traslado si no abre la app.
+
+Opcional, cuando haya ganas: cargar `SUPABASE_RESTORE_DB_URL` para poder correr
+el restore desde Actions y no a mano en un contenedor.

@@ -132,6 +132,15 @@ jobs:
           node scripts/verificar-restore.mjs restore/data.sql > verificar.sql
           psql "$RESTORE_DB_URL" -v ON_ERROR_STOP=1 -f verificar.sql
 
+      # Contar filas no alcanza: data.sql arranca con session_replication_role =
+      # replica, que apaga la comprobacion de claves foraneas mientras carga. Un
+      # restore puede terminar con la cantidad justa de filas y con parte de
+      # ellas apuntando al vacio.
+      - name: Verificar la integridad referencial
+        env:
+          RESTORE_DB_URL: ${{ secrets.SUPABASE_RESTORE_DB_URL }}
+        run: psql "$RESTORE_DB_URL" -v ON_ERROR_STOP=1 -f scripts/verificar-integridad.sql
+
       - name: Resumen
         run: |
           echo "Restore probado de punta a punta sobre un proyecto vacio."
