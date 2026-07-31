@@ -97,10 +97,15 @@ contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
 - [x] **🔴 Rate limiting en endpoints de auth** — ya estaba: `lib/rateLimit.ts`
       con contador en Postgres (no en memoria: en serverless cada instancia
       tiene la suya), aplicado en login, registro, unirse y validar-invitación.
-- [ ] **🟡 CSP nonce** — hecho pero **en modo reporte**. Falta recorrer el
-      dashboard con la consola abierta, confirmar que no hay violaciones y
-      poner `CSP_ENFORCE=1`. La política ahora se arma en `lib/csp.ts` y está
-      cubierta por tests.
+- [x] **🟡 CSP nonce** — **bloqueando** (31/07/2026). `CSP_ENFORCE=1` cargado y
+      verificado en el header que sirve producción: sale como
+      `content-security-policy`, sin `-Report-Only`, con el nonce propagado
+      (`'nonce-…'` + `'strict-dynamic'`) y el dashboard funcionando.
+  - La política se arma en `lib/csp.ts` y está cubierta por tests.
+  - `connect-src` incluye el origen de Supabase derivado de la URL, además de
+    los comodines `*.supabase.co`. Los comodines se podrían sacar —el derivado
+    es exactamente el proyecto propio, el comodín habilita cualquier proyecto de
+    Supabase— pero eso aprieta la política y conviene un cambio por vez.
 - [ ] **🟡 Dependabot / Snyk** — escaneo automático de vulnerabilidades en dependencias
 - [ ] **🟢 Secrets scanning** — evitar commiteos accidentales de `.env.*`
 - [ ] **🟢 2FA / MFA** — para admins
@@ -294,28 +299,19 @@ contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
 
 ## Qué sigue
 
-### 🔴 Bloqueante, y es rápido
-
-1. **Aplicar `20260809_trigger_perfil_nuevo.sql`** con `supabase db push`. En
-   producción no cambia nada —el trigger ya está— pero deja el repo y, sobre
-   todo, **los backups** completos. Hoy un restore da una app donde nadie más
-   puede registrarse.
-
-### 🔴 Tuyo, necesita el navegador
-
-2. **CSP a bloqueante.** Con el dashboard abierto y la consola, mirar el header
-   de la primera request: si dice `Content-Security-Policy-Report-Only`, hace
-   falta redeploy para que tome `CSP_ENFORCE=1`; si dice
-   `Content-Security-Policy` a secas, ya está listo y no hay nada que hacer.
+**No queda ningún 🔴 abierto.** Todo lo crítico está hecho y verificado contra
+producción, no solo escrito.
 
 ### 🟡 Lo próximo que mueve la aguja
 
-3. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
-   un traslado si no abre la app.
+1. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
+   un traslado si no abre la app. Es lo único de la lista que un usuario nota.
 
-4. **El E2E en CI.** Hoy corre a mano con `pnpm test:e2e`. Los runners de GitHub
+2. **El E2E en CI.** Hoy corre a mano con `pnpm test:e2e`. Los runners de GitHub
    traen Docker, así que `supabase start` funciona igual; falta el workflow y
    decidir si va en cada push (~3 min) o solo en PR.
+
+3. **Dependabot** — un `.github/dependabot.yml` de diez líneas y listo.
 
 ### Opcionales
 
