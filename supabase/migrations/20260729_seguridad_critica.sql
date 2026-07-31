@@ -16,6 +16,28 @@
 -- Ver Fase 1 del plan.
 
 -- -------------------------------------------------------------
+-- 0. get_empresa_id(): va primero porque las policies de abajo la usan
+-- -------------------------------------------------------------
+-- Estaba definida al final del archivo. En produccion no molestaba porque la
+-- funcion ya existia (se creo a mano desde el dashboard antes que esta
+-- migracion), pero aplicando el repo desde cero —un proyecto nuevo, o el
+-- Supabase local de los E2E— la policy "traslados_update_empresa" reventaba con
+-- 'function public.get_empresa_id() does not exist'. Postgres resuelve las
+-- funciones de una policy al crearla, no al usarla.
+--
+-- Sin 'SET search_path' una funcion SECURITY DEFINER puede resolver 'perfiles'
+-- contra un schema plantado por el atacante (function_search_path_mutable).
+create or replace function public.get_empresa_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select empresa_id from public.perfiles where id = auth.uid();
+$$;
+
+-- -------------------------------------------------------------
 -- 1. handle_new_user: el agujero principal
 -- -------------------------------------------------------------
 -- Solo se puede quedar como admin de una empresa que todavia no tiene ningun
@@ -116,6 +138,9 @@ drop policy if exists "No permitir editar traslados completados" on public.trasl
 -- empresa o reasignarlo. Se reemplazan por una sola, scopeada en ambos lados.
 drop policy if exists "Chofer actualiza sus traslados" on public.traslados;
 drop policy if exists "Chofer actualiza sus traslados activos" on public.traslados;
+-- El nombre nuevo tambien se dropea: en produccion no existia, pero 00001 si lo
+-- crea, y sin esto la migracion no corre desde cero.
+drop policy if exists "traslados_update_empresa" on public.traslados;
 
 create policy "traslados_update_empresa" on public.traslados
   for update to authenticated
@@ -145,6 +170,8 @@ create policy "traslados_delete_admin_empresa" on public.traslados
 -- la validacion correcta y se mantiene.
 drop policy if exists "Admins pueden crear" on public.invitaciones;
 drop policy if exists "Admins pueden actualizar" on public.invitaciones;
+-- Mismo caso que traslados_update_empresa: 00001 ya la crea.
+drop policy if exists "invitaciones_update_admin" on public.invitaciones;
 
 create policy "invitaciones_update_admin" on public.invitaciones
   for update to authenticated
@@ -171,17 +198,7 @@ create policy "Crear gastos" on public.gastos
 -- -------------------------------------------------------------
 -- 6. Funciones SECURITY DEFINER: search_path, scope y permisos
 -- -------------------------------------------------------------
--- Sin 'SET search_path' una funcion SECURITY DEFINER puede resolver 'perfiles'
--- contra un schema plantado por el atacante (function_search_path_mutable).
-create or replace function public.get_empresa_id()
-returns uuid
-language sql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-  select empresa_id from public.perfiles where id = auth.uid();
-$$;
+-- get_empresa_id() se define arriba de todo, antes de las policies que la usan.
 
 -- Antes aceptaba cualquier p_empresa_id sin validar y, al ser SECURITY DEFINER,
 -- devolvia el volumen de traslados de cualquier empresa.

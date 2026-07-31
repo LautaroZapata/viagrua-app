@@ -16,6 +16,10 @@ drop policy if exists "Leer invitaciones" on public.invitaciones;
 -- El admin sigue viendo las invitaciones de su propia empresa. La validacion
 -- de un codigo por parte de un invitado va por API con service_role, que no
 -- pasa por RLS.
+-- El drop del nombre nuevo es por 00001, que ya crea una policy asi: sin esto
+-- la migracion no corre sobre una base armada desde cero.
+drop policy if exists "invitaciones_select_empresa" on public.invitaciones;
+
 create policy "invitaciones_select_empresa" on public.invitaciones
   for select to authenticated
   using (empresa_id = public.get_empresa_id());
