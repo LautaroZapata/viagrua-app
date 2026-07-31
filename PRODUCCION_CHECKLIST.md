@@ -189,7 +189,7 @@ contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
   - La poda nunca borra los 7 más nuevos, pase lo que pase con las fechas.
   - **Techo de 50 MB por archivo** (límite del plan actual de Supabase). Hoy
     sobra, y el workflow avisa a partir de 40 MB.
-  - Restaurar: bajar el `.tar.gz` y aplicar `roles.sql`, `schema.sql` y
+  - Restaurar: bajar el `.tar.gz` y aplicar `roles.sql`, `schema.sql`,
     `data.sql` en ese orden sobre un proyecto vacío.
 - [x] **🔴 Backup de las fotos** — `scripts/backup-fotos.mjs`, mismo workflow.
   - `pg_dump` **no guarda archivos**: guarda las filas de `storage.objects`, que

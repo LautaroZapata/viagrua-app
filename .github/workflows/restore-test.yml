@@ -122,6 +122,30 @@ jobs:
           RESTORE_DB_URL: ${{ secrets.SUPABASE_RESTORE_DB_URL }}
         run: psql "$RESTORE_DB_URL" -v ON_ERROR_STOP=1 -f restore/data.sql
 
+      # triggers.sql va despues de los datos: los triggers referencian funciones
+      # de public que crea schema.sql, y no hay que dispararlos durante la carga.
+      - name: Aplicar los triggers de auth y storage
+        env:
+          RESTORE_DB_URL: ${{ secrets.SUPABASE_RESTORE_DB_URL }}
+        run: psql "$RESTORE_DB_URL" -v ON_ERROR_STOP=1 -f restore/triggers.sql
+
+      - name: Verificar que el trigger del alta quedo
+        env:
+          RESTORE_DB_URL: ${{ secrets.SUPABASE_RESTORE_DB_URL }}
+        run: |
+          set -euo pipefail
+          # Sin este trigger la app restaurada no puede dar de alta a nadie: el
+          # registro crea el usuario y la empresa, no crea el perfil, y no
+          # muestra ningun error.
+          N=$(psql "$RESTORE_DB_URL" -tAc "
+            select count(*) from pg_trigger t
+            join pg_class c on c.oid = t.tgrelid
+            join pg_namespace n on n.oid = c.relnamespace
+            where n.nspname = 'auth' and c.relname = 'users'
+              and t.tgname = 'on_auth_user_created';")
+          [ "$N" -eq 1 ] || { echo "Falta on_auth_user_created en el restore." >&2; exit 1; }
+          echo "on_auth_user_created presente."
+
       # Que psql no se queje no prueba nada: aplica un schema entero y un
       # data.sql vacio sin un solo error. Lo que prueba es que las filas esten.
       - name: Verificar que las filas llegaron

@@ -19,11 +19,15 @@ name: Backup
 #   SUPABASE_SERVICE_ROLE_KEY  Project Settings > API > service_role.
 #
 # Restaurar: bajar el .tar.gz del bucket, descomprimir y aplicar en orden
-# roles.sql, schema.sql, data.sql sobre un proyecto Supabase vacio.
+# roles.sql, schema.sql, data.sql y triggers.sql sobre un proyecto vacio.
 #
 #   psql "$URL_DESTINO" -f roles.sql
 #   psql "$URL_DESTINO" -f schema.sql
 #   psql "$URL_DESTINO" -f data.sql
+#   psql "$URL_DESTINO" -f triggers.sql
+#
+# triggers.sql va ultimo porque los triggers referencian funciones de public
+# que crea schema.sql.
 
 on:
   schedule:
@@ -72,6 +76,24 @@ jobs:
           supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/schema.sql
           supabase db dump --db-url "$SUPABASE_DB_URL" --data-only --use-copy -f dump/data.sql
 
+          # `supabase db dump` vuelca el schema public y NO trae los triggers
+          # que viven sobre otros schemas. El mas importante es
+          # on_auth_user_created, sobre auth.users: sin el, un restore da una
+          # aplicacion donde el alta crea el usuario y la empresa pero no el
+          # perfil, sin mostrar ningun error. Se descubrio con los E2E.
+          #
+          # Se vuelcan todos los triggers no internos de auth y storage, no solo
+          # ese, para que agregar uno nuevo no vuelva a dejar el backup corto.
+          psql "$SUPABASE_DB_URL" -tAc "
+            select pg_get_triggerdef(t.oid) || ';'
+            from pg_trigger t
+            join pg_class c on c.oid = t.tgrelid
+            join pg_namespace n on n.oid = c.relnamespace
+            where n.nspname in ('auth', 'storage')
+              and not t.tgisinternal
+            order by 1;
+          " > dump/triggers.sql
+
       # Un dump vacio que se sube sin chistar es peor que un backup que falla:
       # el workflow queda en verde y el respaldo no sirve. Recien se descubre el
       # dia que hay que restaurar.
@@ -85,6 +107,10 @@ jobs:
             echo "schema.sql no tiene ni un CREATE TABLE." >&2; exit 1; }
           grep -q '^COPY ' dump/data.sql || {
             echo "data.sql no tiene ni un COPY: la base salio sin datos." >&2; exit 1; }
+          # Este es el que faltaba y no se notaba: sin el trigger que crea el
+          # perfil, la app restaurada no puede dar de alta a nadie.
+          grep -q 'on_auth_user_created' dump/triggers.sql || {
+            echo "triggers.sql no tiene on_auth_user_created." >&2; exit 1; }
           echo "Dump verificado:"
           wc -c dump/*.sql
 
@@ -92,7 +118,7 @@ jobs:
         run: |
           set -euo pipefail
           ARCHIVO="viagrua-$(date -u +%F).tar.gz"
-          tar -czf "$ARCHIVO" -C dump roles.sql schema.sql data.sql
+          tar -czf "$ARCHIVO" -C dump roles.sql schema.sql data.sql triggers.sql
           echo "ARCHIVO=$ARCHIVO" >> "$GITHUB_ENV"
 
           # El plan actual de Supabase corta en 50 MB por archivo. Pasado ese
