@@ -63,6 +63,29 @@ export function origenSentry(dsn: string | undefined): string | null {
   }
 }
 
+/**
+ * Origenes de la instancia de Supabase configurada, sacados de su URL.
+ *
+ * Los comodines https://*.supabase.co cubren cualquier proyecto en la nube pero
+ * no cubren un Supabase local, que escucha en http://127.0.0.1:<puerto>. Sin
+ * esto, en local el navegador bloquea todo lo que el cliente de Supabase manda
+ * directo —el login entre otras cosas— mientras que las rutas de API siguen
+ * andando porque son same-origin. El sintoma es un login que "no hace nada".
+ *
+ * Devuelve el origen http y el ws, porque Realtime abre el socket contra el
+ * mismo host.
+ */
+export function origenesSupabase(url: string | undefined): string[] {
+  if (!url) return []
+  try {
+    const { origin, protocol, host } = new URL(url)
+    const ws = protocol === 'https:' ? `wss://${host}` : `ws://${host}`
+    return [origin, ws]
+  } catch {
+    return []
+  }
+}
+
 export interface OpcionesCsp {
   /**
    * El nonce del request, o null en las rutas publicas.
@@ -82,6 +105,8 @@ export interface OpcionesCsp {
   desarrollo: boolean
   /** El DSN configurado, si lo hay. Ver origenSentry(). */
   dsnSentry?: string
+  /** La URL de Supabase configurada. Ver origenesSupabase(). */
+  urlSupabase?: string
 }
 
 /**
@@ -101,7 +126,12 @@ export interface OpcionesCsp {
  * style-src conserva 'unsafe-inline' en los dos casos: Next inyecta <style> sin
  * nonce y Radix escribe estilos inline para posicionar popovers y sheets.
  */
-export function construirCsp({ nonce, desarrollo, dsnSentry }: OpcionesCsp): string {
+export function construirCsp({
+  nonce,
+  desarrollo,
+  dsnSentry,
+  urlSupabase,
+}: OpcionesCsp): string {
   const evalEnDev = desarrollo ? " 'unsafe-eval'" : ''
 
   /**
@@ -112,10 +142,16 @@ export function construirCsp({ nonce, desarrollo, dsnSentry }: OpcionesCsp): str
    */
   const esPublica = nonce === null
 
+  // Los comodines quedan por compatibilidad con lo que ya regia en produccion.
+  // Se podrian sacar —el origen derivado de urlSupabase es exactamente el
+  // proyecto propio, mientras que el comodin habilita cualquier proyecto de
+  // Supabase del mundo— pero eso aprieta la politica justo cuando se esta
+  // pasando a bloqueante, y conviene un cambio por vez.
   const conectar = [
     "'self'",
     'https://*.supabase.co',
     'wss://*.supabase.co',
+    ...origenesSupabase(urlSupabase),
     origenSentry(dsnSentry),
     esPublica ? RECAPTCHA_CONNECT : null,
   ].filter(Boolean)

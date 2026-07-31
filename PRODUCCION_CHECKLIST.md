@@ -107,14 +107,15 @@ contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
 
 ## 3. Testing
 
-- [ ] **🔴 E2E del flujo crítico** (Playwright) — **infraestructura lista, el
-      flujo todavía no pasa entero.**
+- [x] **🔴 E2E del flujo crítico** (Playwright) — **pasa entero**, 27s.
+      Corrido dos veces seguidas para descartar que fuera flaky.
   - Registro de empresa → invitación → alta del chofer → login admin → crear
     traslado → cambiar estado → login chofer → completar.
-  - Corre contra Supabase local, nunca contra producción. **Tres frenos
+  - Corre contra Supabase local, nunca contra producción. **Cuatro frenos
     independientes**: `e2e-preparar.mjs` valida al escribir `.env.e2e`,
-    `e2e-con-env.mjs` valida al usarlo, y las variables inyectadas le ganan a
-    `.env.local` en la precedencia de Next. Cubierto por tests.
+    `e2e-con-env.mjs` valida al usarlo, el `globalSetup` valida antes de borrar
+    `rate_limits`, y las variables inyectadas le ganan a `.env.local` en la
+    precedencia de Next. Cubierto por tests.
   - Puerto **3100** y `reuseExistingServer: false`. Con el 3000 y reuse,
     Playwright agarró otra app que corría en la misma máquina y ejecutó el flujo
     contra ella; falló por un selector, que despista. No puede repetirse.
@@ -123,14 +124,19 @@ contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
     huérfanos.
   - reCAPTCHA se saltea solo cuando no hay `RECAPTCHA_SECRET_KEY`, así que el
     entorno de test no necesita keys ni mockear a Google.
-  - **Dónde quedó**: el alta de empresa llega hasta crear usuario y empresa. Lo
-    que faltaba era el trigger `on_auth_user_created` (ver más abajo); con eso
-    aplicado hay que volver a correrlo y ajustar los selectores del onboarding,
-    del cambio de estado y del cierre por el chofer, que se escribieron leyendo
-    el código y no viéndolos correr.
+  - El `globalSetup` vacía `rate_limits` antes de correr: `/api/registro` admite
+    5 altas por hora y por IP, y a partir de la sexta corrida el test fallaba
+    como si fuera flaky cuando era el cupo funcionando bien.
+  - El chofer se elige **por nombre y no por índice**: el select lista todos los
+    perfiles de la empresa, el admin incluido, y elegir por índice dejaba el
+    traslado asignado al admin. No fallaba ahí sino dos pasos después, cuando el
+    chofer no veía nada. Hay una aserción que ahora lo agarra en el momento.
+  - **Encontró tres bugs reales de la app**: el trigger `on_auth_user_created`
+    que faltaba en el repo y en los backups, la CSP que bloqueaba el cliente de
+    Supabase en local, y las migraciones que no aplicaban desde cero.
   - `pnpm test:e2e` hace todo: prepara, buildea y corre.
-- [x] Tests unitarios: **197** en 13 archivos. Se sumaron los de reCAPTCHA (12),
-      CSP (13), backup a storage (6), backup de fotos (9), verificación del
+- [x] Tests unitarios: **201** en 13 archivos. Se sumaron los de reCAPTCHA (12),
+      CSP (17), backup a storage (6), backup de fotos (9), verificación del
       restore (12) y el freno de los E2E (5).
 - [ ] **🟡 Integration tests de API routes** — hoy solo `gastos-route.test.ts`
 - [ ] **🟡 Component tests** — con Vitest + Testing Library
@@ -302,15 +308,14 @@ contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
    falta redeploy para que tome `CSP_ENFORCE=1`; si dice
    `Content-Security-Policy` a secas, ya está listo y no hay nada que hacer.
 
-### 🔴 Empezado, falta terminar
-
-3. **E2E del flujo crítico.** La infraestructura está y corre; el flujo no pasa
-   entero todavía. Ver la sección 3.
-
 ### 🟡 Lo próximo que mueve la aguja
 
-4. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
+3. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
    un traslado si no abre la app.
+
+4. **El E2E en CI.** Hoy corre a mano con `pnpm test:e2e`. Los runners de GitHub
+   traen Docker, así que `supabase start` funciona igual; falta el workflow y
+   decidir si va en cada push (~3 min) o solo en PR.
 
 ### Opcionales
 

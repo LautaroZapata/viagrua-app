@@ -15,6 +15,9 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './e2e',
 
+  /** Vacia el cupo de rate limit antes de correr. Ver el archivo. */
+  globalSetup: './e2e/preparar-base.ts',
+
   /**
    * En serie y con un solo worker.
    *

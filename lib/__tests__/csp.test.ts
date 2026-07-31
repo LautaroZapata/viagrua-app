@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { construirCsp, origenSentry } from '../csp'
+import { construirCsp, origenSentry, origenesSupabase } from '../csp'
 
 /**
  * La CSP falla de las dos maneras caras y ninguna se ve leyendo el diff: una
@@ -133,5 +133,42 @@ describe('directivas de cierre', () => {
   it('deja pasar el storage de Supabase para las fotos', () => {
     expect(autenticada()['img-src']).toContain('https://*.supabase.co')
     expect(autenticada()['connect-src']).toContain('wss://*.supabase.co')
+  })
+})
+
+/**
+ * El cliente de Supabase pega directo desde el navegador, asi que su origen
+ * tiene que estar en connect-src. Con los comodines *.supabase.co alcanzaba en
+ * produccion pero no en local, donde escucha en 127.0.0.1: ahi el login moria
+ * en silencio (las rutas de API seguian andando por ser same-origin).
+ */
+describe('origenesSupabase', () => {
+  it('deriva el origen http y el ws de un Supabase local', () => {
+    expect(origenesSupabase('http://127.0.0.1:54421')).toEqual([
+      'http://127.0.0.1:54421',
+      'ws://127.0.0.1:54421',
+    ])
+  })
+
+  it('usa wss cuando la URL es https', () => {
+    expect(origenesSupabase('https://abc.supabase.co')).toEqual([
+      'https://abc.supabase.co',
+      'wss://abc.supabase.co',
+    ])
+  })
+
+  it('no agrega nada si no hay URL o no parsea', () => {
+    expect(origenesSupabase(undefined)).toEqual([])
+    expect(origenesSupabase('no-es-una-url')).toEqual([])
+  })
+
+  it('mete el origen local en connect-src de la politica', () => {
+    const csp = construirCsp({
+      nonce: null,
+      desarrollo: true,
+      urlSupabase: 'http://127.0.0.1:54421',
+    })
+    expect(csp).toContain('http://127.0.0.1:54421')
+    expect(csp).toContain('ws://127.0.0.1:54421')
   })
 })

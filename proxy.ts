@@ -56,6 +56,7 @@ export async function proxy(req: NextRequest) {
     nonce,
     desarrollo: process.env.NODE_ENV !== 'production',
     dsnSentry: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    urlSupabase: process.env.NEXT_PUBLIC_SUPABASE_URL,
   });
 
   // req.cookies.set() actualiza el header 'cookie' del request, asi que hay que

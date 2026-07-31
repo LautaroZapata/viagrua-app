@@ -8,6 +8,9 @@ import {
   saltearOnboarding,
 } from './apoyo'
 
+/** El nombre con el que el chofer se da de alta y con el que aparece en el select. */
+const NOMBRE_CHOFER = 'Chofer de Prueba'
+
 /**
  * El camino que tiene que funcionar si o si: dar de alta una empresa, invitar a
  * un chofer, asignarle un traslado y que el chofer lo complete.
@@ -40,7 +43,7 @@ test('flujo critico: alta de empresa, invitacion, traslado y cierre por el chofe
     await cerrarSesion(page)
     await page.goto(`/unirse/${codigo}`)
 
-    await page.locator('#nombre, #signup-nombre').first().fill('Chofer de Prueba')
+    await page.locator('#nombre, #signup-nombre').first().fill(NOMBRE_CHOFER)
     await page.locator('#email, #signup-email').first().fill(chofer.email)
     await page.locator('#password, #signup-password').first().fill(chofer.password)
     await page.getByRole('button', { name: /unirme|registrar|crear/i }).first().click()
@@ -62,11 +65,18 @@ test('flujo critico: alta de empresa, invitacion, traslado y cierre por el chofe
     await page.locator('#desde').fill('Montevideo')
     await page.locator('#hasta').fill('Canelones')
 
-    // El select de chofer se puebla con los perfiles de la empresa. Si el alta
-    // del chofer no lo hubiera asociado, aca no habria nada que elegir.
+    // El select se puebla con TODOS los perfiles de la empresa, incluido el
+    // admin, que aparece con el sufijo " (Yo)". Elegir por indice agarraba al
+    // admin y el traslado terminaba asignado a el: el flujo seguia sin fallar y
+    // recien reventaba dos pasos despues, cuando el chofer no veia nada.
+    // Se elige por nombre y se comprueba que quedo seleccionado el correcto.
     const selectChofer = page.locator('#chofer')
     await expect(selectChofer.locator('option')).not.toHaveCount(1)
-    await selectChofer.selectOption({ index: 1 })
+    await selectChofer.selectOption({ label: NOMBRE_CHOFER })
+
+    const elegido = await selectChofer.locator('option:checked').textContent()
+    expect(elegido, 'el traslado tiene que quedar asignado al chofer').toContain(NOMBRE_CHOFER)
+    expect(elegido, 'no puede quedar asignado al admin').not.toContain('(Yo)')
 
     await page.getByRole('button', { name: /crear traslado/i }).click()
     await page.waitForURL(/\/dashboard(\/traslados)?/, { timeout: 30_000 })

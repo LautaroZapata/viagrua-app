@@ -57,20 +57,20 @@ export async function registrarEmpresa(page: Page, nombreEmpresa: string) {
 export async function saltearOnboarding(page: Page) {
   if (!/\/onboarding/.test(page.url())) return
 
-  const omitir = page.getByRole('button', { name: /omitir|saltar|despues/i })
+  // "Omitir" completa el onboarding entero y redirige de una: no hay que
+  // recorrer los pasos. Solo aparece si no estas en el ultimo, donde el boton
+  // pasa a ser "Comenzar".
+  //
+  // Antes esto era un bucle que clickeaba hasta salir de /onboarding, y era una
+  // carrera: el segundo click caia sobre un boton ya desmontado por la
+  // navegacion del primero. Pasaba o no segun lo rapido que respondiera la
+  // maquina.
+  const omitir = page.getByRole('button', { name: /omitir/i })
+  const comenzar = page.getByRole('button', { name: /comenzar/i })
 
-  // El wizard puede tener mas de un paso; se omite hasta salir de /onboarding.
-  for (let i = 0; i < 6; i++) {
-    if (!/\/onboarding/.test(page.url())) break
-    if (await omitir.count()) {
-      await omitir.first().click()
-    } else {
-      await page.getByRole('button', { name: /siguiente|continuar|finalizar|empezar/i }).first().click()
-    }
-    await page.waitForTimeout(400)
-  }
+  await ((await omitir.count()) ? omitir : comenzar).first().click()
 
-  await page.waitForURL(/\/(dashboard|chofer)/, { timeout: 20_000 })
+  await page.waitForURL(/\/(dashboard|chofer)/, { timeout: 30_000 })
 }
 
 export async function login(page: Page, email: string, password: string) {
