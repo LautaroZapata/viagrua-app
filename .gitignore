@@ -54,3 +54,9 @@ supabase/dump-*.sql
 # Copia local de las fotos migradas desde Cloudinary. Es un respaldo, no
 # codigo: son imagenes de traslados reales y no van al repositorio.
 respaldo-fotos/
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

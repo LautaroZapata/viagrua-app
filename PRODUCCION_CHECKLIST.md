@@ -107,23 +107,68 @@ contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
 
 ## 3. Testing
 
-- [ ] **🔴 E2E del flujo crítico** (Playwright):
-  - Registro de empresa → login admin → crear traslado → cambiar estado → login chofer → completar traslado
-  - **Decidido: contra Supabase local (`supabase start`), nunca contra
-    producción.** Un familiar usa la app con datos reales; un test que siembra y
-    borra no puede correr ahí. Local levanta Postgres en Docker con las
-    migraciones de `supabase/migrations`, y el mismo comando sirve en CI.
-    Requiere Docker instalado.
-  - Ojo al armarlo: reCAPTCHA se saltea solo cuando no hay `RECAPTCHA_SECRET_KEY`,
-    así que el entorno de test no necesita keys ni mockear a Google.
-- [x] Tests de lo agregado en esta tanda: `lib/__tests__/recaptcha.test.ts` (12),
-      `lib/__tests__/csp.test.ts` (13), `scripts/__tests__/backup-storage.test.ts` (6).
-      Total del repo: **171 tests**.
+- [ ] **🔴 E2E del flujo crítico** (Playwright) — **infraestructura lista, el
+      flujo todavía no pasa entero.**
+  - Registro de empresa → invitación → alta del chofer → login admin → crear
+    traslado → cambiar estado → login chofer → completar.
+  - Corre contra Supabase local, nunca contra producción. **Tres frenos
+    independientes**: `e2e-preparar.mjs` valida al escribir `.env.e2e`,
+    `e2e-con-env.mjs` valida al usarlo, y las variables inyectadas le ganan a
+    `.env.local` en la precedencia de Next. Cubierto por tests.
+  - Puerto **3100** y `reuseExistingServer: false`. Con el 3000 y reuse,
+    Playwright agarró otra app que corría en la misma máquina y ejecutó el flujo
+    contra ella; falló por un selector, que despista. No puede repetirse.
+  - Sirve el build de producción (`next start`), no `next dev`: dev con
+    Turbopack levanta un watcher y varios hijos, y una corrida cortada deja
+    huérfanos.
+  - reCAPTCHA se saltea solo cuando no hay `RECAPTCHA_SECRET_KEY`, así que el
+    entorno de test no necesita keys ni mockear a Google.
+  - **Dónde quedó**: el alta de empresa llega hasta crear usuario y empresa. Lo
+    que faltaba era el trigger `on_auth_user_created` (ver más abajo); con eso
+    aplicado hay que volver a correrlo y ajustar los selectores del onboarding,
+    del cambio de estado y del cierre por el chofer, que se escribieron leyendo
+    el código y no viéndolos correr.
+  - `pnpm test:e2e` hace todo: prepara, buildea y corre.
+- [x] Tests unitarios: **197** en 13 archivos. Se sumaron los de reCAPTCHA (12),
+      CSP (13), backup a storage (6), backup de fotos (9), verificación del
+      restore (12) y el freno de los E2E (5).
 - [ ] **🟡 Integration tests de API routes** — hoy solo `gastos-route.test.ts`
 - [ ] **🟡 Component tests** — con Vitest + Testing Library
 - [ ] **🟢 Cobertura mínima** — definir threshold y medir en CI
 
 ## 4. Base de datos & Backup
+
+- [x] **🔴 El repo reconstruye la base** — antes no: `supabase start` sobre una
+      base vacía moría en la séptima migración. Producción se armó a mano desde
+      el dashboard y las migraciones se escribieron encima, así que ninguna se
+      había ejecutado nunca contra una base limpia.
+  - `00001_initial_schema.sql` ahora **es el schema real de producción**, sacado
+    del `schema.sql` del backup diario. Antes era ficticio: nombraba
+    `get_user_empresa_id()` donde producción tiene `get_empresa_id()`, le
+    faltaban las cuatro columnas `foto_*` y le sobraban `fotos_urls`,
+    `fecha_carga`, `kilometros_previstos` y `updated_at`.
+  - Las 13 migraciones que ese baseline ya contiene se movieron a
+    `supabase/historico/` con `git mv`. Quedan activas las de storage
+    (`20260806`–`20260808`), porque `pg_dump` del schema `public` no incluye
+    buckets ni policies de `storage.objects`.
+  - Producción tiene las 17 registradas y el repo 4: `supabase migration list`
+    muestra 13 entradas solo-remotas. Es cosmético; `db push` de migraciones
+    nuevas (timestamp posterior a `20260809`) funciona igual.
+  - Verificado contra un Postgres limpio: **10 tablas, 22 policies, 11 funciones,
+    11 claves foráneas** — los mismos números que producción.
+- [x] **🔴 Trigger `on_auth_user_created`** (`20260809_trigger_perfil_nuevo.sql`)
+  - `handle_new_user()` estaba en el repo desde `20260729`, pero **el trigger que
+    la dispara no**: se creó a mano en el dashboard y nunca quedó en una
+    migración.
+  - **Esto también faltaba en los backups.** `supabase db dump` vuelca el schema
+    `public`, y un trigger sobre `auth.users` no es parte de `public`. Restaurar
+    un backup dejaba la app sin poder dar de alta a nadie: el registro crea el
+    usuario y la empresa, no crea el perfil, y no muestra ningún error.
+  - Apareció en los E2E, donde el alta terminaba con 1 usuario, 1 empresa y 0
+    perfiles.
+  - **Falta aplicarla en producción** (`supabase db push`). Es idempotente: allá
+    el trigger ya existe, así que no cambia el comportamiento — solo deja el
+    repo y los backups completos.
 
 - [x] **🔴 Backup técnico (pg_dump)** — `.github/workflows/backup.yml`, diario a
       las 06:00 UTC (03:00 ART). Secrets cargados y **verificado con una corrida
@@ -243,20 +288,42 @@ contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
 
 ## Qué sigue
 
-Los cinco 🔴 del plan original están cerrados salvo el E2E. El backup corre solo
-(primera corrida por cron sin intervención: 30/07 08:30 UTC), el restore está
-probado, las migraciones aplicadas y Sentry y reCAPTCHA verificados contra
-producción. Lo que queda, en orden:
+### 🔴 Bloqueante, y es rápido
 
-1. **Pasar la CSP a bloqueante** (`CSP_ENFORCE=1`) después de recorrer el
-   dashboard logueado sin violaciones en consola. Es lo único que exige estar
-   adentro de la app para verificarlo.
-2. **E2E del flujo crítico** contra Supabase local. Último 🔴 abierto.
-3. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
+1. **Aplicar `20260809_trigger_perfil_nuevo.sql`** con `supabase db push`. En
+   producción no cambia nada —el trigger ya está— pero deja el repo y, sobre
+   todo, **los backups** completos. Hoy un restore da una app donde nadie más
+   puede registrarse.
+
+### 🔴 Tuyo, necesita el navegador
+
+2. **CSP a bloqueante.** Con el dashboard abierto y la consola, mirar el header
+   de la primera request: si dice `Content-Security-Policy-Report-Only`, hace
+   falta redeploy para que tome `CSP_ENFORCE=1`; si dice
+   `Content-Security-Policy` a secas, ya está listo y no hay nada que hacer.
+
+### 🔴 Empezado, falta terminar
+
+3. **E2E del flujo crítico.** La infraestructura está y corre; el flujo no pasa
+   entero todavía. Ver la sección 3.
+
+### 🟡 Lo próximo que mueve la aguja
+
+4. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
    un traslado si no abre la app.
 
-Opcionales, cuando haya ganas:
+### Opcionales
+
 - `SUPABASE_RESTORE_DB_URL` para correr el restore desde Actions y no a mano.
 - `SENTRY_AUTH_TOKEN` y compañía, para dejar de leer stack traces minificados.
+- `tunnelRoute` de Sentry, si el volumen de errores del cliente justifica
+  esquivar los bloqueadores.
 - Los dominios de preview en la consola de reCAPTCHA, si molesta que el alta
   falle ahí.
+
+---
+
+**Lo que ya no es un riesgo:** el backup corre solo por cron (primera corrida sin
+intervención: 30/07 08:30 UTC), incluye base y fotos, el restore está probado
+sobre un Postgres limpio, y ahora además el repo reconstruye la base por su
+cuenta. Son dos vías de recuperación independientes y las dos verificadas.

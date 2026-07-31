@@ -117,7 +117,15 @@ export default function InvitacionQR({ empresaId, onGenerado }: Props) {
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
         Codigo de invitacion
       </p>
-      <p className="text-2xl font-bold text-primary mb-4 tracking-widest font-mono break-all">{codigo}</p>
+      {/* data-testid: los E2E leen el codigo de aca para dar de alta al chofer.
+          Sin esto habria que engancharse a las clases de Tailwind, que cambian
+          con cualquier retoque de estilo. */}
+      <p
+        data-testid="codigo-invitacion"
+        className="text-2xl font-bold text-primary mb-4 tracking-widest font-mono break-all"
+      >
+        {codigo}
+      </p>
 
       {/* Fondo blanco fijo y borde: un QR necesita contraste claro/oscuro real,
           asi que no sigue el tema. */}

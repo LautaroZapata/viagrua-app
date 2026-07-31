@@ -8,7 +8,11 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "db:types": "supabase gen types typescript --linked --schema public > lib/database.types.ts",
-    "rls:check": "node scripts/rls-check.mjs"
+    "rls:check": "node scripts/rls-check.mjs",
+    "e2e:preparar": "node scripts/e2e-preparar.mjs",
+    "e2e:build": "node scripts/e2e-con-env.mjs next build",
+    "test:e2e": "pnpm e2e:preparar && pnpm e2e:build && playwright test",
+    "test:e2e:solo": "playwright test"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.68.0",
@@ -32,6 +36,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.2.1",
     "@types/node": "26.1.1",
     "@types/react": "19.2.14",

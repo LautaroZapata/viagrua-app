@@ -19,8 +19,14 @@ const read = (rel: string) => readFileSync(path.join(root, rel), 'utf8')
 const ROUTE = 'app/api/gastos/route.ts'
 const HOOK = 'lib/useSupabaseQuery.ts'
 const PAGE = 'app/(authenticated)/dashboard/gastos/page.tsx'
+/**
+ * El baseline dejo de ser un schema inventado y paso a ser el dump real de
+ * produccion, asi que ahora declara las columnas entre comillas y en mayusculas
+ * (`"usuario_id" "uuid"`). Las migraciones que ese baseline ya contiene viven en
+ * supabase/historico/.
+ */
 const MIGRATION = 'supabase/migrations/00001_initial_schema.sql'
-const TIPO_CHECK = 'supabase/migrations/20260728_gastos_tipo_check.sql'
+const TIPO_CHECK = 'supabase/historico/20260728_gastos_tipo_check.sql'
 
 /**
  * `user_id` sigue siendo legítimo como nombre de campo del payload JSON que el
@@ -66,11 +72,32 @@ describe('contrato de schema de gastos', () => {
 
   it('la migración declara usuario_id en gastos y en sus políticas RLS', () => {
     const sql = read(MIGRATION)
-    const bloqueGastos = sql.slice(sql.indexOf('create table public.gastos'))
 
-    expect(bloqueGastos.match(/\buser_id\b/g) ?? [], `user_id en ${MIGRATION}`).toEqual([])
-    expect(bloqueGastos).toContain('usuario_id uuid references public.perfiles(id)')
-    expect(bloqueGastos).toContain('and usuario_id = auth.uid()')
+    // El baseline es un dump de pg_dump: comillas, mayusculas y las FK en un
+    // ALTER TABLE aparte. Se busca por forma y no por texto exacto para que un
+    // regenerado del baseline no rompa el test por como formatea Postgres.
+    const desde = sql.search(/CREATE TABLE.*"gastos"/i)
+    expect(desde, 'no se encontro la tabla gastos').toBeGreaterThan(-1)
+    // Solo el CREATE TABLE de gastos: audit_log si tiene un user_id legitimo,
+    // que referencia a auth.users y no tiene nada que ver con este contrato.
+    const bloqueGastos = sql.slice(desde, sql.indexOf(');', desde))
+
+    // La columna se llama usuario_id. user_id como nombre de columna es el bug
+    // que este contrato existe para que no vuelva (c97afe7).
+    expect(bloqueGastos.match(/"user_id"/g) ?? [], `user_id en gastos`).toEqual([])
+    expect(bloqueGastos).toMatch(/"usuario_id"\s+"uuid"/i)
+
+    // Y apunta a perfiles, no a auth.users.
+    // [^;] en vez del flag `s`: tsconfig apunta debajo de es2018 y ahi el flag
+    // no compila. La clase negada cruza saltos de linea igual.
+    expect(sql).toMatch(/gastos_usuario_id_fkey[^;]*REFERENCES\s+"public"\."perfiles"/i)
+
+    // Las policies de gastos filtran por esa columna contra la sesion.
+    const policiesGastos = [...sql.matchAll(/CREATE POLICY[^;]*"public"\."gastos"[^;]*;/gi)].map(
+      (m) => m[0]
+    )
+    expect(policiesGastos.length, 'gastos deberia tener policies').toBeGreaterThan(0)
+    expect(policiesGastos.some((p) => /"usuario_id"\s*=\s*"auth"\."uid"\(\)/i.test(p))).toBe(true)
   })
 
   /**

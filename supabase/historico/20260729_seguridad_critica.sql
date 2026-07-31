@@ -151,6 +151,7 @@ create policy "traslados_update_empresa" on public.traslados
 -- traslados de otra empresa.
 drop policy if exists "Solo admin puede borrar traslados" on public.traslados;
 drop policy if exists "Permitir borrar solo al dueño o admin" on public.traslados;
+drop policy if exists "traslados_delete_admin_empresa" on public.traslados;
 
 create policy "traslados_delete_admin_empresa" on public.traslados
   for delete to authenticated

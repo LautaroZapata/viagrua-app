@@ -19,6 +19,8 @@ drop policy if exists "Permitir leer empresa propia" on public.empresas;
 drop policy if exists "Permitir insertar empresa en registro" on public.empresas;
 
 -- Lectura: solo la empresa a la que pertenece el usuario.
+drop policy if exists "empresas_select_propia" on public.empresas;
+
 create policy "empresas_select_propia" on public.empresas
   for select to authenticated
   using (id = public.get_empresa_id());
