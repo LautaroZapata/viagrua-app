@@ -140,6 +140,17 @@ contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
     que faltaba en el repo y en los backups, la CSP que bloqueaba el cliente de
     Supabase en local, y las migraciones que no aplicaban desde cero.
   - `pnpm test:e2e` hace todo: prepara, buildea y corre.
+- [x] **🟡 El E2E corre en CI** — `.github/workflows/e2e.yml`, en cada push y
+      cada PR a `master`. Verde a la primera: 3m37s el job, 14s el flujo.
+  - Workflow aparte y no un job de `ci.yml`: tarda minutos contra los ~40s de
+    lint, typecheck y test, y mezclarlos haría que el semáforo dependa del lento.
+  - No necesita ningún secret: corre contra el Supabase que levanta
+    `supabase start`. El log de la corrida muestra el freno funcionando
+    (`Destino verificado: http://127.0.0.1:54421`).
+  - Solo chromium, y el reporte con traces y capturas se guarda como artifact
+    únicamente cuando falla.
+  - Es la prueba de que el baseline squasheado sirve: un runner limpio levanta
+    la base de producción desde el repo y corre el flujo entero.
 - [x] Tests unitarios: **201** en 13 archivos. Se sumaron los de reCAPTCHA (12),
       CSP (17), backup a storage (6), backup de fotos (9), verificación del
       restore (12) y el freno de los E2E (5).
@@ -162,9 +173,10 @@ contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
     `supabase/historico/` con `git mv`. Quedan activas las de storage
     (`20260806`–`20260808`), porque `pg_dump` del schema `public` no incluye
     buckets ni policies de `storage.objects`.
-  - Producción tiene las 17 registradas y el repo 4: `supabase migration list`
-    muestra 13 entradas solo-remotas. Es cosmético; `db push` de migraciones
-    nuevas (timestamp posterior a `20260809`) funciona igual.
+  - El historial quedó alineado con `supabase migration repair --status reverted`
+    para las 13 archivadas. **No era cosmético**: mientras hubo entradas
+    solo-remotas, `db push` abortaba con "Remote migration versions not found in
+    local migrations directory" y no dejaba aplicar nada nuevo.
   - Verificado contra un Postgres limpio: **10 tablas, 22 policies, 11 funciones,
     11 claves foráneas** — los mismos números que producción.
 - [x] **🔴 Trigger `on_auth_user_created`** (`20260809_trigger_perfil_nuevo.sql`)
@@ -177,8 +189,8 @@ contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
     usuario y la empresa, no crea el perfil, y no muestra ningún error.
   - Apareció en los E2E, donde el alta terminaba con 1 usuario, 1 empresa y 0
     perfiles.
-  - **Falta aplicarla en producción** (`supabase db push`). Es idempotente: allá
-    el trigger ya existe, así que no cambia el comportamiento — solo deja el
+  - **Aplicada en producción** (31/07/2026, `supabase db push`). Es idempotente:
+    allá el trigger ya existía, así que no cambió el comportamiento — dejó el
     repo y los backups completos.
 
 - [x] **🔴 Backup técnico (pg_dump)** — `.github/workflows/backup.yml`, diario a
@@ -307,11 +319,10 @@ producción, no solo escrito.
 1. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
    un traslado si no abre la app. Es lo único de la lista que un usuario nota.
 
-2. **El E2E en CI.** Hoy corre a mano con `pnpm test:e2e`. Los runners de GitHub
-   traen Docker, así que `supabase start` funciona igual; falta el workflow y
-   decidir si va en cada push (~3 min) o solo en PR.
+2. **Dependabot** — un `.github/dependabot.yml` de diez líneas y listo.
 
-3. **Dependabot** — un `.github/dependabot.yml` de diez líneas y listo.
+3. **Dominios de preview en reCAPTCHA** — hoy el alta y `/unirse` fallan en
+   cualquier deploy de preview, que es justo donde se prueban los cambios.
 
 ### Opcionales
 
@@ -325,6 +336,7 @@ producción, no solo escrito.
 ---
 
 **Lo que ya no es un riesgo:** el backup corre solo por cron (primera corrida sin
-intervención: 30/07 08:30 UTC), incluye base y fotos, el restore está probado
-sobre un Postgres limpio, y ahora además el repo reconstruye la base por su
-cuenta. Son dos vías de recuperación independientes y las dos verificadas.
+intervención: 30/07 08:30 UTC), incluye base, fotos y triggers, el restore está
+probado sobre un Postgres limpio, y ahora además el repo reconstruye la base por
+su cuenta. Son dos vías de recuperación independientes y las dos verificadas.
+Encima, el flujo crítico se prueba solo en cada push.
