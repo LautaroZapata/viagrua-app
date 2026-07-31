@@ -324,6 +324,50 @@ contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
 - [ ] **Facturación / recibos**
 - [ ] **Webhooks para conciliación**
 
+## 11. Rendimiento percibido
+
+- [x] **🟡 Caché de pantallas ya visitadas** (31/07/2026) — antes solo 3 de 8
+      pantallas usaban SWR. El resto arrancaba con `useState(true)` + `useEffect`:
+      **lista vacía y esqueleto en cada visita**, aunque hubieras estado ahí
+      cinco segundos antes.
+  - Migradas a SWR: la pantalla del chofer, `/dashboard/choferes`, los dos
+    detalles de traslado y las listas de choferes del dashboard y del alta.
+  - El dashboard y `/dashboard/choferes` hacían **la misma query** cada uno por
+    su cuenta. Ahora comparten la clave de SWR, así que ir de una a otra no
+    dispara ninguna consulta.
+  - La pantalla del chofer pedía el nombre de la empresa con una query propia.
+    Ya venía del layout autenticado, que hace ese join para poblar el contexto:
+    una consulta menos **en cada entrada**, no solo en las repetidas.
+  - Las actualizaciones optimistas y las suscripciones realtime se conservan
+    igual; escriben sobre la caché con `revalidate: false` en vez de sobre
+    `useState`. Los detalles usan `shouldRetryOnError: false`: un traslado que
+    no existe redirige, y reintentar con backoff sería martillar la base.
+  - Los listados paginados suman `keepPreviousData`, así cambiar de página no
+    vuelve al esqueleto.
+  - `staleTimes.dynamic: 30` en `next.config.js`. Venía en 0 desde Next 15, o
+    sea que cada navegación volvía a pedir el payload RSC del segmento — y ese
+    payload sale del layout, que hace `getUser()` contra Supabase Auth más el
+    join de `perfiles`.
+  - **El E2E no mide esto y se comprobó**: corre igual (8.3s) con y sin los
+    cambios, porque entra a cada pantalla una sola vez —justo donde la caché no
+    ayuda— y va contra Supabase local, sin latencia de red. Vale como control de
+    que no se rompió nada, no como medición.
+  - Efecto colateral: 8 warnings de lint menos (22 → 14), casi todos
+    `set-state-in-effect`.
+- [ ] **🟡 El `getUser()` duplicado por request** — `proxy.ts` lo llama y
+      `(authenticated)/layout.tsx` lo vuelve a llamar, más el join de perfiles.
+      `getUser()` **no** decodifica el token localmente: es un HTTP a
+      `/auth/v1/user`.
+  - `getClaims()` sí valida el JWT local y sin red, pero **solo si el proyecto
+    usa claves de firma asimétricas**. Este es viejo y casi seguro está en
+    HS256, donde `getClaims()` termina llamando igual al servidor.
+  - O sea que antes de tocar código hay que migrar las JWT signing keys desde el
+    dashboard de Supabase. Verificado contra
+    [la doc de JWTs](https://supabase.com/docs/guides/auth/jwts).
+- [ ] **🟢 Medir con números reales** — hoy la mejora se sostiene en consultas
+      eliminadas, contables leyendo el diff, no en tiempos medidos contra la
+      latencia de producción.
+
 ---
 
 ## Qué sigue
@@ -335,6 +379,10 @@ producción, no solo escrito.
 
 1. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
    un traslado si no abre la app. Es lo único de la lista que un usuario nota.
+
+2. **Las JWT signing keys a asimétricas**, para poder sacar el `getUser()`
+   duplicado que paga cada request. Ver el punto en la sección 11: es un trámite
+   de dashboard, y sin él el cambio de código no sirve de nada.
 
 ### ⏸️ Pospuesto por decisión (31/07/2026)
 
