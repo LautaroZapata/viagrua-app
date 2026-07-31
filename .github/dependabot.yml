@@ -1,0 +1,79 @@
+version: 2
+
+# Avisos automaticos cuando una dependencia queda vieja o le sale un CVE.
+#
+# Hasta ahora no habia forma de enterarse: una vulnerabilidad en algo que
+# arrastra `next` o `@supabase/supabase-js` se descubria leyendo Twitter. Esto
+# abre un PR y deja que CI y el flujo critico digan si el bump rompe algo.
+#
+# Los avisos de SEGURIDAD no respetan ni el `schedule` ni el
+# `open-pull-requests-limit` de aca: GitHub los abre apenas publica el CVE, sin
+# esperar al lunes ni fijarse cuantos PRs hay abiertos. Lo de abajo solo regula
+# las actualizaciones de rutina.
+
+updates:
+  # pnpm entra como ecosistema "npm": Dependabot lee pnpm-lock.yaml y respeta
+  # el lockfile. No hay un `package-ecosystem: pnpm`.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: America/Argentina/Buenos_Aires
+
+    # Cada PR dispara ci.yml (~40s) y e2e.yml (~4 min, levanta Postgres en
+    # Docker). Sin agrupar, una semana normal serian diez PRs y cuarenta
+    # minutos de runner para bumps de patch que nadie va a leer uno por uno.
+    groups:
+      # Todo lo menor y los parches en un solo PR. Si CI y el flujo critico
+      # pasan, se mergea sin mirar mucho; si algo rompe, se abre el grupo.
+      menores:
+        update-types:
+          - minor
+          - patch
+
+      # Los mayores quedan agrupados por familia y NO mezclados con lo de
+      # arriba: react y react-dom tienen que subir juntos o el build no
+      # compila, y lo mismo pasa con los paquetes de Supabase entre si.
+      react:
+        patterns:
+          - react
+          - react-dom
+          - '@types/react'
+          - '@types/react-dom'
+        update-types:
+          - major
+      supabase:
+        patterns:
+          - '@supabase/*'
+        update-types:
+          - major
+
+    # `next` mayor queda solo a proposito. Este proyecto ya paso por la mudanza
+    # de middleware.ts a proxy.ts y por el cambio a Turbopack: un salto de major
+    # de Next se revisa a mano y con tiempo, no en un PR agrupado.
+    open-pull-requests-limit: 5
+
+    commit-message:
+      prefix: deps
+      prefix-development: deps-dev
+
+    labels:
+      - dependencias
+
+  # Las acciones de los workflows tambien se quedan viejas, y son las que
+  # tienen acceso a los secrets del backup y del restore. actions/checkout@v4 y
+  # compania se actualizan solas por aca.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      acciones:
+        patterns:
+          - '*'
+    commit-message:
+      prefix: ci
+    labels:
+      - dependencias

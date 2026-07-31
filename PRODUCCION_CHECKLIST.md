@@ -106,7 +106,24 @@ contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
     los comodines `*.supabase.co`. Los comodines se podrían sacar —el derivado
     es exactamente el proyecto propio, el comodín habilita cualquier proyecto de
     Supabase— pero eso aprieta la política y conviene un cambio por vez.
-- [ ] **🟡 Dependabot / Snyk** — escaneo automático de vulnerabilidades en dependencias
+- [x] **🟡 Dependabot** (31/07/2026) — `.github/dependabot.yml`. Abre PRs cuando
+      una dependencia queda vieja o le sale un CVE. Antes no había forma de
+      enterarse.
+  - pnpm entra como ecosistema `npm`: Dependabot lee `pnpm-lock.yaml` y respeta
+    el lockfile. No existe un `package-ecosystem: pnpm`.
+  - **Los avisos de seguridad ignoran el `schedule` y el límite de PRs**: GitHub
+    los abre apenas se publica el CVE. Lo configurado solo regula la rutina.
+  - Agrupado a propósito: cada PR dispara `ci.yml` (~40s) y `e2e.yml` (~4 min,
+    levanta Postgres en Docker). Sin agrupar serían diez PRs por semana y
+    cuarenta minutos de runner para parches que nadie lee de a uno.
+  - Los mayores de `react`/`react-dom` y los de `@supabase/*` van juntos por
+    familia — subir uno sin el otro no compila. El mayor de `next` queda solo:
+    este proyecto ya pasó por `middleware.ts` → `proxy.ts` y por Turbopack, y
+    un salto así se mira a mano.
+  - Las acciones de los workflows también se actualizan (mensual). Son las que
+    tienen acceso a los secrets del backup y del restore.
+- [ ] **🟢 Snyk** — escaneo más profundo que Dependabot. Con Dependabot ya
+      cubierto, no urge.
 - [ ] **🟢 Secrets scanning** — evitar commiteos accidentales de `.env.*`
 - [ ] **🟢 2FA / MFA** — para admins
 
@@ -319,19 +336,28 @@ producción, no solo escrito.
 1. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
    un traslado si no abre la app. Es lo único de la lista que un usuario nota.
 
-2. **Dependabot** — un `.github/dependabot.yml` de diez líneas y listo.
+### ⏸️ Pospuesto por decisión (31/07/2026)
 
-3. **Dominios de preview en reCAPTCHA** — hoy el alta y `/unirse` fallan en
-   cualquier deploy de preview, que es justo donde se prueban los cambios.
+Dos trámites de consola, sin código de por medio. Se decidió no hacerlos por
+ahora; quedan acá para que no se pierdan.
+
+- **Dominios de preview en la consola de reCAPTCHA.** La key solo valida
+  `via-grua.vercel.app`, así que **el registro y `/unirse` fallan en todo deploy
+  de preview** — justo donde se prueban los cambios. Se arregla agregando
+  `vercel.app` en [la consola](https://www.google.com/recaptcha/admin);
+  el dominio raíz cubre todos los previews. El login no se ve afectado: ahí el
+  token es opcional a propósito.
+- **Secret `SUPABASE_RESTORE_DB_URL`.** El workflow de restore existe y está
+  probado, pero sin este secret no se puede disparar desde Actions y probar un
+  restore vuelve a ser manual. Tiene que ser el **Session pooler** del proyecto
+  descartable: la conexión directa (`db.<ref>.supabase.co`) es IPv6 y los
+  runners de GitHub son IPv4.
 
 ### Opcionales
 
-- `SUPABASE_RESTORE_DB_URL` para correr el restore desde Actions y no a mano.
 - `SENTRY_AUTH_TOKEN` y compañía, para dejar de leer stack traces minificados.
 - `tunnelRoute` de Sentry, si el volumen de errores del cliente justifica
   esquivar los bloqueadores.
-- Los dominios de preview en la consola de reCAPTCHA, si molesta que el alta
-  falle ahí.
 
 ---
 
