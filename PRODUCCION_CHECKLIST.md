@@ -23,25 +23,27 @@ verificados con una corrida real del workflow:
 Ojo con el primero: es una cadena `postgresql://`, no la URL `https://` del
 proyecto. Confundirlas hace fallar el dump con un error poco claro.
 
-**2. Sentry** — crear proyecto (plan gratis) y cargar en Vercel:
+**2. Sentry** — ✅ **hecho** (30/07/2026). Proyecto creado y
+`NEXT_PUBLIC_SENTRY_DSN` cargado en Vercel. Verificado de punta a punta: un
+error lanzado desde el navegador llega al dashboard (`envelope` → 200).
 
-| Variable | Nota |
-|---|---|
-| `NEXT_PUBLIC_SENTRY_DSN` | Sin esto, Sentry no arranca y no reporta nada |
-| `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` | Opcionales. Suben source maps: sin ellos los stack traces llegan minificados. Requiere `pnpm approve-builds` una vez |
+`SENTRY_ORG`, `SENTRY_PROJECT` y `SENTRY_AUTH_TOKEN` siguen sin cargar. Son
+opcionales: suben source maps, sin ellos los stack traces llegan minificados.
+Requiere `pnpm approve-builds` una vez.
 
-**3. reCAPTCHA** — las keys ya existen en `.env.local` (verificadas: son **v3**).
-Falta cargarlas en Vercel:
+**3. reCAPTCHA** — ✅ **hecho** (30/07/2026). Las dos keys cargadas en Vercel y
+verificadas contra producción: un POST a `/api/registro` sin token devuelve
+**403**. El chequeo del secret va antes que el del token en `lib/recaptcha.ts`,
+así que un 403 prueba que la key está cargada y aplicando.
 
-- `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` y `RECAPTCHA_SECRET_KEY`
-- En la [consola de reCAPTCHA](https://www.google.com/recaptcha/admin), agregar
-  los dominios del deploy. Hoy la key valida `via-grua.vercel.app`; los preview
-  de Vercel usan otro hostname y ahí Google va a rechazar todos los tokens.
+Pendiente menor: en la [consola de reCAPTCHA](https://www.google.com/recaptcha/admin)
+la key valida `via-grua.vercel.app`. Los preview de Vercel usan otro hostname, así
+que ahí Google rechaza todos los tokens y **el registro y `/unirse` fallan en
+preview** (el login no: ahí el token es opcional a propósito).
 
-**4. Migración `20260808_backups_bucket.sql`** — el bucket `backups` ya está
-creado en producción (se creó y verificó vía API de Storage). La migración es
-idempotente y existe para que un proyecto nuevo quede igual; aplicala cuando
-corras el resto de las migraciones pendientes.
+**4. Migración `20260808_backups_bucket.sql`** — ✅ **aplicada** (30/07/2026).
+Las 17 migraciones locales están registradas en producción. Verificado además
+contra la API de Storage: `backups` quedó privado, 50 MB, `application/gzip`.
 
 ---
 
@@ -50,7 +52,18 @@ corras el resto de las migraciones pendientes.
 - [x] **🔴 Error tracking** (Sentry) — `instrumentation.ts` (servidor + edge),
       `instrumentation-client.ts` (navegador), `onRequestError` y
       `global-error.tsx`. Configuración compartida en `sentry.opciones.ts`.
-      **Falta el DSN** (ver arriba).
+      DSN cargado y **verificado**: un error del navegador llega al dashboard.
+  - **Los bloqueadores cortan los eventos del navegador.** Brave Shields bloquea
+    `sentry.io` **por defecto** — no hace falta instalar nada — y uBlock/AdGuard
+    también. En esos navegadores el `envelope` sale con `(blocked:other)` y el
+    error nunca llega. Se pierde una porción real de los errores del cliente,
+    que son justo los que más importan acá.
+  - Los del servidor no se ven afectados: `instrumentation.ts` y `onRequestError`
+    mandan desde Vercel, sin navegador en el medio.
+  - Se puede recuperar con `tunnelRoute` en `next.config.js`: el SDK manda a una
+    ruta del dominio propio y Next reenvía, así el bloqueador no la reconoce.
+    Cuesta una función serverless por evento y deja esa ruta abierta sin auth.
+    **Sin decidir**: no se aplicó, queda a la vista si aparece la necesidad.
   - `sendDefaultPii: false` + scrub de `cookie`/`authorization` en `beforeSend`:
     las cookies llevan el token de sesión de Supabase y no pueden salir del sistema.
   - Tracing apagado (`tracesSampleRate: 0`). El plan gratis reparte una sola
@@ -68,8 +81,8 @@ corras el resto de las migraciones pendientes.
 ## 2. Seguridad
 
 - [x] **🔴 reCAPTCHA v3 en registro, login y unirse** — `lib/recaptcha.ts`
-      (servidor) y `lib/recaptchaCliente.ts` (navegador). **Faltan las keys en
-      Vercel** (ver arriba).
+      (servidor) y `lib/recaptchaCliente.ts` (navegador). Keys cargadas en Vercel
+      y **verificadas**: `/api/registro` sin token devuelve 403.
   - El token viaja en el header `X-Recaptcha-Token` y no en el body: mide ~1900
     caracteres y las rutas de auth cortan el body en 2000 (`MAX_BODY_SIZE`).
   - Se valida `score >= 0.5` (ajustable con `RECAPTCHA_MIN_SCORE`) **y** que la
@@ -230,18 +243,20 @@ corras el resto de las migraciones pendientes.
 
 ## Qué sigue
 
-El backup quedó cerrado de punta a punta: base + fotos, corrido, restaurado y
-verificado. En orden:
+Los cinco 🔴 del plan original están cerrados salvo el E2E. El backup corre solo
+(primera corrida por cron sin intervención: 30/07 08:30 UTC), el restore está
+probado, las migraciones aplicadas y Sentry y reCAPTCHA verificados contra
+producción. Lo que queda, en orden:
 
-1. **Aplicar las migraciones pendientes** hasta `20260808_backups_bucket.sql`.
-   Ya hay red: el backup diario corre y el restore está probado.
-2. **Cargar Sentry y reCAPTCHA en Vercel.** Hasta que no estén, ese código está
-   deployado y no hace nada.
-3. **Pasar la CSP a bloqueante** (`CSP_ENFORCE=1`) después de recorrer el
-   dashboard sin violaciones en consola.
-4. **E2E del flujo crítico** contra Supabase local.
-5. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
+1. **Pasar la CSP a bloqueante** (`CSP_ENFORCE=1`) después de recorrer el
+   dashboard logueado sin violaciones en consola. Es lo único que exige estar
+   adentro de la app para verificarlo.
+2. **E2E del flujo crítico** contra Supabase local. Último 🔴 abierto.
+3. **Emails transaccionales** — hoy el chofer no se entera de que le asignaron
    un traslado si no abre la app.
 
-Opcional, cuando haya ganas: cargar `SUPABASE_RESTORE_DB_URL` para poder correr
-el restore desde Actions y no a mano en un contenedor.
+Opcionales, cuando haya ganas:
+- `SUPABASE_RESTORE_DB_URL` para correr el restore desde Actions y no a mano.
+- `SENTRY_AUTH_TOKEN` y compañía, para dejar de leer stack traces minificados.
+- Los dominios de preview en la consola de reCAPTCHA, si molesta que el alta
+  falle ahí.
