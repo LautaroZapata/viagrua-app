@@ -1,10 +1,10 @@
-'use client'
-import { useState, useEffect, useCallback } from 'react'
+﻿'use client'
+import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmAction, showError } from '@/lib/swal'
 import { useUser } from '@/app/components/UserContext'
-import type { Tables } from '@/lib/db'
+import { useTrasladoChofer, type TrasladoDetalleChofer } from '@/lib/useSupabaseQuery'
 import AppHeader from '@/app/components/AppHeader'
 import ClientOnly from '@/app/components/ClientOnly'
 import LoadingSpinner from '@/app/components/LoadingSpinner'
@@ -14,29 +14,21 @@ import { OPCIONES_ESTADO, OPCIONES_PAGO } from '@/lib/trasladoStatus'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
-type Traslado = Tables<'traslados'> & {
-    empresas?: { nombre: string } | null
-}
-
 export default function DetalleTraslado() {
     const router = useRouter()
     const params = useParams()
     const id = params?.id as string
     const { user } = useUser()
-    const [traslado, setTraslado] = useState<Traslado | null>(null)
-    const [loading, setLoading] = useState(true)
     const [actualizando, setActualizando] = useState(false)
 
-    const cargarTraslado = useCallback(async () => {
-        if (!user) return
-        const { data, error } = await supabase.from('traslados').select('*, empresas(nombre)')
-            .eq('id', id).eq('chofer_id', user.id).single()
-        if (error || !data) { router.push('/chofer'); return }
-        setTraslado(data)
-        setLoading(false)
-    }, [id, user, router])
+    // Cacheado por traslado: el chofer que entra, vuelve y entra de nuevo no
+    // espera de nuevo. Importa mas aca que en el admin, que es donde la
+    // conexion suele ser peor.
+    const { data: traslado, error: errorCarga, isLoading, mutate } =
+        useTrasladoChofer(id, user?.id ?? null)
 
-    useEffect(() => { if (user?.id) cargarTraslado() }, [user?.id, cargarTraslado])
+    // No existe o no esta asignado a este chofer. El hook no reintenta.
+    useEffect(() => { if (errorCarga) router.push('/chofer') }, [errorCarga, router])
 
     useEffect(() => {
         if (!id) return
@@ -44,10 +36,10 @@ export default function DetalleTraslado() {
         // traslado en ambas vistas tendria dos canales con el mismo topic.
         const ch = supabase.channel('traslado-chofer-' + id)
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'traslados', filter: `id=eq.${id}` },
-                (p) => setTraslado(prev => prev ? { ...prev, ...p.new, empresas: (p.new as Record<string, unknown>).empresas ?? prev.empresas } as Traslado : null))
+                (p) => mutate(prev => prev ? { ...prev, ...p.new, empresas: (p.new as Record<string, unknown>).empresas ?? prev.empresas } as TrasladoDetalleChofer : prev, { revalidate: false }))
             .subscribe()
         return () => { supabase.removeChannel(ch) }
-    }, [id])
+    }, [id, mutate])
 
     const estadoBloqueado = traslado?.estado === 'completado'
     const pagoBloqueado = traslado?.estado_pago !== 'pendiente'
@@ -60,9 +52,9 @@ export default function DetalleTraslado() {
         }
         const prev = traslado.estado
         setActualizando(true)
-        setTraslado(t => t ? { ...t, estado: nuevoEstado } : t)
+        mutate(t => t ? { ...t, estado: nuevoEstado } : t, { revalidate: false })
         const { error } = await supabase.from('traslados').update({ estado: nuevoEstado }).eq('id', traslado.id).eq('chofer_id', user.id)
-        if (error) { setTraslado(t => t ? { ...t, estado: prev } : t); showError('Error: ' + error.message) }
+        if (error) { mutate(t => t ? { ...t, estado: prev } : t, { revalidate: false }); showError('Error: ' + error.message) }
         setActualizando(false)
     }
 
@@ -72,13 +64,13 @@ export default function DetalleTraslado() {
         if (!ok) return
         const prev = traslado.estado_pago
         setActualizando(true)
-        setTraslado(t => t ? { ...t, estado_pago: nuevo } : t)
+        mutate(t => t ? { ...t, estado_pago: nuevo } : t, { revalidate: false })
         const { error } = await supabase.from('traslados').update({ estado_pago: nuevo }).eq('id', traslado.id).eq('chofer_id', user.id)
-        if (error) { setTraslado(t => t ? { ...t, estado_pago: prev } : t); showError('Error: ' + error.message) }
+        if (error) { mutate(t => t ? { ...t, estado_pago: prev } : t, { revalidate: false }); showError('Error: ' + error.message) }
         setActualizando(false)
     }
 
-    if (loading) return <div className="flex h-dvh items-center justify-center"><LoadingSpinner /></div>
+    if (isLoading) return <div className="flex h-dvh items-center justify-center"><LoadingSpinner /></div>
     if (!traslado) return null
 
     return (

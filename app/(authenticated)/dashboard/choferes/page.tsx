@@ -1,10 +1,10 @@
 ﻿'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, showError } from '@/lib/swal'
 import { useUser } from '@/app/components/UserContext'
-import type { Tables } from '@/lib/db'
+import { useChoferes } from '@/lib/useSupabaseQuery'
 import AppHeader from '@/app/components/AppHeader'
 import ListState from '@/app/components/ListState'
 import ErrorBoundary from '@/app/components/ErrorBoundary'
@@ -16,30 +16,16 @@ import { UserPlus } from 'lucide-react'
 
 const InviteModal = dynamic(() => import('@/app/components/InviteModal'), { ssr: false })
 
-type Chofer = Pick<Tables<'perfiles'>, 'id' | 'nombre_completo' | 'email'>
-
 export default function ChoferesPage() {
     const { perfil } = useUser()
-    const [choferes, setChoferes] = useState<Chofer[]>([])
     const [modalAbierto, setModalAbierto] = useState(false)
-    const [cargando, setCargando] = useState(true)
-    const [errorCarga, setErrorCarga] = useState<unknown>(null)
 
-    const cargarChoferes = useCallback(async (empresaId: string) => {
-        setCargando(true)
-        setErrorCarga(null)
-        // Columnas explicitas: select('*') traia todo el perfil para mostrar
-        // solo nombre y email.
-        const { data, error } = await supabase.from('perfiles').select('id, nombre_completo, email').eq('empresa_id', empresaId).eq('rol', 'chofer')
-        // El error se descartaba: una query fallida se veia igual que un equipo vacio.
-        if (error) setErrorCarga(error)
-        setChoferes(data || [])
-        setCargando(false)
-    }, [])
-
-    useEffect(() => {
-        if (perfil?.empresa_id) cargarChoferes(perfil.empresa_id)
-    }, [perfil?.empresa_id, cargarChoferes])
+    // Misma clave que la lista del dashboard: venir de ahi dibuja el equipo al
+    // instante y revalida en segundo plano, en vez de arrancar de cero.
+    // Columnas explicitas: select('*') traia todo el perfil para mostrar solo
+    // nombre y email.
+    const { data: choferes = [], error: errorCarga, isLoading, mutate } =
+        useChoferes(perfil?.empresa_id ?? null)
 
     useEffect(() => {
         const empresaId = perfil?.empresa_id
@@ -52,17 +38,19 @@ export default function ChoferesPage() {
             .on('postgres_changes', {
                 event: '*', schema: 'public', table: 'perfiles',
                 filter: `empresa_id=eq.${empresaId}`,
-            }, () => { cargarChoferes(empresaId) })
+            }, () => { mutate() })
             .subscribe()
         return () => { supabase.removeChannel(sub) }
-    }, [perfil?.empresa_id, cargarChoferes])
+    }, [perfil?.empresa_id, mutate])
 
     const expulsarChofer = async (id: string, nombre: string) => {
         const ok = await confirmDelete({ title: 'Expulsar chofer', text: `¿Expulsar a ${nombre}?`, confirmButtonText: 'Si, expulsar' })
         if (!ok) return
-        setChoferes(prev => prev.filter(c => c.id !== id))
+        // Optimista y sin revalidar: la fila desaparece en el acto. Si la RPC
+        // falla, el mutate() de abajo trae la lista real y el chofer vuelve.
+        mutate(prev => (prev ?? []).filter(c => c.id !== id), { revalidate: false })
         const { error } = await supabase.rpc('expulsar_chofer', { chofer_id: id })
-        if (error) { showError('Error: ' + error.message); if (perfil?.empresa_id) cargarChoferes(perfil.empresa_id) }
+        if (error) { showError('Error: ' + error.message); mutate() }
     }
 
     return (
@@ -78,11 +66,11 @@ export default function ChoferesPage() {
                     </CardHeader>
                     <CardContent>
                         <ListState
-                            isLoading={cargando}
+                            isLoading={isLoading}
                             error={errorCarga}
                             isEmpty={choferes.length === 0}
                             emptyMessage="No hay choferes registrados"
-                            onRetry={() => { if (perfil?.empresa_id) cargarChoferes(perfil.empresa_id) }}
+                            onRetry={() => mutate()}
                             skeletonRows={3}
                             emptyAction={
                                 <Button size="sm" onClick={() => setModalAbierto(true)}>

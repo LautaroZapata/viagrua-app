@@ -2,6 +2,30 @@
 const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', 'recharts', 'radix-ui'],
+
+    /**
+     * Caché de cliente del router.
+     *
+     * `dynamic` viene en 0 desde Next 15, o sea que cada navegación entre
+     * pantallas volvía a pedirle al servidor el payload RSC del segmento —y
+     * ese payload sale del layout autenticado, que hace getUser() contra
+     * Supabase Auth más el join de perfiles. Volver al dashboard después de
+     * mirar un traslado pagaba ese viaje entero de nuevo.
+     *
+     * Con 30s, ir y volver entre pantallas es instantáneo y pasado ese rato se
+     * vuelve a pedir. No afecta la frescura de los datos: las pantallas son
+     * client components que traen lo suyo con SWR, que revalida por su cuenta
+     * al volver el foco y al reconectar. Esto solo cachea el armazón.
+     *
+     * Tampoco es un agujero de permisos: el payload cacheado es el que este
+     * mismo navegador ya recibió, y cualquier request que sí llegue al
+     * servidor sigue pasando por proxy.ts.
+     *
+     * Sigue marcado como experimental en Next 16 aunque existe desde 14.2.
+     */
+    staleTimes: {
+      dynamic: 30,
+    },
   },
   async headers() {
     return [

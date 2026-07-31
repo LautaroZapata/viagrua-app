@@ -1,10 +1,10 @@
-'use client'
-import { useState, useEffect, useCallback } from 'react'
+﻿'use client'
+import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, confirmAction, showError } from '@/lib/swal'
 import { useUser } from '@/app/components/UserContext'
-import type { Tables } from '@/lib/db'
+import { useTrasladoAdmin, type TrasladoDetalleAdmin } from '@/lib/useSupabaseQuery'
 import AppHeader from '@/app/components/AppHeader'
 import ClientOnly from '@/app/components/ClientOnly'
 import LoadingSpinner from '@/app/components/LoadingSpinner'
@@ -16,38 +16,30 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Trash2 } from 'lucide-react'
 
-type Traslado = Tables<'traslados'> & {
-    perfiles?: { nombre_completo: string | null } | null
-}
-
 export default function DetalleTrasladoAdmin() {
     const router = useRouter()
     const params = useParams()
     const id = params?.id as string
     const { perfil } = useUser()
-    const [traslado, setTraslado] = useState<Traslado | null>(null)
-    const [loading, setLoading] = useState(true)
     const [actualizando, setActualizando] = useState(false)
 
-    const cargarTraslado = useCallback(async () => {
-        if (!perfil?.empresa_id) return
-        const { data, error } = await supabase.from('traslados').select('*, perfiles(nombre_completo)')
-            .eq('id', id).eq('empresa_id', perfil.empresa_id).single()
-        if (error || !data) { router.push('/dashboard/traslados'); return }
-        setTraslado(data)
-        setLoading(false)
-    }, [id, perfil, router])
+    // Cacheado por traslado: volver a la lista y entrar de nuevo al mismo lo
+    // dibuja al instante y revalida atras.
+    const { data: traslado, error: errorCarga, isLoading, mutate } =
+        useTrasladoAdmin(id, perfil?.empresa_id ?? null)
 
-    useEffect(() => { if (perfil?.empresa_id) cargarTraslado() }, [perfil?.empresa_id, cargarTraslado])
+    // El traslado no existe o no es de esta empresa. El hook no reintenta, asi
+    // que esto corre una sola vez.
+    useEffect(() => { if (errorCarga) router.push('/dashboard/traslados') }, [errorCarga, router])
 
     useEffect(() => {
         if (!id) return
         const ch = supabase.channel('traslado-admin-' + id)
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'traslados', filter: `id=eq.${id}` },
-                (p) => setTraslado(prev => prev ? { ...prev, ...p.new } as Traslado : p.new as Traslado))
+                (p) => mutate(prev => (prev ? { ...prev, ...p.new } : p.new) as TrasladoDetalleAdmin, { revalidate: false }))
             .subscribe()
         return () => { supabase.removeChannel(ch) }
-    }, [id])
+    }, [id, mutate])
 
     const estadoBloqueado = traslado?.estado === 'completado'
     const pagoBloqueado = traslado?.estado_pago !== 'pendiente'
@@ -60,9 +52,9 @@ export default function DetalleTrasladoAdmin() {
         }
         const prev = traslado.estado
         setActualizando(true)
-        setTraslado(t => t ? { ...t, estado: nuevoEstado } : t)
+        mutate(t => t ? { ...t, estado: nuevoEstado } : t, { revalidate: false })
         const { error } = await supabase.from('traslados').update({ estado: nuevoEstado }).eq('id', traslado.id)
-        if (error) { setTraslado(t => t ? { ...t, estado: prev } : t); showError('Error: ' + error.message) }
+        if (error) { mutate(t => t ? { ...t, estado: prev } : t, { revalidate: false }); showError('Error: ' + error.message) }
         setActualizando(false)
     }
 
@@ -72,9 +64,9 @@ export default function DetalleTrasladoAdmin() {
         if (!ok) return
         const prev = traslado.estado_pago
         setActualizando(true)
-        setTraslado(t => t ? { ...t, estado_pago: nuevo } : t)
+        mutate(t => t ? { ...t, estado_pago: nuevo } : t, { revalidate: false })
         const { error } = await supabase.from('traslados').update({ estado_pago: nuevo }).eq('id', traslado.id)
-        if (error) { setTraslado(t => t ? { ...t, estado_pago: prev } : t); showError('Error: ' + error.message) }
+        if (error) { mutate(t => t ? { ...t, estado_pago: prev } : t, { revalidate: false }); showError('Error: ' + error.message) }
         setActualizando(false)
     }
 
@@ -89,7 +81,7 @@ export default function DetalleTrasladoAdmin() {
         router.push('/dashboard/traslados')
     }
 
-    if (loading) return <div className="flex h-dvh items-center justify-center"><LoadingSpinner /></div>
+    if (isLoading) return <div className="flex h-dvh items-center justify-center"><LoadingSpinner /></div>
     if (!traslado) return null
 
     return (

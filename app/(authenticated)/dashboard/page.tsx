@@ -1,11 +1,10 @@
 ﻿'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmDelete, showError } from '@/lib/swal'
 import { useUser } from '@/app/components/UserContext'
-import type { Tables } from '@/lib/db'
-import { useTrasladosCounts, useResumenMensual } from '@/lib/useSupabaseQuery'
+import { useTrasladosCounts, useResumenMensual, useChoferes } from '@/lib/useSupabaseQuery'
 import AppHeader from '@/app/components/AppHeader'
 import ClientOnly from '@/app/components/ClientOnly'
 import dynamic from 'next/dynamic'
@@ -24,8 +23,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
     MapPin, Clock, Zap, CheckCircle2, Plus, UserPlus, Users,
 } from 'lucide-react'
-
-type Chofer = Pick<Tables<'perfiles'>, 'id' | 'nombre_completo' | 'email'>
 
 const statMeta = [
     { key: 'total', label: 'Total Traslados', icon: MapPin, badgeClass: 'bg-primary/10 text-primary' },
@@ -52,31 +49,20 @@ function saludo() {
 export default function DashboardPage() {
     const { perfil, empresa, role } = useUser()
     const router = useRouter()
-    const [choferes, setChoferes] = useState<Chofer[]>([])
     const [modalAbierto, setModalAbierto] = useState(false)
-    const [cargandoChoferes, setCargandoChoferes] = useState(true)
-    const [errorChoferes, setErrorChoferes] = useState<unknown>(null)
+
+    // Misma clave de SWR que /dashboard/choferes: ir y volver entre las dos ya
+    // no dispara ninguna query, se dibuja con lo cacheado y revalida atras.
+    const {
+        data: choferes = [],
+        error: errorChoferes,
+        isLoading: cargandoChoferes,
+        mutate: mutarChoferes,
+    } = useChoferes(perfil?.empresa_id ?? null)
     const { data: counts } = useTrasladosCounts(perfil?.empresa_id ?? null)
     // Agregado en Postgres: antes eran 2000 filas viajando al navegador para
     // dibujar seis barras.
     const { data: resumen } = useResumenMensual(perfil?.empresa_id ?? null)
-
-    // Declaradas antes de los efectos que las usan: al reves, el compilador de
-    // React marca acceso a la variable antes de declararla (react-hooks/immutability).
-    const cargarChoferes = useCallback(async (empresaId: string) => {
-        setCargandoChoferes(true)
-        setErrorChoferes(null)
-        const { data, error } = await supabase.from('perfiles').select('id, nombre_completo, email').eq('empresa_id', empresaId).eq('rol', 'chofer')
-        // El error se descartaba: una query fallida se veia igual que un equipo vacio.
-        if (error) setErrorChoferes(error)
-        setChoferes(data || [])
-        setCargandoChoferes(false)
-    }, [])
-
-    useEffect(() => {
-        if (!perfil?.empresa_id) return
-        cargarChoferes(perfil.empresa_id)
-    }, [perfil?.empresa_id, cargarChoferes])
 
     useEffect(() => {
         const empresaId = perfil?.empresa_id
@@ -92,19 +78,21 @@ export default function DashboardPage() {
             .on('postgres_changes', {
                 event: '*', schema: 'public', table: 'perfiles',
                 filter: `empresa_id=eq.${empresaId}`,
-            }, () => { cargarChoferes(empresaId) })
+            }, () => { mutarChoferes() })
             .subscribe()
         return () => { supabase.removeChannel(sub) }
-    }, [perfil?.empresa_id, cargarChoferes])
+    }, [perfil?.empresa_id, mutarChoferes])
 
     const expulsarChofer = async (choferId: string, nombre: string) => {
         const ok = await confirmDelete({ title: 'Expulsar chofer', text: `¿Expulsar a ${nombre}?`, confirmButtonText: 'Si, expulsar' })
         if (!ok) return
-        setChoferes(prev => prev.filter(c => c.id !== choferId))
+        // Optimista y sin revalidar; si la RPC falla, el mutate() trae la lista
+        // real y el chofer reaparece.
+        mutarChoferes(prev => (prev ?? []).filter(c => c.id !== choferId), { revalidate: false })
         const { error } = await supabase.rpc('expulsar_chofer', { chofer_id: choferId })
         if (error) {
             showError('Error al expulsar: ' + error.message)
-            if (perfil?.empresa_id) await cargarChoferes(perfil.empresa_id)
+            await mutarChoferes()
         }
     }
 
@@ -200,7 +188,7 @@ export default function DashboardPage() {
                             error={errorChoferes}
                             isEmpty={choferes.length === 0}
                             emptyMessage="No hay choferes registrados"
-                            onRetry={() => { if (perfil?.empresa_id) cargarChoferes(perfil.empresa_id) }}
+                            onRetry={() => mutarChoferes()}
                             skeletonRows={3}
                             emptyAction={
                                 <Button size="sm" onClick={() => setModalAbierto(true)}>

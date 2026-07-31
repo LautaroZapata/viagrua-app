@@ -1,10 +1,11 @@
-'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+﻿'use client'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { confirmAction, showError } from '@/lib/swal'
 import { sanitizeString, isValidCodigoInvitacion, LIMITS } from '@/lib/validation'
 import { useUser } from '@/app/components/UserContext'
+import { useTrasladosChofer, type TrasladoDeChofer } from '@/lib/useSupabaseQuery'
 import { estiloEstado, estiloPago } from '@/lib/trasladoStatus'
 import ListState from '@/app/components/ListState'
 import AppHeader from '@/app/components/AppHeader'
@@ -19,25 +20,13 @@ import {
     Truck, Building2, AlertTriangle, CheckCircle2, ChevronRight, X
 } from 'lucide-react'
 
-interface Traslado {
-    id: string; marca_modelo: string; matricula: string | null; es_0km: boolean;
-    estado: string; estado_pago: string; importe_total: number | null; created_at: string;
-    departamento: string | null; direccion: string | null; empresas?: { nombre: string };
-    observaciones?: string | null; desde?: string | null; hasta?: string | null;
-}
-
 const ITEMS_PER_PAGE = 10
 
 
 export default function PanelChofer() {
-    const { user, perfil, reload } = useUser()
+    const { user, perfil, empresa, reload } = useUser()
     const router = useRouter()
-    const [traslados, setTraslados] = useState<Traslado[]>([])
-    const [cargando, setCargando] = useState(true)
-    const [errorCarga, setErrorCarga] = useState<unknown>(null)
     const [trasladosPage, setTrasladosPage] = useState(1)
-    const [trasladosTotal, setTrasladosTotal] = useState(0)
-    const [nombreEmpresa, setNombreEmpresa] = useState<string | null>(null)
     const [filtroTrasladosPendientes, setFiltroTrasladosPendientes] = useState(false)
     const [filtroPagosPendientes, setFiltroPagosPendientes] = useState(false)
     const [mostrarFormCodigo, setMostrarFormCodigo] = useState(false)
@@ -50,53 +39,41 @@ export default function PanelChofer() {
 
     useEffect(() => () => timersRef.current.forEach(clearTimeout), [])
 
-    useEffect(() => {
-        if (!perfil) return
-        if (perfil.empresa_id) {
-            supabase.from('empresas').select('nombre').eq('id', perfil.empresa_id).single()
-                .then(({ data }) => setNombreEmpresa(data?.nombre || null))
-        } else { setNombreEmpresa(null) }
-    }, [perfil?.empresa_id])
+    // El nombre de la empresa ya viene del layout autenticado, que hace el join
+    // con empresas para poblar el contexto. Antes esta pantalla lo volvia a
+    // pedir por su cuenta: una query de mas en cada entrada.
+    const nombreEmpresa = empresa?.nombre ?? null
 
-    const cargarTraslados = useCallback(async (choferId: string, page: number, soloTP: boolean, soloPP: boolean) => {
-        setCargando(true)
-        setErrorCarga(null)
-        const from = (page - 1) * ITEMS_PER_PAGE
-        const to = page * ITEMS_PER_PAGE - 1
-        let query = supabase.from('traslados')
-            .select('id, marca_modelo, matricula, es_0km, estado, estado_pago, importe_total, observaciones, created_at, departamento, direccion, empresas(nombre), desde, hasta', { count: 'exact' })
-            .eq('chofer_id', choferId)
-        if (soloTP) query = query.eq('estado', 'pendiente')
-        if (soloPP) query = query.eq('estado_pago', 'pendiente')
-        const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, to)
-        // Antes el error se descartaba y la lista quedaba vacia: el chofer veia
-        // "No hay traslados asignados" cuando en realidad habia fallado la query.
-        if (error) { setTraslados([]); setTrasladosTotal(0); setErrorCarga(error); setCargando(false); return }
-        const norm = (data || []).map((t: Record<string, unknown>) => ({
-            ...t, empresas: t.empresas && Array.isArray(t.empresas) ? t.empresas[0] : t.empresas
-        })) as Traslado[]
-        setTraslados(norm)
-        setTrasladosTotal(count || 0)
-        setCargando(false)
-    }, [])
-
-    useEffect(() => {
-        if (user?.id) cargarTraslados(user.id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
-    }, [user?.id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes, cargarTraslados])
+    // El error ya no se descarta: antes una query fallida se veia igual que
+    // "No hay traslados asignados".
+    const { data: paginaTraslados, error: errorCarga, isLoading: cargando, mutate } =
+        useTrasladosChofer(user?.id ?? null, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
+    const traslados = paginaTraslados?.data ?? []
+    const trasladosTotal = paginaTraslados?.count ?? 0
 
     useEffect(() => {
         if (!user?.id) return
         const ch = supabase.channel('traslados-chofer-' + user.id)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'traslados', filter: `chofer_id=eq.${user.id}` }, (payload) => {
-                setTraslados(prev => {
-                    if (payload.eventType === 'INSERT') return prev.some(t => t.id === (payload.new as Traslado).id) ? prev : [payload.new as Traslado, ...prev]
-                    if (payload.eventType === 'UPDATE') return prev.map(t => t.id === payload.new.id ? { ...t, ...payload.new } as Traslado : t)
-                    if (payload.eventType === 'DELETE') return prev.filter(t => t.id !== payload.old.id)
+                mutate(prev => {
+                    if (!prev) return prev
+                    const filas = prev.data
+                    if (payload.eventType === 'INSERT') {
+                        const nueva = payload.new as TrasladoDeChofer
+                        if (filas.some(t => t.id === nueva.id)) return prev
+                        return { data: [nueva, ...filas], count: prev.count + 1 }
+                    }
+                    if (payload.eventType === 'UPDATE') {
+                        return { ...prev, data: filas.map(t => t.id === payload.new.id ? { ...t, ...payload.new } as TrasladoDeChofer : t) }
+                    }
+                    if (payload.eventType === 'DELETE') {
+                        return { data: filas.filter(t => t.id !== payload.old.id), count: Math.max(0, prev.count - 1) }
+                    }
                     return prev
-                })
+                }, { revalidate: false })
             }).subscribe()
         return () => { supabase.removeChannel(ch) }
-    }, [user?.id])
+    }, [user?.id, mutate])
 
     useEffect(() => {
         if (!user?.id) return
@@ -165,7 +142,6 @@ export default function PanelChofer() {
                                     const ok = await confirmAction({ title: 'Salirse de la empresa', text: '¿Seguro? Perderas acceso a los traslados.', icon: 'warning', confirmButtonText: 'Si, salirme' })
                                     if (!ok || !perfil) return
                                     await supabase.from('perfiles').update({ empresa_id: null }).eq('id', perfil.id)
-                                    setNombreEmpresa(null)
                                     setMensajeExito('Te has salido de la empresa.')
                                     reload()
                                     timersRef.current.push(setTimeout(() => setMensajeExito(null), 5000))
@@ -253,7 +229,7 @@ export default function PanelChofer() {
                     emptyMessage="No hay traslados asignados"
                     emptyIcon={<Truck className="size-7 text-muted-foreground" />}
                     onRetry={() => {
-                        if (user?.id) cargarTraslados(user.id, trasladosPage, filtroTrasladosPendientes, filtroPagosPendientes)
+                        mutate()
                     }}
                 >
                     <div className="space-y-2 animate-stagger">

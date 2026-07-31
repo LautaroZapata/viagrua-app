@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -6,7 +6,8 @@ import { compressImage, formatFileSize } from '@/lib/compressImage'
 import { confirmDelete, showError } from '@/lib/swal'
 import { sanitizeString, isValidImporte, isValidMatricula, isValidFecha, LIMITS } from '@/lib/validation'
 import { useUser } from '@/app/components/UserContext'
-import type { Tables, Update } from '@/lib/db'
+import { useMiembrosEmpresa } from '@/lib/useSupabaseQuery'
+import type { Update } from '@/lib/db'
 import { BUCKET_FOTOS } from '@/lib/fotos'
 import AppHeader from '@/app/components/AppHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,14 +18,15 @@ import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { Camera, X } from 'lucide-react'
 
-type Chofer = Pick<Tables<'perfiles'>, 'id' | 'nombre_completo' | 'rol'>
 interface FotoPreview { file: File; preview: string; compressedSize?: number }
 
 export default function NuevoTraslado() {
     const router = useRouter()
     const { user, perfil } = useUser()
     const [loading, setLoading] = useState(false)
-    const [choferes, setChoferes] = useState<Chofer[]>([])
+    // Cacheado: abrir el alta, volver y abrirla de nuevo ya no vuelve a pedir
+    // la lista. Incluye a los admins porque uno puede asignarse el traslado.
+    const { data: choferes = [] } = useMiembrosEmpresa(perfil?.empresa_id ?? null)
     const [formData, setFormData] = useState({
         marca_modelo: '', matricula: '', es_0km: false, chofer_id: '',
         importe_total: '', observaciones: '', desde: '', hasta: ''
@@ -40,17 +42,6 @@ export default function NuevoTraslado() {
     }
 
     useEffect(() => { return () => { Object.values(fotos).forEach(f => { if (f) URL.revokeObjectURL(f.preview) }) } }, [])
-
-    useEffect(() => {
-        const empresaId = perfil?.empresa_id
-        if (!empresaId) return
-        const load = async () => {
-            const { data } = await supabase.from('perfiles').select('id, nombre_completo, rol')
-                .eq('empresa_id', empresaId).in('rol', ['chofer', 'admin'])
-            setChoferes(data || [])
-        }
-        load()
-    }, [perfil?.empresa_id])
 
     const handleFotoChange = async (tipo: string, e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
