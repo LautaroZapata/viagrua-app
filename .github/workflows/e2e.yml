@@ -1,0 +1,88 @@
+name: E2E
+
+# El flujo critico de punta a punta: alta de empresa, invitacion, alta del
+# chofer, traslado asignado y cierre por el chofer.
+#
+# Va en un workflow aparte y no como un job mas de ci.yml porque tarda unos
+# minutos (levanta Postgres en Docker y buildea la app) contra los ~40s de lint,
+# typecheck y test. Mezclarlos haria que el semaforo de CI dependa siempre del
+# lento.
+#
+# No necesita ningun secret: corre contra el Supabase local que levanta
+# `supabase start`, con las credenciales que ese comando genera. Ver el freno en
+# scripts/e2e-preparar.mjs — los E2E siembran y borran, y no pueden apuntar a
+# produccion ni por accidente.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+# Un push encima de otro cancela el anterior: el resultado del commit viejo ya
+# no le sirve a nadie y cada corrida ocupa un runner por varios minutos.
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flujo-critico:
+    name: Flujo critico
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Solo chromium: el flujo no depende del motor y bajar los tres navegadores
+      # cuesta varios minutos por corrida.
+      - name: Instalar el navegador
+        run: pnpm exec playwright install --with-deps chromium
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Levanta el stack, verifica que el destino sea local y escribe .env.e2e.
+      - name: Preparar Supabase local
+        run: pnpm e2e:preparar
+
+      # Build de produccion apuntando a ese .env.e2e. Playwright sirve el
+      # resultado con `next start`; ver la nota en playwright.config.ts sobre por
+      # que no se usa `next dev`.
+      - name: Compilar
+        run: pnpm e2e:build
+
+      - name: Correr el flujo
+        run: pnpm exec playwright test
+
+      # El reporte solo se guarda cuando algo falla: en verde no lo abre nadie y
+      # ocupa espacio en cada corrida. Incluye el trace y las capturas, que es lo
+      # unico que sirve para entender un fallo que no se reproduce en local.
+      - name: Guardar el reporte si fallo
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+      # Si el job se cancela o falla, los contenedores quedarian ocupando el
+      # runner hasta que GitHub lo recicle. En un runner efimero no cambia mucho,
+      # pero deja el log claro sobre como termino el stack.
+      - name: Bajar Supabase
+        if: always()
+        run: supabase stop --no-backup || true
