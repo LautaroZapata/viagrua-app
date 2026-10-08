@@ -19,7 +19,15 @@ export function Footer() {
             <a href="mailto:hola@viagrua.com" className="hover:text-white transition-colors">Contacto</a>
           </nav>
 
-          <p className="text-sm">&copy; {new Date().getFullYear()} ViaGrúa. Todos los derechos reservados.</p>
+          <div className="flex flex-col items-center gap-1 text-sm md:items-end">
+            <p>&copy; {new Date().getFullYear()} ViaGrúa. Todos los derechos reservados.</p>
+            <p className="text-xs text-white/40">
+              Desarrollado por{' '}
+              <a href="https://www.kalabs.dev" className="hover:text-white transition-colors">
+                Kalabs
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </footer>
