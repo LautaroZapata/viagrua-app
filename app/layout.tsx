@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 import PwaRegister from '@/components/PwaRegister'
+import KalabsTracker from '@/components/KalabsTracker'
 import { Toaster } from '@/components/ui/sonner'
 import ConfirmDialog from '@/app/components/ConfirmDialog'
 import { Providers } from './providers'
@@ -52,6 +53,7 @@ export default function RootLayout({
             <body className="antialiased">
                 <Providers>
                     <PwaRegister />
+                    <KalabsTracker />
                     <Toaster />
                     <ConfirmDialog />
                     <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:rounded-lg">
