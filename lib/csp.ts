@@ -154,6 +154,8 @@ export function construirCsp({
     ...origenesSupabase(urlSupabase),
     origenSentry(dsnSentry),
     esPublica ? RECAPTCHA_CONNECT : null,
+    // Tracker de visitas del panel Kalabs (components/KalabsTracker.tsx).
+    'https://www.kalabs.dev',
   ].filter(Boolean)
 
   const scripts = esPublica
