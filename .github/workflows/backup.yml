@@ -49,16 +49,16 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
 
       # El CLI de Supabase envuelve a pg_dump con las particularidades del
       # servicio: se saltea los schemas internos que no se pueden restaurar y
       # separa roles, schema y datos en tres archivos que se aplican en orden.
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           version: latest
 
