@@ -68,6 +68,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No tienes permiso para crear traslados en esta empresa' }, { status: 403 })
     }
 
+    // Crear traslados es del admin: esta ruta escribe con service_role, asi
+    // que el rol se valida aca (la UI ya manda al chofer fuera de /dashboard).
+    if (perfil.rol !== 'admin') {
+      return NextResponse.json({ error: 'Solo un administrador puede crear traslados' }, { status: 403 })
+    }
+
     // Verificar que el chofer pertenece a la misma empresa
     const { data: choferPerfil, error: choferError } = await supabase
       .from('perfiles')

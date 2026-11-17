@@ -8,6 +8,11 @@ import { useEffect } from "react";
    responde, la app sigue igual. */
 const ENDPOINT = "https://www.kalabs.dev/api/track";
 
+/* Los codigos de invitacion viajan en la URL (/unirse/<codigo>) y valen para
+   sumarse a una empresa: no salen del sitio. */
+const ocultarCodigos = (texto: string) =>
+  texto.replace(/\/unirse\/[^/?#]+/g, "/unirse/:codigo");
+
 export default function KalabsTracker() {
   useEffect(() => {
     let id = sessionStorage.getItem("kalabs-sid");
@@ -18,8 +23,8 @@ export default function KalabsTracker() {
     const mandar = (evento: "view" | "ping") => {
       const cuerpo = JSON.stringify({
         project: "viagrua",
-        path: location.pathname,
-        referrer: document.referrer.slice(0, 300),
+        path: ocultarCodigos(location.pathname),
+        referrer: ocultarCodigos(document.referrer).slice(0, 300),
         session: id,
         evento,
       });

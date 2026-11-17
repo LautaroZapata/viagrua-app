@@ -46,13 +46,18 @@ export function contarFilas(sql) {
   let n = 0
 
   for (const l of lineas) {
-    if (l.startsWith('COPY ')) {
-      const fin = l.indexOf(' (')
-      tabla = l.slice(5, fin === -1 ? undefined : fin).replace(/"/g, '')
-      n = 0
+    // Un encabezado COPY solo cuenta fuera de un bloque: adentro, una fila de
+    // datos que empiece con "COPY " es contenido de la tabla (lo escribe
+    // cualquiera que tenga acceso a esa tabla), no un encabezado. Y el nombre
+    // se valida, porque termina interpolado en el SQL que se ejecuta.
+    if (tabla === null) {
+      const m = /^COPY ("?[a-z_][a-z0-9_]*"?)\.("?[a-z_][a-z0-9_]*"?) \(/.exec(l)
+      if (m) {
+        tabla = `${m[1]}.${m[2]}`.replace(/"/g, '')
+        n = 0
+      }
       continue
     }
-    if (tabla === null) continue
     if (esTerminador(l)) {
       if (tabla.startsWith('public.')) res.push({ tabla, filas: n })
       tabla = null

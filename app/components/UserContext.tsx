@@ -105,6 +105,13 @@ export function UserProvider({
 
     const logout = useCallback(async () => {
         await supabase.auth.signOut()
+        // El service worker guarda las paginas autenticadas para uso offline:
+        // al salir se borran, para que el proximo que use el equipo no las vea.
+        try {
+            if (typeof caches !== 'undefined') await caches.delete('vg-runtime-v1')
+        } catch {
+            // Sin Cache Storage (modo privado, navegador viejo) no hay nada que borrar.
+        }
         router.push('/login')
     }, [router])
 

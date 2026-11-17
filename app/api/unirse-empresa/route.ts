@@ -86,12 +86,19 @@ export async function POST(request: Request) {
     }
     const empresaId = invitacion.empresa_id
 
-    const { error: updateError } = await supabaseAdmin
+    // La invitacion es de chofer: el rol se fija aca y no se hereda del perfil
+    // (un admin expulsado conservaba rol='admin' y lo arrastraba a la empresa
+    // nueva). El .is('empresa_id', null) cierra la carrera con el chequeo de
+    // arriba.
+    const { data: unido, error: updateError } = await supabaseAdmin
       .from('perfiles')
-      .update({ empresa_id: empresaId })
+      .update({ empresa_id: empresaId, rol: 'chofer' })
       .eq('id', user.id)
+      .is('empresa_id', null)
+      .select('id')
+      .maybeSingle()
 
-    if (updateError) {
+    if (updateError || !unido) {
       // Devolver la invitacion al pool para no quemarla por un fallo nuestro.
       await supabaseAdmin.from('invitaciones').update({ usado: false }).eq('id', invitacion.id)
       console.error('Error uniendo perfil a empresa:', updateError)

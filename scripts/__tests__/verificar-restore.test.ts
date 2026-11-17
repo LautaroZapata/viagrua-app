@@ -19,6 +19,19 @@ describe('contarFilas', () => {
     expect(contarFilas(sql)).toEqual([{ tabla: 'public.traslados', filas: 3 }])
   })
 
+  it('una fila que empieza con "COPY " es dato, no encabezado (no llega al SQL)', () => {
+    // Cualquiera con acceso a una tabla puede escribir esa fila; si se tomara
+    // como encabezado, su texto se interpolaria en el SQL de verificacion.
+    const fila = 'COPY public.x; drop table public.traslados; -- (a'
+    const sql = bloque('"public"."planes"', ['1\tbasico', fila]) + '\n' + bloque('"public"."gastos"', ['9\tpeaje'])
+    const conteos = contarFilas(sql)
+    expect(conteos).toEqual([
+      { tabla: 'public.planes', filas: 2 },
+      { tabla: 'public.gastos', filas: 1 },
+    ])
+    expect(generarSql(conteos)).not.toContain('drop table')
+  })
+
   it('cuenta una tabla vacia como cero y no la saltea', () => {
     // Una tabla que deberia estar vacia y aparece con filas tambien es un
     // restore mal hecho, asi que se verifica igual.

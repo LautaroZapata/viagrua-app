@@ -17,6 +17,18 @@ import { createClient } from '@/lib/supabase/server'
  * Si el link es invalido o vencido no se filtra el motivo: se manda a /login
  * con un flag generico.
  */
+/** Devuelve la ruta si es interna al sitio; null si apunta a otro origen. */
+function rutaInterna(valor: string, origin: string): string | null {
+  if (!valor.startsWith('/') || /[\\\u0000-\u001f\u007f]/.test(valor)) return null
+  try {
+    const url = new URL(valor, origin)
+    if (url.origin !== origin) return null
+    return url.pathname + url.search + url.hash
+  } catch {
+    return null
+  }
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const tokenHash = searchParams.get('token_hash')
@@ -25,10 +37,10 @@ export async function GET(request: Request) {
 
   // Solo rutas internas: un `next` controlado por el atacante seria un open
   // redirect, y encima sobre una request que acaba de crear una sesion.
+  // Ademas de '//', los navegadores tratan '/\host' y '/<TAB>/host' como
+  // URLs a otro host; por eso se resuelve la URL y se exige el mismo origen.
   const nextParam = searchParams.get('next') ?? '/nueva-password'
-  const next = nextParam.startsWith('/') && !nextParam.startsWith('//')
-    ? nextParam
-    : '/nueva-password'
+  const next = rutaInterna(nextParam, origin) ?? '/nueva-password'
 
   const supabase = await createClient()
 
